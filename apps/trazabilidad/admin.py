@@ -1,6 +1,12 @@
 from django.contrib import admin
 
 from .models import (
+    LoteProduccion,
+    ConsumoLote,
+    PresentacionBolsa,
+    Caja,
+    ComposicionCaja,
+    Correccion,
     DetalleRecepcion,
     Especie,
     EstanciaPartida,
@@ -144,4 +150,102 @@ class MermaProcesoAdmin(admin.ModelAdmin):
     search_fields = (
         "motivo",
         "partida__detalle_recepcion__especie__nombre",
+    )
+
+
+@admin.register(LoteProduccion)
+class LoteProduccionAdmin(admin.ModelAdmin):
+    list_display = (
+        "codigo_lote",
+        "especie",
+        "fecha_elaboracion",
+        "fecha_vencimiento",
+        "registrado_por",
+    )
+    search_fields = (
+        "codigo_lote",
+        "especie__nombre",
+    )
+    list_filter = (
+        "especie",
+        "fecha_elaboracion",
+    )
+
+
+@admin.register(ConsumoLote)
+class ConsumoLoteAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "partida",
+        "lote_produccion",
+        "cantidad_kg_utilizada",
+    )
+    search_fields = (
+        "lote_produccion__codigo_lote",
+        "partida__detalle_recepcion__especie__nombre",
+    )
+
+
+@admin.register(PresentacionBolsa)
+class PresentacionBolsaAdmin(admin.ModelAdmin):
+    list_display = (
+        "nombre",
+        "peso_nominal_kg",
+        "activo",
+    )
+    search_fields = ("nombre",)
+    list_filter = ("activo",)
+
+
+@admin.register(Caja)
+class CajaAdmin(admin.ModelAdmin):
+    list_display = (
+        "codigo_caja",
+        "lote_produccion",
+        "peso_total_kg",
+        "fecha_armado",
+        "registrado_por",
+    )
+    search_fields = (
+        "codigo_caja",
+        "lote_produccion__codigo_lote",
+    )
+    list_filter = ("fecha_armado",)
+
+
+@admin.register(ComposicionCaja)
+class ComposicionCajaAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "caja",
+        "presentacion",
+        "cantidad",
+        "peso_unitario_kg",
+    )
+    search_fields = (
+        "caja__codigo_caja",
+        "presentacion__nombre",
+    )
+    list_filter = ("presentacion",)
+
+
+@admin.register(Correccion)
+class CorreccionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "entidad_afectada",
+        "identificador_registro",
+        "campo",
+        "usuario",
+        "fecha_hora",
+    )
+    search_fields = (
+        "entidad_afectada",
+        "identificador_registro",
+        "campo",
+        "usuario__username",
+    )
+    list_filter = (
+        "entidad_afectada",
+        "fecha_hora",
     )

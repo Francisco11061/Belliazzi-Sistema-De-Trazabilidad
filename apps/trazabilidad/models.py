@@ -287,3 +287,148 @@ class MermaProceso(models.Model):
 
     def __str__(self):
         return f"Merma {self.pk} - Partida {self.partida_id}"
+
+
+class LoteProduccion(models.Model):
+    codigo_lote = models.CharField(max_length=80, unique=True)
+    especie = models.ForeignKey(
+        Especie,
+        on_delete=models.PROTECT,
+        related_name="lotes_produccion",
+    )
+    fecha_elaboracion = models.DateField()
+    fecha_vencimiento = models.DateField(null=True, blank=True)
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="lotes_produccion_registrados",
+    )
+    observaciones = models.TextField(blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-fecha_elaboracion", "-id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(fecha_vencimiento__isnull=True)
+                    | models.Q(fecha_vencimiento__gte=models.F("fecha_elaboracion"))
+                ),
+                name="lote_vencimiento_mayor_igual_elaboracion",
+            ),
+        ]
+
+    def __str__(self):
+        return self.codigo_lote
+
+
+class ConsumoLote(models.Model):
+    partida = models.ForeignKey(
+        PartidaProceso,
+        on_delete=models.PROTECT,
+        related_name="consumos_lote",
+    )
+    lote_produccion = models.ForeignKey(
+        LoteProduccion,
+        on_delete=models.PROTECT,
+        related_name="consumos",
+    )
+    cantidad_kg_utilizada = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+
+    def __str__(self):
+        return f"Partida {self.partida_id} -> {self.lote_produccion}"
+
+
+class PresentacionBolsa(models.Model):
+    nombre = models.CharField(max_length=80, unique=True)
+    peso_nominal_kg = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["peso_nominal_kg", "nombre"]
+
+    def __str__(self):
+        return self.nombre
+
+
+class Caja(models.Model):
+    lote_produccion = models.ForeignKey(
+        LoteProduccion,
+        on_delete=models.PROTECT,
+        related_name="cajas",
+    )
+    codigo_caja = models.CharField(max_length=100, unique=True)
+    peso_total_kg = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    fecha_armado = models.DateTimeField()
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="cajas_registradas",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.codigo_caja
+
+
+class ComposicionCaja(models.Model):
+    caja = models.ForeignKey(
+        Caja,
+        on_delete=models.PROTECT,
+        related_name="composiciones",
+    )
+    presentacion = models.ForeignKey(
+        PresentacionBolsa,
+        on_delete=models.PROTECT,
+        related_name="composiciones_caja",
+    )
+    cantidad = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    peso_unitario_kg = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["caja", "presentacion"],
+                name="composicion_caja_presentacion_unica",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.caja} - {self.cantidad} x {self.presentacion}"
+
+
+class Correccion(models.Model):
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="correcciones_realizadas",
+    )
+    entidad_afectada = models.CharField(max_length=100)
+    identificador_registro = models.CharField(max_length=100)
+    campo = models.CharField(max_length=100)
+    valor_anterior = models.TextField(blank=True)
+    valor_nuevo = models.TextField(blank=True)
+    motivo = models.TextField()
+    fecha_hora = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-fecha_hora"]
+
+    def __str__(self):
+        return f"{self.entidad_afectada} {self.identificador_registro} - {self.campo}"
