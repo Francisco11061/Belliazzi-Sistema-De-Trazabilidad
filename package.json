@@ -1,0 +1,12 @@
+{
+  "name": "belliazzi-frontend",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/src/input.css -o ./apps/usuarios/static/usuarios/css/output.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "flowbite": "4.0.2",
+    "tailwindcss": "4.3.3"
+  }
+}

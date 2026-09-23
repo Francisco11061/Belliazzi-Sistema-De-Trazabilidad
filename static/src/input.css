@@ -1,0 +1,18 @@
+@import "tailwindcss" source(none);
+@plugin "flowbite/plugin";
+@source "../../apps/**/templates/**/*.html";
+@source "../../node_modules/flowbite";
+
+@layer components {
+    .login-field input {
+        @apply block w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-3 text-base text-slate-900 shadow-xs placeholder:text-slate-400 focus:border-cyan-600 focus:outline-none focus:ring-2 focus:ring-cyan-600/20;
+    }
+
+    .login-field input[aria-invalid="true"] {
+        @apply border-red-500 focus:border-red-500 focus:ring-red-500/20;
+    }
+
+    .login-errors .errorlist {
+        @apply space-y-1;
+    }
+}

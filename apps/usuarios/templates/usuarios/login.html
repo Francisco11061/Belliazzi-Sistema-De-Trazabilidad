@@ -1,32 +1,60 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Iniciar sesión | Pesquera Belliazzi</title>
+    <link rel="stylesheet" href="{% static 'usuarios/css/output.css' %}">
 </head>
-<body>
-    <main>
-        <h1>Sistema de Trazabilidad e Inventario</h1>
-        <p>Pesquera Belliazzi</p>
-        <form method="post" action="{% url 'usuarios:login' %}">
-            {% csrf_token %}
-            {{ form.non_field_errors }}
-            <p>
-                <label for="{{ form.username.id_for_label }}">Usuario</label>
-                {{ form.username }}
-                {{ form.username.errors }}
-            </p>
-            <p>
-                <label for="{{ form.password.id_for_label }}">Contraseña</label>
-                {{ form.password }}
-                {{ form.password.errors }}
-            </p>
-            {% if next %}
-                <input type="hidden" name="next" value="{{ next }}">
-            {% endif %}
-            <button type="submit">Iniciar sesión</button>
-        </form>
+<body class="bg-slate-50 font-sans text-slate-900 antialiased">
+    <main class="flex min-h-dvh items-center justify-center px-4 py-10 sm:px-6">
+        <div class="w-full max-w-md">
+            <header class="mb-8 text-center">
+                <div class="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-100 bg-cyan-50 text-cyan-700">
+                    <svg class="h-8 w-8" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                        <path d="M4 12c4-4 8 4 12 0s8 4 12 0M4 18c4-4 8 4 12 0s8 4 12 0M4 24c4-4 8 4 12 0s8 4 12 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                        <path d="M22 5h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-sky-500" />
+                    </svg>
+                </div>
+                <p class="text-lg font-semibold tracking-widest text-slate-900">PESQUERA BELLIAZZI</p>
+                <p class="mt-2 text-sm leading-6 text-slate-500">Sistema de Trazabilidad e Inventario</p>
+            </header>
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="login-title">
+                <h1 id="login-title" class="text-2xl font-semibold tracking-tight">Iniciar sesión</h1>
+                <p class="mt-2 text-sm leading-6 text-slate-500">Ingresa tus credenciales para acceder al sistema.</p>
+
+                <form method="post" class="mt-7 space-y-5">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="login-errors rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800" role="alert">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+                    <div class="login-field">
+                        <label for="{{ form.username.id_for_label }}" class="mb-2 block text-sm font-medium text-slate-900">Usuario</label>
+                        {{ form.username }}
+                        {% if form.username.errors %}
+                            <div id="{{ form.username.auto_id }}_error" class="login-errors mt-2 text-sm text-red-700" role="alert">{{ form.username.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="login-field">
+                        <label for="{{ form.password.id_for_label }}" class="mb-2 block text-sm font-medium text-slate-900">Contraseña</label>
+                        {{ form.password }}
+                        {% if form.password.errors %}
+                            <div id="{{ form.password.auto_id }}_error" class="login-errors mt-2 text-sm text-red-700" role="alert">{{ form.password.errors }}</div>
+                        {% endif %}
+                    </div>
+                    {% if next %}
+                        <input type="hidden" name="next" value="{{ next }}">
+                    {% endif %}
+                    <button type="submit" class="w-full cursor-pointer rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600">Iniciar sesión</button>
+                </form>
+
+                <p class="mt-7 border-t border-slate-100 pt-5 text-center text-xs text-slate-500">Pesquera Belliazzi</p>
+            </section>
+        </div>
     </main>
 </body>
 </html>
