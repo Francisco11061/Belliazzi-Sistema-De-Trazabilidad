@@ -14,6 +14,9 @@
         {% elif user.is_superuser %}
             <p>Administrador técnico</p>
         {% endif %}
+        {% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}
+            <p><a href="{% url 'trazabilidad:lista_recepciones' %}">Recepciones</a></p>
+        {% endif %}
         <form method="post" action="{% url 'usuarios:logout' %}">
             {% csrf_token %}
             <button type="submit">Cerrar sesión</button>

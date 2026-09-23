@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recepciones | Pesquera Belliazzi</title>
+</head>
+<body>
+    <main>
+        <h1>Recepciones</h1>
+        <nav>
+            <a href="{% url 'trazabilidad:nueva_recepcion' %}">Registrar recepción</a>
+            <a href="{% url 'usuarios:inicio' %}">Inicio</a>
+        </nav>
+        {% if recepciones %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Fecha/hora</th>
+                        <th>Usuario que registró</th>
+                        <th>Cantidad de detalles</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for recepcion in recepciones %}
+                        <tr>
+                            <td>{{ recepcion.pk }}</td>
+                            <td>{{ recepcion.fecha_hora_recepcion }}</td>
+                            <td>{{ recepcion.registrado_por }}</td>
+                            <td>{{ recepcion.detalles.all|length }}</td>
+                            <td><a href="{% url 'trazabilidad:detalle_recepcion' recepcion.pk %}">Ver</a></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No hay recepciones registradas.</p>
+        {% endif %}
+    </main>
+</body>
+</html>

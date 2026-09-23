@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Registrar recepción | Pesquera Belliazzi</title>
+</head>
+<body>
+    <main>
+        <h1>Registrar recepción</h1>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <h2>Detalles de recepción</h2>
+            {{ detalles.management_form }}
+            {{ detalles.non_form_errors }}
+            {% for detalle in detalles %}
+                <fieldset>
+                    <legend>Detalle {{ forloop.counter }}</legend>
+                    {{ detalle.as_p }}
+                </fieldset>
+            {% endfor %}
+            <button type="submit">Guardar recepción</button>
+        </form>
+        <a href="{% url 'trazabilidad:lista_recepciones' %}">Cancelar</a>
+    </main>
+</body>
+</html>

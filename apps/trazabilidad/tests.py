@@ -1,9 +1,11 @@
 from datetime import date, timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.trazabilidad.services import registrar_recepcion
@@ -158,3 +160,168 @@ class RegistroRecepcionServiceTests(TestCase):
         )
         self.assertEqual(Recepcion.objects.count(), 0)
         self.assertEqual(DetalleRecepcion.objects.count(), 0)
+
+
+class RecepcionViewsTests(TestCase):
+    def setUp(self):
+        self.jefe = Usuario.objects.create_user(
+            username="jefe_web", password="clave-prueba-123",
+            rol=Rol.objects.get(codigo="JEFE"),
+        )
+        self.encargada = Usuario.objects.create_user(
+            username="encargada_web", password="clave-prueba-123",
+            rol=Rol.objects.get(codigo="ENCARGADA"),
+        )
+        self.operaria = Usuario.objects.create_user(
+            username="operaria_web", password="clave-prueba-123",
+            rol=Rol.objects.get(codigo="OPERARIA"),
+        )
+        self.origen = OrigenSernapesca.objects.create(folio_origen="FOLIO-WEB")
+        self.especie = Especie.objects.create(nombre="Merluza del sur", activo=True)
+
+    def datos_validos(self):
+        return {
+            "fecha_hora_recepcion": timezone.localtime().strftime("%Y-%m-%dT%H:%M"),
+            "observaciones": "Recepción de prueba",
+            "form-TOTAL_FORMS": "1",
+            "form-INITIAL_FORMS": "0",
+            "form-MIN_NUM_FORMS": "0",
+            "form-MAX_NUM_FORMS": "1000",
+            "form-0-origen_sernapesca": str(self.origen.pk),
+            "form-0-especie": str(self.especie.pk),
+            "form-0-peso_origen_kg": "500.00",
+            "form-0-peso_recepcion_kg": "493.00",
+        }
+
+    def test_jefe_puede_ver_lista_recepciones(self):
+        self.client.force_login(self.jefe)
+        response = self.client.get(reverse("trazabilidad:lista_recepciones"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "trazabilidad/recepciones/lista.html")
+
+    def test_encargada_puede_ver_formulario_recepcion(self):
+        self.client.force_login(self.encargada)
+        response = self.client.get(reverse("trazabilidad:nueva_recepcion"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "trazabilidad/recepciones/nueva.html")
+
+    def test_operaria_no_puede_acceder_a_recepciones(self):
+        self.client.force_login(self.operaria)
+        urls = [
+            reverse("trazabilidad:lista_recepciones"),
+            reverse("trazabilidad:nueva_recepcion"),
+            reverse("trazabilidad:detalle_recepcion", args=[1]),
+        ]
+        for url in urls:
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 403)
+        response = self.client.post(
+            reverse("trazabilidad:nueva_recepcion"), self.datos_validos()
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(Recepcion.objects.count(), 0)
+
+    def test_usuario_anonimo_es_redirigido_al_login(self):
+        url = reverse("trazabilidad:lista_recepciones")
+        response = self.client.get(url)
+        self.assertRedirects(response, f"{reverse('usuarios:login')}?next={url}")
+
+    def test_crear_recepcion_desde_vista(self):
+        self.client.force_login(self.jefe)
+        response = self.client.post(
+            reverse("trazabilidad:nueva_recepcion"), self.datos_validos()
+        )
+        self.assertEqual(Recepcion.objects.count(), 1)
+        self.assertEqual(DetalleRecepcion.objects.count(), 1)
+        recepcion = Recepcion.objects.get()
+        self.assertEqual(recepcion.registrado_por, self.jefe)
+        self.assertRedirects(
+            response, reverse("trazabilidad:detalle_recepcion", args=[recepcion.pk])
+        )
+
+    def test_recepcion_invalida_no_guarda_datos(self):
+        self.client.force_login(self.jefe)
+        datos = self.datos_validos()
+        datos["form-0-peso_origen_kg"] = "0"
+        response = self.client.post(reverse("trazabilidad:nueva_recepcion"), datos)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("peso_origen_kg", response.context["detalles"].forms[0].errors)
+        self.assertEqual(Recepcion.objects.count(), 0)
+        self.assertEqual(DetalleRecepcion.objects.count(), 0)
+
+    def test_detalle_recepcion_muestra_datos(self):
+        recepcion = registrar_recepcion(
+            fecha_hora_recepcion=timezone.now(),
+            registrado_por=self.jefe,
+            detalles=[{
+                "origen_sernapesca": self.origen,
+                "especie": self.especie,
+                "peso_origen_kg": Decimal("500.00"),
+                "peso_recepcion_kg": Decimal("493.00"),
+            }],
+        )
+        self.client.force_login(self.jefe)
+        response = self.client.get(
+            reverse("trazabilidad:detalle_recepcion", args=[recepcion.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.origen.folio_origen)
+        self.assertContains(response, self.especie.nombre)
+
+    def test_formset_vacio_o_eliminado_no_guarda_datos(self):
+        self.client.force_login(self.jefe)
+        for eliminado in (False, True):
+            with self.subTest(eliminado=eliminado):
+                datos = self.datos_validos()
+                if eliminado:
+                    datos["form-0-DELETE"] = "on"
+                else:
+                    for campo in ("origen_sernapesca", "especie", "peso_origen_kg", "peso_recepcion_kg"):
+                        datos[f"form-0-{campo}"] = ""
+                response = self.client.post(reverse("trazabilidad:nueva_recepcion"), datos)
+                self.assertContains(response, "Debe ingresar al menos un detalle de recepción.")
+                self.assertEqual(Recepcion.objects.count(), 0)
+                self.assertEqual(DetalleRecepcion.objects.count(), 0)
+
+    def test_varios_detalles_ignoran_eliminados_y_vacios(self):
+        self.client.force_login(self.jefe)
+        datos = self.datos_validos()
+        datos["form-TOTAL_FORMS"] = "4"
+        for indice in (1, 2):
+            for campo in ("origen_sernapesca", "especie", "peso_origen_kg", "peso_recepcion_kg"):
+                datos[f"form-{indice}-{campo}"] = datos[f"form-0-{campo}"]
+        datos["form-2-DELETE"] = "on"
+        response = self.client.post(reverse("trazabilidad:nueva_recepcion"), datos)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Recepcion.objects.count(), 1)
+        self.assertEqual(DetalleRecepcion.objects.count(), 2)
+
+    def test_error_del_servicio_conserva_formulario(self):
+        self.client.force_login(self.jefe)
+        with patch(
+            "apps.trazabilidad.views.registrar_recepcion",
+            side_effect=ValidationError({"peso_origen_kg": ["Error de validación de prueba."]}),
+        ):
+            response = self.client.post(
+                reverse("trazabilidad:nueva_recepcion"), self.datos_validos()
+            )
+        self.assertContains(response, "Error de validación de prueba.")
+        self.assertEqual(
+            response.context["form"].non_field_errors(), ["Error de validación de prueba."]
+        )
+        self.assertEqual(response.context["form"]["observaciones"].value(), "Recepción de prueba")
+        self.assertEqual(response.context["detalles"].forms[0]["peso_origen_kg"].value(), "500.00")
+        self.assertEqual(Recepcion.objects.count(), 0)
+
+    def test_enlace_inicio_segun_rol_y_acceso_superusuario(self):
+        tecnico = Usuario.objects.create_superuser(
+            username="tecnico_web", password="clave-prueba-123"
+        )
+        enlace = reverse("trazabilidad:lista_recepciones")
+        for usuario in (self.jefe, self.encargada, tecnico):
+            with self.subTest(usuario=usuario.username):
+                self.client.force_login(usuario)
+                self.assertContains(self.client.get(reverse("usuarios:inicio")), enlace)
+                self.assertEqual(self.client.get(enlace).status_code, 200)
+        self.client.force_login(self.operaria)
+        self.assertNotContains(self.client.get(reverse("usuarios:inicio")), enlace)

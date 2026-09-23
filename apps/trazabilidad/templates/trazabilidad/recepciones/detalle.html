@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recepción {{ recepcion.pk }} | Pesquera Belliazzi</title>
+</head>
+<body>
+    <main>
+        <h1>Recepción {{ recepcion.pk }}</h1>
+        {% for message in messages %}
+            <p role="status">{{ message }}</p>
+        {% endfor %}
+        <dl>
+            <dt>Fecha/hora</dt>
+            <dd>{{ recepcion.fecha_hora_recepcion }}</dd>
+            <dt>Usuario que registró</dt>
+            <dd>{{ recepcion.registrado_por }}</dd>
+            <dt>Observaciones</dt>
+            <dd>{{ recepcion.observaciones|linebreaksbr }}</dd>
+        </dl>
+        <table>
+            <thead>
+                <tr>
+                    <th>Folio origen</th>
+                    <th>Especie</th>
+                    <th>Peso origen (kg)</th>
+                    <th>Peso recepción (kg)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detalle in recepcion.detalles.all %}
+                    <tr>
+                        <td>{{ detalle.origen_sernapesca.folio_origen }}</td>
+                        <td>{{ detalle.especie.nombre }}</td>
+                        <td>{{ detalle.peso_origen_kg }}</td>
+                        <td>{{ detalle.peso_recepcion_kg }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <nav>
+            <a href="{% url 'trazabilidad:lista_recepciones' %}">Volver a recepciones</a>
+            <a href="{% url 'trazabilidad:nueva_recepcion' %}">Nueva recepción</a>
+        </nav>
+    </main>
+</body>
+</html>
