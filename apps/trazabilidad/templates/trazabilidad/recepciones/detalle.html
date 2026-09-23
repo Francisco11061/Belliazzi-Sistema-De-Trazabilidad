@@ -1,48 +1,69 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Recepción {{ recepcion.pk }} | Pesquera Belliazzi</title>
-</head>
-<body>
-    <main>
-        <h1>Recepción {{ recepcion.pk }}</h1>
-        {% for message in messages %}
-            <p role="status">{{ message }}</p>
-        {% endfor %}
-        <dl>
-            <dt>Fecha/hora</dt>
-            <dd>{{ recepcion.fecha_hora_recepcion }}</dd>
-            <dt>Usuario que registró</dt>
-            <dd>{{ recepcion.registrado_por }}</dd>
-            <dt>Observaciones</dt>
-            <dd>{{ recepcion.observaciones|linebreaksbr }}</dd>
+{% extends "base.html" %}
+{% block title %}Recepción #{{ recepcion.pk }} | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Detalle de recepción{% endblock %}
+{% block content %}
+<div class="w-full min-w-0 max-w-6xl">
+    <header class="mb-8 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">Recepción #{{ recepcion.pk }}</h1>
+        <div class="flex flex-col gap-3 sm:flex-row">
+            <a href="{% url 'trazabilidad:lista_recepciones' %}" class="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 sm:w-auto">Volver</a>
+            <a href="{% url 'trazabilidad:nueva_recepcion' %}" class="inline-flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow-xs hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 sm:w-auto">Nueva recepción</a>
+        </div>
+    </header>
+    <section aria-labelledby="datos-title" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <h2 id="datos-title" class="mb-6 text-lg font-semibold">Datos generales</h2>
+        <dl class="grid min-w-0 gap-6 sm:grid-cols-2">
+            <div class="min-w-0">
+                <dt class="text-sm text-slate-500">Fecha y hora</dt>
+                <dd class="mt-1 text-sm font-medium">{{ recepcion.fecha_hora_recepcion|date:"d/m/Y H:i" }}</dd>
+            </div>
+            <div class="min-w-0">
+                <dt class="text-sm text-slate-500">Registrado por</dt>
+                <dd class="mt-1 text-sm font-medium">{{ recepcion.registrado_por.get_full_name|default:recepcion.registrado_por.username }}</dd>
+            </div>
+            <div class="min-w-0 sm:col-span-2">
+                <dt class="text-sm text-slate-500">Observaciones</dt>
+                <dd class="mt-2 text-sm leading-6 text-slate-700">{{ recepcion.observaciones|default:"Sin observaciones"|linebreaksbr }}</dd>
+            </div>
         </dl>
-        <table>
-            <thead>
-                <tr>
-                    <th>Folio origen</th>
-                    <th>Especie</th>
-                    <th>Peso origen (kg)</th>
-                    <th>Peso recepción (kg)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for detalle in recepcion.detalles.all %}
+    </section>
+    <section aria-labelledby="origen-title" class="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <h2 id="origen-title" class="mb-6 text-lg font-semibold">Información de origen</h2>
+        {% for origen in origenes %}
+            <dl class="grid min-w-0 gap-6 sm:grid-cols-2 {% if not forloop.first %}mt-6 border-t border-slate-200 pt-6{% endif %}">
+                <div><dt class="text-sm text-slate-500">Folio de origen Sernapesca</dt><dd class="mt-1 text-sm font-medium">{{ origen.folio_origen }}</dd></div>
+                <div><dt class="text-sm text-slate-500">Tipo de origen</dt><dd class="mt-1 text-sm">{{ origen.tipo_origen|default:"No informado" }}</dd></div>
+                <div><dt class="text-sm text-slate-500">Código agente</dt><dd class="mt-1 text-sm">{{ origen.codigo_agente|default:"No informado" }}</dd></div>
+                <div><dt class="text-sm text-slate-500">Proveedor</dt><dd class="mt-1 text-sm">{{ origen.proveedor|default:"No informado" }}</dd></div>
+            </dl>
+        {% empty %}
+            <p class="text-sm text-slate-500">No informado</p>
+        {% endfor %}
+    </section>
+    <section aria-labelledby="detalles-title" class="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <h2 id="detalles-title" class="px-6 py-5 text-lg font-semibold">Especies recibidas</h2>
+        <div class="overflow-x-auto rounded-b-2xl focus-visible:outline-2 focus-visible:outline-cyan-600" tabindex="0" role="region" aria-label="Tabla de especies recibidas">
+            <table class="w-full min-w-[40rem] text-left text-sm">
+                <thead class="border-y border-slate-200 bg-slate-50 text-slate-500">
                     <tr>
-                        <td>{{ detalle.origen_sernapesca.folio_origen }}</td>
-                        <td>{{ detalle.especie.nombre }}</td>
-                        <td>{{ detalle.peso_origen_kg }}</td>
-                        <td>{{ detalle.peso_recepcion_kg }}</td>
+                        <th scope="col" class="px-5 py-4 font-medium">Especie</th>
+                        <th scope="col" class="px-5 py-4 font-medium text-right">Peso de origen</th>
+                        <th scope="col" class="px-5 py-4 font-medium text-right">Peso en recepción</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <nav>
-            <a href="{% url 'trazabilidad:lista_recepciones' %}">Volver a recepciones</a>
-            <a href="{% url 'trazabilidad:nueva_recepcion' %}">Nueva recepción</a>
-        </nav>
-    </main>
-</body>
-</html>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for detalle in recepcion.detalles.all %}
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-5 py-4">{{ detalle.especie.nombre }}</td>
+                            <td class="px-5 py-4 text-right whitespace-nowrap tabular-nums">{{ detalle.peso_origen_kg|floatformat:2 }} kg</td>
+                            <td class="px-5 py-4 text-right whitespace-nowrap tabular-nums">{{ detalle.peso_recepcion_kg|floatformat:2 }} kg</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="3" class="px-5 py-4 text-slate-500">No hay especies registradas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

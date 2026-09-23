@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from apps.usuarios.permisos import jefe_o_encargada_requerido
 
-from .forms import DetalleRecepcionFormSet, RecepcionForm
+from .forms import EspecieRecibidaFormSet, OrigenRecepcionForm, RecepcionForm
 from .models import Recepcion
 from .services import registrar_recepcion
 
@@ -27,24 +27,30 @@ def lista_recepciones(request):
 def nueva_recepcion(request):
     if request.method == "POST":
         form = RecepcionForm(request.POST)
-        detalles = DetalleRecepcionFormSet(request.POST)
+        origen = OrigenRecepcionForm(request.POST)
+        especies = EspecieRecibidaFormSet(request.POST, prefix="especies")
         form_valido = form.is_valid()
-        detalles_validos = detalles.is_valid()
-        if form_valido and detalles_validos:
+        origen_valido = origen.is_valid()
+        especies_validas = especies.is_valid()
+        if form_valido and origen_valido and especies_validas:
+            datos_origen = {
+                campo: origen.cleaned_data[campo]
+                for campo in ("folio_origen", "tipo_origen", "codigo_agente", "proveedor")
+            }
             datos_detalles = [
                 {
-                    "origen_sernapesca": detalle.cleaned_data["origen_sernapesca"],
                     "especie": detalle.cleaned_data["especie"],
                     "peso_origen_kg": detalle.cleaned_data["peso_origen_kg"],
                     "peso_recepcion_kg": detalle.cleaned_data["peso_recepcion_kg"],
                 }
-                for detalle in detalles
+                for detalle in especies
                 if detalle.cleaned_data and not detalle.cleaned_data.get("DELETE", False)
             ]
             try:
                 recepcion = registrar_recepcion(
                     fecha_hora_recepcion=form.cleaned_data["fecha_hora_recepcion"],
                     registrado_por=request.user,
+                    origen=datos_origen,
                     detalles=datos_detalles,
                     observaciones=form.cleaned_data["observaciones"],
                 )
@@ -55,12 +61,13 @@ def nueva_recepcion(request):
                 return redirect("trazabilidad:detalle_recepcion", pk=recepcion.pk)
     else:
         form = RecepcionForm(initial={"fecha_hora_recepcion": timezone.localtime()})
-        detalles = DetalleRecepcionFormSet()
+        origen = OrigenRecepcionForm()
+        especies = EspecieRecibidaFormSet(prefix="especies")
 
     return render(
         request,
         "trazabilidad/recepciones/nueva.html",
-        {"form": form, "detalles": detalles},
+        {"form": form, "origen": origen, "especies": especies},
     )
 
 
@@ -73,8 +80,14 @@ def detalle_recepcion(request, pk):
         ),
         pk=pk,
     )
+    # Use the prefetched details; preserve all origins on historical receptions.
+    detalles = list(recepcion.detalles.all())
+    origenes = list({
+        detalle.origen_sernapesca_id: detalle.origen_sernapesca
+        for detalle in detalles
+    }.values())
     return render(
         request,
         "trazabilidad/recepciones/detalle.html",
-        {"recepcion": recepcion},
+        {"recepcion": recepcion, "origenes": origenes},
     )

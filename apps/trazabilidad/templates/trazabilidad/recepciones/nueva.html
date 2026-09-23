@@ -1,28 +1,87 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Registrar recepción | Pesquera Belliazzi</title>
-</head>
-<body>
-    <main>
-        <h1>Registrar recepción</h1>
-        <form method="post">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <h2>Detalles de recepción</h2>
-            {{ detalles.management_form }}
-            {{ detalles.non_form_errors }}
-            {% for detalle in detalles %}
-                <fieldset>
-                    <legend>Detalle {{ forloop.counter }}</legend>
-                    {{ detalle.as_p }}
-                </fieldset>
-            {% endfor %}
-            <button type="submit">Guardar recepción</button>
-        </form>
-        <a href="{% url 'trazabilidad:lista_recepciones' %}">Cancelar</a>
-    </main>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Registrar recepción | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Registrar recepción{% endblock %}
+{% block content %}
+<div class="w-full min-w-0 max-w-5xl">
+    <header class="mb-8">
+        <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">Registrar recepción</h1>
+        <p class="mt-2 text-sm leading-6 text-slate-500">Ingresa los datos de recepción de la materia prima.</p>
+    </header>
+    <form method="post" class="space-y-6 [&_input:not([type=checkbox])]:block [&_input:not([type=checkbox])]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:rounded-lg [&_select]:border-slate-300 [&_textarea]:block [&_textarea]:w-full [&_textarea]:min-h-32 [&_textarea]:h-32 [&_textarea]:rounded-lg [&_textarea]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600 [&_textarea:focus]:border-cyan-600 [&_textarea:focus]:ring-cyan-600">
+        {% csrf_token %}
+        <section aria-labelledby="datos-title" class="min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 id="datos-title" class="mb-6 text-lg font-semibold">Datos generales</h2>
+            {% if form.non_field_errors %}<div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+            <div class="grid min-w-0 gap-6">
+                {% for campo in form %}{% include "trazabilidad/recepciones/_campo.html" %}{% endfor %}
+            </div>
+        </section>
+        <section aria-labelledby="origen-title" class="min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 id="origen-title" class="mb-6 text-lg font-semibold">Información de origen</h2>
+            {% if origen.non_field_errors %}<div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">{{ origen.non_field_errors }}</div>{% endif %}
+            <div class="grid min-w-0 gap-6 md:grid-cols-2">
+                {% for campo in origen %}{% include "trazabilidad/recepciones/_campo.html" %}{% endfor %}
+            </div>
+        </section>
+        <section aria-labelledby="especies-title" class="min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 id="especies-title" class="mb-6 text-lg font-semibold">Especies recibidas</h2>
+            {{ especies.management_form }}
+            {% if especies.non_form_errors %}<div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">{{ especies.non_form_errors }}</div>{% endif %}
+            <div id="especies-filas" class="space-y-6">
+                {% for especie in especies %}
+                    {% include "trazabilidad/recepciones/_especie.html" with numero=forloop.counter %}
+                {% endfor %}
+            </div>
+            <template id="especie-vacia">
+                {% include "trazabilidad/recepciones/_especie.html" with especie=especies.empty_form numero="__numero__" %}
+            </template>
+            <button id="agregar-especie" type="button" class="mt-6 inline-flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 sm:w-auto">+ Agregar otra especie</button>
+        </section>
+        <div class="flex flex-col gap-3 sm:flex-row">
+            <button type="submit" class="inline-flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow-xs hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 sm:w-auto cursor-pointer">Guardar recepción</button>
+            <a href="{% url 'trazabilidad:lista_recepciones' %}" class="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 sm:w-auto">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    (() => {
+        const filas = document.getElementById('especies-filas');
+        const plantilla = document.getElementById('especie-vacia');
+        const total = document.getElementById('id_{{ especies.management_form.TOTAL_FORMS.html_name }}');
+        const agregar = document.getElementById('agregar-especie');
+
+        function ocultar(fila) {
+            const borrar = fila.querySelector('input[name$="-DELETE"]');
+            borrar.checked = true;
+            fila.hidden = true;
+            // Deleted rows must still submit DELETE, without browser validation
+            // blocking submission on their other, now hidden fields.
+            fila.querySelectorAll('input, select, textarea').forEach(campo => {
+                if (campo !== borrar) campo.disabled = true;
+            });
+        }
+
+        filas.querySelectorAll('[data-especie]').forEach(fila => {
+            if (fila.querySelector('input[name$="-DELETE"]').checked) ocultar(fila);
+        });
+
+        agregar.addEventListener('click', () => {
+            const indice = Number(total.value);
+            const contenido = plantilla.innerHTML.replaceAll('__prefix__', String(indice))
+                .replaceAll('__numero__', String(indice + 1));
+            filas.insertAdjacentHTML('beforeend', contenido);
+            total.value = indice + 1;
+            filas.lastElementChild.querySelector('select').focus();
+        });
+
+        filas.addEventListener('click', evento => {
+            const boton = evento.target.closest('[data-quitar]');
+            if (!boton) return;
+            ocultar(boton.closest('[data-especie]'));
+            agregar.focus();
+        });
+    })();
+</script>
+{% endblock %}

@@ -3,7 +3,7 @@ from decimal import Decimal
 from django import forms
 from django.forms import BaseFormSet, formset_factory
 
-from .models import Especie, OrigenSernapesca
+from .models import Especie
 
 
 class RecepcionForm(forms.Form):
@@ -22,11 +22,14 @@ class RecepcionForm(forms.Form):
     )
 
 
-class DetalleRecepcionForm(forms.Form):
-    origen_sernapesca = forms.ModelChoiceField(
-        queryset=OrigenSernapesca.objects.all(),
-        label="Origen Sernapesca",
-    )
+class OrigenRecepcionForm(forms.Form):
+    folio_origen = forms.CharField(max_length=50, label="Folio de origen Sernapesca")
+    tipo_origen = forms.CharField(max_length=80, required=False, label="Tipo de origen")
+    codigo_agente = forms.CharField(max_length=50, required=False, label="Código agente")
+    proveedor = forms.CharField(max_length=150, required=False, label="Proveedor")
+
+
+class EspecieRecibidaForm(forms.Form):
     especie = forms.ModelChoiceField(
         queryset=Especie.objects.filter(activo=True),
         label="Especie",
@@ -45,7 +48,7 @@ class DetalleRecepcionForm(forms.Form):
     )
 
 
-class BaseDetalleRecepcionFormSet(BaseFormSet):
+class BaseEspeciesRecibidasFormSet(BaseFormSet):
     def clean(self):
         super().clean()
         if any(self.errors):
@@ -55,13 +58,13 @@ class BaseDetalleRecepcionFormSet(BaseFormSet):
             for form in self.forms
         ):
             raise forms.ValidationError(
-                "Debe ingresar al menos un detalle de recepción."
+                "Debe ingresar al menos una especie recibida."
             )
 
 
-DetalleRecepcionFormSet = formset_factory(
-    DetalleRecepcionForm,
-    formset=BaseDetalleRecepcionFormSet,
+EspecieRecibidaFormSet = formset_factory(
+    EspecieRecibidaForm,
+    formset=BaseEspeciesRecibidasFormSet,
     extra=1,
     can_delete=True,
 )

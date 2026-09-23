@@ -1,43 +1,47 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Recepciones | Pesquera Belliazzi</title>
-</head>
-<body>
-    <main>
-        <h1>Recepciones</h1>
-        <nav>
-            <a href="{% url 'trazabilidad:nueva_recepcion' %}">Registrar recepción</a>
-            <a href="{% url 'usuarios:inicio' %}">Inicio</a>
-        </nav>
+{% extends "base.html" %}
+{% block title %}Recepciones | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Recepciones{% endblock %}
+{% block content %}
+<div class="w-full min-w-0 max-w-6xl">
+    <header class="mb-8 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        <div class="min-w-0">
+            <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">Recepciones</h1>
+            <p class="mt-2 text-sm leading-6 text-slate-500">Consulta las recepciones de materia prima registradas en el sistema.</p>
+        </div>
+        <a href="{% url 'trazabilidad:nueva_recepcion' %}" class="inline-flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow-xs hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 sm:w-auto shrink-0">Registrar recepción</a>
+    </header>
+    <section aria-label="Recepciones registradas" class="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm">
         {% if recepciones %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Fecha/hora</th>
-                        <th>Usuario que registró</th>
-                        <th>Cantidad de detalles</th>
-                        <th>Detalle</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for recepcion in recepciones %}
+            <div class="overflow-x-auto rounded-2xl focus-visible:outline-2 focus-visible:outline-cyan-600" tabindex="0" role="region" aria-label="Tabla de recepciones">
+                <table class="w-full min-w-[40rem] text-left text-sm">
+                    <thead class="border-b border-slate-200 bg-slate-50 text-slate-500">
                         <tr>
-                            <td>{{ recepcion.pk }}</td>
-                            <td>{{ recepcion.fecha_hora_recepcion }}</td>
-                            <td>{{ recepcion.registrado_por }}</td>
-                            <td>{{ recepcion.detalles.all|length }}</td>
-                            <td><a href="{% url 'trazabilidad:detalle_recepcion' recepcion.pk %}">Ver</a></td>
+                            <th scope="col" class="px-5 py-4 font-medium">ID</th>
+                            <th scope="col" class="px-5 py-4 font-medium">Fecha y hora</th>
+                            <th scope="col" class="px-5 py-4 font-medium">Registrado por</th>
+                            <th scope="col" class="px-5 py-4 font-medium text-right">Especies</th>
+                            <th scope="col" class="px-5 py-4 font-medium">Acción</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for recepcion in recepciones %}
+                            <tr class="hover:bg-slate-50">
+                                <th scope="row" class="px-5 py-4 font-medium">#{{ recepcion.pk }}</th>
+                                <td class="px-5 py-4 whitespace-nowrap text-slate-600">{{ recepcion.fecha_hora_recepcion|date:"d/m/Y H:i" }}</td>
+                                <td class="px-5 py-4">{{ recepcion.registrado_por.get_full_name|default:recepcion.registrado_por.username }}</td>
+                                <td class="px-5 py-4 text-right tabular-nums">{{ recepcion.detalles.all|length }}</td>
+                                <td class="px-5 py-4"><a href="{% url 'trazabilidad:detalle_recepcion' recepcion.pk %}" class="inline-flex rounded-lg px-3 py-2 font-medium whitespace-nowrap text-cyan-700 hover:bg-cyan-50 hover:text-cyan-800 focus-visible:outline-2 focus-visible:outline-cyan-600">Ver detalle<span class="sr-only"> de recepción #{{ recepcion.pk }}</span></a></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         {% else %}
-            <p>No hay recepciones registradas.</p>
+            <div class="px-6 py-12 text-center">
+                <p class="mb-6 text-sm text-slate-500">No hay recepciones registradas.</p>
+                <a href="{% url 'trazabilidad:nueva_recepcion' %}" class="inline-flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow-xs hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 sm:w-auto">Registrar primera recepción</a>
+            </div>
         {% endif %}
-    </main>
-</body>
-</html>
+    </section>
+</div>
+{% endblock %}

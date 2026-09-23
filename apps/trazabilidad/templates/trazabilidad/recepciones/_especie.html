@@ -1,0 +1,17 @@
+<fieldset data-especie class="min-w-0 rounded-xl border border-slate-200 p-4 sm:p-5" {% if especie.DELETE.value %}hidden{% endif %}>
+    <legend class="px-2 text-sm font-semibold text-slate-700">Especie <span data-numero>{{ numero }}</span></legend>
+    {% if especie.non_field_errors %}<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">{{ especie.non_field_errors }}</div>{% endif %}
+    {% for hidden in especie.hidden_fields %}
+        {{ hidden }}
+        {% if hidden.errors %}<div class="text-sm text-red-700" role="alert">{{ hidden.errors }}</div>{% endif %}
+    {% endfor %}
+    <div class="grid min-w-0 gap-5 md:grid-cols-3">
+        {% for campo in especie.visible_fields %}
+            {% if campo.name != "DELETE" %}
+                {% include "trazabilidad/recepciones/_campo.html" %}
+            {% endif %}
+        {% endfor %}
+    </div>
+    <div hidden>{{ especie.DELETE }}</div>
+    <button type="button" data-quitar class="mt-5 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-cyan-600">Quitar especie</button>
+</fieldset>
