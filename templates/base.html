@@ -1,0 +1,150 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Pesquera Belliazzi{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'usuarios/css/output.css' %}?v=layout-responsive-2">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="[--sidebar-width:16rem] bg-slate-50 font-sans text-slate-900 antialiased">
+    <svg class="hidden" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <symbol id="icon-wave" viewBox="0 0 32 32">
+            <path d="M4 12c4-4 8 4 12 0s8 4 12 0M4 18c4-4 8 4 12 0s8 4 12 0M4 24c4-4 8 4 12 0s8 4 12 0" />
+            <path d="M22 5h6" class="text-sky-500" />
+        </symbol>
+    </svg>
+    <div id="sidebar-overlay" class="fixed inset-0 z-40 bg-slate-900/40 lg:hidden" hidden aria-hidden="true"></div>
+    <aside id="sidebar" aria-label="Menú principal" tabindex="-1" class="fixed inset-y-0 left-0 z-50 flex w-[var(--sidebar-width)] max-w-full -translate-x-full flex-col max-lg:invisible max-lg:[&[aria-modal=true]]:visible border-r border-slate-200 bg-white transition-transform motion-reduce:transition-none lg:translate-x-0">
+        <div class="relative flex min-h-24 shrink-0 items-center gap-3 border-b border-slate-200 px-4 py-5 pr-12 lg:px-5">
+            <svg class="h-9 w-9 shrink-0 text-cyan-700" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><use href="#icon-wave" /></svg>
+            <div class="min-w-0 flex-1">
+                <p class="text-xs leading-5 font-semibold tracking-wide">PESQUERA BELLIAZZI</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500">Sistema de Trazabilidad</p>
+            </div>
+            <button id="sidebar-close" type="button" aria-label="Cerrar menú" class="absolute top-3 right-3 shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-cyan-700 lg:hidden">
+                <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
+            </button>
+        </div>
+        <nav class="min-h-0 flex-1 space-y-2 overflow-y-auto p-4" aria-label="Navegación principal">
+            <a href="{% url 'usuarios:inicio' %}" {% if request.resolver_match.view_name == 'usuarios:inicio' %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.view_name == 'usuarios:inicio' %}bg-cyan-50 text-cyan-700{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9" /></svg>
+                Inicio
+            </a>
+            {% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}
+                <a href="{% url 'trazabilidad:lista_recepciones' %}" {% if request.resolver_match.namespace == 'trazabilidad' %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.namespace == 'trazabilidad' %}bg-cyan-50 text-cyan-700{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16l2 10v6H2v-6L4 4ZM2 14h6l2 3h4l2-3h6M12 6v6m-3-3 3 3 3-3" /></svg>
+                    Recepciones
+                </a>
+            {% endif %}
+        </nav>
+        <form method="post" action="{% url 'usuarios:logout' %}" class="shrink-0 border-t border-slate-200 p-4">
+            {% csrf_token %}
+            <button type="submit" class="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-cyan-700">
+                <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H4v16h5m5-12 4 4-4 4m-6-4h13" /></svg>
+                Cerrar sesión
+            </button>
+        </form>
+    </aside>
+
+    <div id="page-shell" class="min-h-dvh min-w-0 lg:pl-[var(--sidebar-width)]">
+        <header class="sticky top-0 z-30 flex min-h-20 flex-nowrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3 sm:px-6 lg:px-8">
+            <div class="flex min-w-0 flex-1 items-center gap-2">
+                <button id="sidebar-open" type="button" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false" class="shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-cyan-700 lg:hidden">
+                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+                </button>
+                <svg class="h-8 w-8 shrink-0 text-cyan-700 lg:hidden" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><use href="#icon-wave" /></svg>
+                <span class="whitespace-nowrap text-xs font-semibold sm:text-sm lg:hidden">Pesquera Belliazzi</span>
+                <span class="hidden text-sm text-slate-500 lg:block">{% block page_title %}Inicio{% endblock %}</span>
+            </div>
+            {% with display_name=user.get_full_name|default:user.username %}
+                <div class="flex min-w-0 shrink-0 items-center gap-3" title="{{ display_name }}">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-sm font-semibold text-cyan-700 sm:h-10 sm:w-10" aria-hidden="true">{{ display_name|first|upper }}</span>
+                    <div class="sr-only sm:not-sr-only sm:min-w-0 sm:text-left">
+                        <p class="max-w-28 truncate text-sm font-medium sm:max-w-64">
+                            {% if user.is_superuser %}Administrador técnico{% elif user.rol.codigo == "JEFE" %}Administrador{% elif user.rol.codigo == "ENCARGADA" %}Encargada{% elif user.rol.codigo == "OPERARIA" %}Operaria{% elif user.rol %}{{ user.rol.nombre }}{% endif %}
+                        </p>
+                        <p class="max-w-48 truncate text-xs text-slate-500 lg:max-w-64" title="{{ display_name }}">{{ display_name }}</p>
+                    </div>
+                </div>
+            {% endwith %}
+        </header>
+        <main id="main-content" class="min-w-0 px-4 py-8 [overflow-wrap:anywhere] sm:px-6 lg:p-8">
+            {% if messages %}
+                <div class="mb-6 space-y-3" aria-label="Mensajes del sistema">
+                    {% for message in messages %}
+                        <div role="{% if message.level >= 30 %}alert{% else %}status{% endif %}" class="rounded-lg border px-4 py-3 text-sm {% if message.level == 25 %}border-green-200 bg-green-50 text-green-800{% elif message.level >= 40 %}border-red-200 bg-red-50 text-red-800{% elif message.level == 30 %}border-yellow-200 bg-yellow-50 text-yellow-800{% else %}border-sky-200 bg-sky-50 text-sky-800{% endif %}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <script>
+        (() => {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const shell = document.getElementById('page-shell');
+            const openButton = document.getElementById('sidebar-open');
+            const closeButton = document.getElementById('sidebar-close');
+            const desktop = window.matchMedia('(min-width: 64rem)');
+            let isOpen = false;
+
+            function setOpen(open, restoreFocus = true) {
+                isOpen = open && !desktop.matches;
+                sidebar.classList.toggle('-translate-x-full', !isOpen);
+                sidebar.inert = !desktop.matches && !isOpen;
+                overlay.hidden = !isOpen;
+                shell.inert = isOpen;
+                document.body.classList.toggle('overflow-hidden', isOpen);
+                openButton.setAttribute('aria-expanded', String(isOpen));
+                if (isOpen) {
+                    sidebar.setAttribute('role', 'dialog');
+                    sidebar.setAttribute('aria-modal', 'true');
+                    closeButton.focus();
+                } else {
+                    sidebar.removeAttribute('role');
+                    sidebar.removeAttribute('aria-modal');
+                    if (restoreFocus) openButton.focus();
+                }
+            }
+
+            openButton.addEventListener('click', () => setOpen(true));
+            closeButton.addEventListener('click', () => setOpen(false));
+            overlay.addEventListener('click', () => setOpen(false));
+            sidebar.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => { if (isOpen) setOpen(false); });
+            });
+            document.addEventListener('keydown', event => {
+                if (!isOpen) return;
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    setOpen(false);
+                }
+                if (event.key === 'Tab') {
+                    const items = sidebar.querySelectorAll('a[href], button');
+                    const first = items[0];
+                    const last = items[items.length - 1];
+                    if (event.shiftKey && document.activeElement === first) {
+                        event.preventDefault();
+                        last.focus();
+                    } else if (!event.shiftKey && document.activeElement === last) {
+                        event.preventDefault();
+                        first.focus();
+                    }
+                }
+            });
+            desktop.addEventListener('change', () => {
+                const focusWasInSidebar = sidebar.contains(document.activeElement);
+                setOpen(false, !desktop.matches && focusWasInSidebar);
+                if (desktop.matches && document.activeElement === closeButton) {
+                    sidebar.querySelector('a').focus();
+                }
+            });
+            setOpen(false, false);
+        })();
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

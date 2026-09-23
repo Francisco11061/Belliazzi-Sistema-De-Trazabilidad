@@ -1,26 +1,22 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Inicio | Pesquera Belliazzi</title>
-</head>
-<body>
-    <main>
-        <h1>Sistema de Trazabilidad e Inventario</h1>
-        <p>{{ user.get_full_name|default:user.username }}</p>
-        {% if user.rol %}
-            <p>{{ user.rol.nombre }}</p>
-        {% elif user.is_superuser %}
-            <p>Administrador técnico</p>
-        {% endif %}
-        {% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}
-            <p><a href="{% url 'trazabilidad:lista_recepciones' %}">Recepciones</a></p>
-        {% endif %}
-        <form method="post" action="{% url 'usuarios:logout' %}">
-            {% csrf_token %}
-            <button type="submit">Cerrar sesión</button>
-        </form>
-    </main>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Inicio | Pesquera Belliazzi{% endblock %}
+
+{% block page_title %}Inicio{% endblock %}
+
+{% block content %}
+    <header class="mb-8">
+        <h1 class="text-2xl font-semibold tracking-tight break-words sm:text-3xl">Bienvenido, {{ user.first_name|default:user.username }}</h1>
+        <p class="mt-2 text-sm leading-6 text-slate-500">Accede a las funciones disponibles del sistema.</p>
+    </header>
+    {% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}
+        <section aria-labelledby="recepciones-title" class="w-full max-w-lg min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div class="mb-5 flex size-12 shrink-0 items-center justify-center rounded-xl border border-cyan-100 bg-cyan-50 text-cyan-700">
+                <svg class="h-6 w-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16l2 10v6H2v-6L4 4ZM2 14h6l2 3h4l2-3h6M12 6v6m-3-3 3 3 3-3" /></svg>
+            </div>
+            <h2 id="recepciones-title" class="text-lg font-semibold">Recepciones</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-500">Registra y consulta las recepciones de materia prima.</p>
+            <a href="{% url 'trazabilidad:lista_recepciones' %}" class="mt-6 inline-flex items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600">Ir a recepciones</a>
+        </section>
+    {% endif %}
+{% endblock %}

@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @plugin "flowbite/plugin";
 @source "../../apps/**/templates/**/*.html";
+@source "../../templates/**/*.html";
 @source "../../node_modules/flowbite";
 
 @layer components {
