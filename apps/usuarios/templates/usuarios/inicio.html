@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Inicio | Pesquera Belliazzi</title>
+</head>
+<body>
+    <main>
+        <h1>Sistema de Trazabilidad e Inventario</h1>
+        <p>{{ user.get_full_name|default:user.username }}</p>
+        {% if user.rol %}
+            <p>{{ user.rol.nombre }}</p>
+        {% elif user.is_superuser %}
+            <p>Administrador técnico</p>
+        {% endif %}
+        <form method="post" action="{% url 'usuarios:logout' %}">
+            {% csrf_token %}
+            <button type="submit">Cerrar sesión</button>
+        </form>
+    </main>
+</body>
+</html>
