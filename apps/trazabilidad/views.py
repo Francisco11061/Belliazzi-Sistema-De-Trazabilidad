@@ -6,13 +6,17 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods
 
-from apps.usuarios.permisos import jefe_o_encargada_requerido, jefe_requerido
+from apps.usuarios.permisos import jefe_o_encargada_requerido, jefe_requerido, personal_operativo_requerido
 
 from .forms import EspecieRecibidaFormSet, OrigenRecepcionForm, RecepcionFiltroForm, RecepcionForm
 from .models import Correccion, PartidaProceso, Recepcion
 from .services import registrar_recepcion, corregir_recepcion as corregir_recepcion_service
 from .forms import EspecieCorreccionFormSet, MotivoCorreccionForm, RecepcionCorreccionForm
+from .forms import CantidadPartidaForm, EnviarMantencionForm, PartidaFiltroForm
+from .selectors import partidas_con_situacion, presentar_partida, recepcion_con_actividad
+from .services import enviar_a_mantencion, iniciar_procesamiento, retirar_de_mantencion
 
 
 @jefe_o_encargada_requerido
@@ -174,7 +178,7 @@ def corregir_recepcion(request, pk):
             ),
         })
     origen_actual = detalles[0].origen_sernapesca
-    procesada = PartidaProceso.objects.filter(detalle_recepcion__recepcion=recepcion).exists()
+    procesada = recepcion_con_actividad(recepcion)
     datos = request.POST if request.method == "POST" else None
     form = RecepcionCorreccionForm(datos, initial={
         "fecha_hora_recepcion": timezone.localtime(recepcion.fecha_hora_recepcion),
@@ -213,4 +217,78 @@ def corregir_recepcion(request, pk):
     return render(request, "trazabilidad/recepciones/corregir.html", {
         "recepcion": recepcion, "form": form, "origen": origen, "especies": especies,
         "motivo": motivo, "procesada": procesada,
+    })
+
+
+@personal_operativo_requerido
+def lista_partidas(request):
+    partidas = partidas_con_situacion().filter(estado=PartidaProceso.Estado.ACTIVA, tiene_hijas=False)
+    filtro = PartidaFiltroForm(request.GET)
+    if filtro.is_valid():
+        for campo, lookup in (
+            ("partida", "pk"), ("recepcion", "detalle_recepcion__recepcion_id"),
+            ("especie", "detalle_recepcion__especie"), ("situacion", "situacion"),
+        ):
+            if filtro.cleaned_data[campo]:
+                partidas = partidas.filter(**{lookup: filtro.cleaned_data[campo]})
+    else:
+        partidas = partidas.none()
+    pagina = Paginator(partidas.order_by("-creado_en", "-pk"), 10).get_page(request.GET.get("page"))
+    pagina.object_list = [presentar_partida(p) for p in pagina.object_list]
+
+    def enlace(numero):
+        parametros = request.GET.copy()
+        parametros["page"] = numero
+        return "?" + parametros.urlencode()
+
+    return render(request, "trazabilidad/partidas/lista.html", {
+        "filtro": filtro, "page_obj": pagina,
+        "pagina_anterior": enlace(pagina.previous_page_number()) if pagina.has_previous() else None,
+        "pagina_siguiente": enlace(pagina.next_page_number()) if pagina.has_next() else None,
+    })
+
+
+@personal_operativo_requerido
+def detalle_partida(request, pk):
+    partida = presentar_partida(get_object_or_404(partidas_con_situacion(), pk=pk))
+    return render(request, "trazabilidad/partidas/detalle.html", {
+        "partida": partida,
+        "hijas": partida.subpartidas.order_by("pk"),
+        "estancias": partida.estancias_frio.select_related("unidad_frio", "ingresado_por", "retirado_por").order_by("fecha_hora_ingreso", "pk"),
+        "eventos": partida.eventos.select_related("tipo_proceso", "iniciado_por").order_by("fecha_hora_inicio", "pk"),
+    })
+
+
+@personal_operativo_requerido
+@require_http_methods(["GET", "POST"])
+def operar_partida(request, pk, operacion):
+    partida = presentar_partida(get_object_or_404(partidas_con_situacion(), pk=pk))
+    opciones = {
+        "mantencion": ("Enviar a cámara", "DISPONIBLE", EnviarMantencionForm, enviar_a_mantencion,
+                       "Partida enviada a cámara de mantención correctamente."),
+        "retirar": ("Retirar de cámara", "EN_MANTENCION", CantidadPartidaForm, retirar_de_mantencion,
+                    "Partida retirada de la cámara de mantención correctamente."),
+        "procesar": ("Iniciar procesamiento", "DISPONIBLE", CantidadPartidaForm, iniciar_procesamiento,
+                     "Procesamiento iniciado correctamente."),
+    }
+    titulo, situacion, clase, servicio, mensaje = opciones[operacion]
+    form = clase(request.POST if request.method == "POST" else None, partida=partida)
+    compatible = partida.situacion == situacion
+    if request.method == "POST" and form.is_valid():
+        try:
+            seleccionada, restante = servicio(partida=partida, usuario=request.user, **form.cleaned_data)
+        except ValidationError as error:
+            form.add_error(None, error.messages)
+        else:
+            if restante:
+                destino = "en cámara" if operacion == "retirar" else "disponibles"
+                cantidad = format(seleccionada.cantidad_inicial_kg, ".2f").replace(".", ",")
+                resto = format(restante.cantidad_inicial_kg, ".2f").replace(".", ",")
+                mensaje += (
+                    f" Cantidad: {cantidad} kg; quedaron {resto} kg {destino}."
+                )
+            messages.success(request, mensaje)
+            return redirect("trazabilidad:detalle_partida", pk=seleccionada.pk)
+    return render(request, "trazabilidad/partidas/operar.html", {
+        "partida": partida, "form": form, "titulo": titulo, "compatible": compatible,
     })

@@ -5,9 +5,11 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from apps.usuarios.permisos import ROL_JEFE, tiene_rol
+from apps.usuarios.permisos import ROL_ENCARGADA, ROL_JEFE, ROL_OPERARIA, tiene_rol
 
 from .models import Correccion, DetalleRecepcion, Especie, OrigenSernapesca, PartidaProceso, Recepcion
+from .models import EstanciaPartida, EventoProceso, TipoProceso, UnidadFrio
+from .selectors import recepcion_con_actividad
 
 
 def _normalizar_texto(valor, campo):
@@ -113,6 +115,10 @@ def registrar_recepcion(
         detalle.origen_sernapesca = origen_sernapesca
         detalle.full_clean()
         detalle.save()
+        PartidaProceso.objects.create(
+            detalle_recepcion=detalle, cantidad_inicial_kg=detalle.peso_recepcion_kg,
+            estado=PartidaProceso.Estado.ACTIVA, creado_por=registrado_por,
+        )
 
     return recepcion
 
@@ -165,7 +171,11 @@ def corregir_recepcion(
         detalles=detalles, observaciones=observaciones,
     )
     por_id = {detalle.pk: detalle for detalle in existentes}
-    procesada = PartidaProceso.objects.filter(detalle_recepcion_id__in=reales).exists()
+    # Mismo orden de bloqueos que las operaciones: detalle y después partida.
+    raices = list(PartidaProceso.objects.select_for_update().filter(
+        detalle_recepcion_id__in=reales,
+    ).order_by("pk"))
+    procesada = recepcion_con_actividad(actual)
     cambios = []
 
     def preparar(objeto, valores):
@@ -209,6 +219,11 @@ def corregir_recepcion(
                 "no pueden modificarse para preservar la trazabilidad."
             )
         actualizaciones.append((detalle, preparar(detalle, valores)))
+        if not procesada:
+            for raiz in raices:
+                if raiz.detalle_recepcion_id == detalle.pk and raiz.cantidad_inicial_kg != detalle.peso_recepcion_kg:
+                    raiz.cantidad_inicial_kg = detalle.peso_recepcion_kg
+                    actualizaciones.append((raiz, ["cantidad_inicial_kg"]))
 
     if not cambios:
         raise ValidationError("No se detectaron cambios para registrar.")
@@ -225,3 +240,109 @@ def corregir_recepcion(
     for correccion in cambios:
         correccion.save()
     return actual
+
+
+def _bloquear_partida(partida, usuario):
+    if not tiene_rol(usuario, ROL_JEFE, ROL_ENCARGADA, ROL_OPERARIA):
+        raise PermissionDenied
+    detalle_id = PartidaProceso.objects.values_list("detalle_recepcion_id", flat=True).get(pk=partida.pk)
+    DetalleRecepcion.objects.select_for_update().get(pk=detalle_id)
+    actual = PartidaProceso.objects.select_for_update().get(pk=partida.pk)
+    if actual.estado != PartidaProceso.Estado.ACTIVA or actual.subpartidas.exists():
+        raise ValidationError("Solo se puede operar una partida activa sin divisiones.")
+    return actual
+
+
+def _validar_cantidad(partida, cantidad):
+    if not isinstance(cantidad, Decimal) or not cantidad.is_finite():
+        raise ValidationError("Ingrese una cantidad decimal válida.")
+    if cantidad.as_tuple().exponent < -2:
+        raise ValidationError("La cantidad admite como máximo dos decimales.")
+    if cantidad <= 0 or cantidad > partida.cantidad_inicial_kg:
+        raise ValidationError("La cantidad debe ser mayor que cero y no superar la cantidad de la partida.")
+
+
+def _comprobar_disponible(partida):
+    if partida.estancias_frio.filter(fecha_hora_salida__isnull=True).exists() or partida.eventos.exists():
+        raise ValidationError("La partida no está disponible: está en cámara o ya inició procesamiento.")
+
+
+@transaction.atomic
+def _dividir_partida(*, partida, cantidad_seleccionada, usuario):
+    partida = _bloquear_partida(partida, usuario)
+    _validar_cantidad(partida, cantidad_seleccionada)
+    _comprobar_disponible(partida)
+    if cantidad_seleccionada == partida.cantidad_inicial_kg:
+        return partida, None
+    partida.estado = PartidaProceso.Estado.DIVIDIDA
+    partida.save(update_fields=["estado"])
+    hijas = [PartidaProceso.objects.create(
+        detalle_recepcion_id=partida.detalle_recepcion_id, partida_padre=partida,
+        cantidad_inicial_kg=cantidad, creado_por=usuario,
+    ) for cantidad in (cantidad_seleccionada, partida.cantidad_inicial_kg - cantidad_seleccionada)]
+    return tuple(hijas)
+
+
+@transaction.atomic
+def enviar_a_mantencion(*, partida, cantidad_kg, unidad, usuario):
+    partida = _bloquear_partida(partida, usuario)
+    _validar_cantidad(partida, cantidad_kg)
+    _comprobar_disponible(partida)
+    unidad = UnidadFrio.objects.select_for_update().filter(pk=unidad.pk).first()
+    if unidad is None or not unidad.activo or unidad.tipo != UnidadFrio.TipoUnidad.MANTENCION:
+        raise ValidationError("Seleccione una unidad activa de mantención.")
+    seleccionada, restante = _dividir_partida(
+        partida=partida, cantidad_seleccionada=cantidad_kg, usuario=usuario,
+    )
+    EstanciaPartida.objects.create(
+        partida=seleccionada, unidad_frio=unidad,
+        fecha_hora_ingreso=timezone.now(), ingresado_por=usuario,
+    )
+    return seleccionada, restante
+
+
+@transaction.atomic
+def retirar_de_mantencion(*, partida, cantidad_kg, usuario):
+    partida = _bloquear_partida(partida, usuario)
+    _validar_cantidad(partida, cantidad_kg)
+    abiertas = list(partida.estancias_frio.select_for_update().filter(fecha_hora_salida__isnull=True))
+    if len(abiertas) != 1 or abiertas[0].unidad_frio.tipo != UnidadFrio.TipoUnidad.MANTENCION:
+        raise ValidationError("La partida debe tener exactamente una estancia abierta en mantención.")
+    if partida.eventos.exists():
+        raise ValidationError("La partida ya inició procesamiento.")
+    estancia = abiertas[0]
+    ahora = timezone.now()
+    estancia.fecha_hora_salida = ahora
+    estancia.retirado_por = usuario
+    estancia.save(update_fields=["fecha_hora_salida", "retirado_por"])
+    seleccionada, restante = _dividir_partida(
+        partida=partida, cantidad_seleccionada=cantidad_kg, usuario=usuario,
+    )
+    if restante:
+        EstanciaPartida.objects.create(
+            partida=restante, unidad_frio=estancia.unidad_frio,
+            fecha_hora_ingreso=ahora, ingresado_por=usuario,
+        )
+    return seleccionada, restante
+
+
+@transaction.atomic
+def iniciar_procesamiento(*, partida, cantidad_kg, usuario):
+    partida = _bloquear_partida(partida, usuario)
+    _validar_cantidad(partida, cantidad_kg)
+    _comprobar_disponible(partida)
+    # Catálogo reproducible creado sólo en esta operación explícita, nunca en GET.
+    tipo, _ = TipoProceso.objects.get_or_create(
+        codigo="PROCESAMIENTO", defaults={"nombre": "Procesamiento"},
+    )
+    tipo = TipoProceso.objects.select_for_update().get(pk=tipo.pk)
+    if not tipo.activo:
+        raise ValidationError("El tipo de procesamiento general está inactivo.")
+    seleccionada, restante = _dividir_partida(
+        partida=partida, cantidad_seleccionada=cantidad_kg, usuario=usuario,
+    )
+    EventoProceso.objects.create(
+        partida=seleccionada, tipo_proceso=tipo,
+        fecha_hora_inicio=timezone.now(), iniciado_por=usuario,
+    )
+    return seleccionada, restante

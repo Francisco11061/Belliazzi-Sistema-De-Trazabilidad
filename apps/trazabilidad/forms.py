@@ -5,7 +5,8 @@ from django.contrib.auth import get_user_model
 from django.forms import BaseFormSet, formset_factory
 from django.utils import timezone
 
-from .models import Correccion, Especie
+from .models import Correccion, Especie, UnidadFrio
+from .selectors import SITUACIONES
 
 
 class RecepcionForm(forms.Form):
@@ -212,3 +213,46 @@ class RecepcionCorreccionForm(RecepcionForm):
         if original and fecha == original.replace(microsecond=0):
             return original
         return fecha
+
+
+class PartidaFiltroForm(forms.Form):
+    partida = forms.IntegerField(required=False, min_value=1, max_value=9223372036854775807, label="ID de partida")
+    recepcion = forms.IntegerField(required=False, min_value=1, max_value=9223372036854775807, label="ID de recepción")
+    especie = forms.ModelChoiceField(
+        queryset=Especie.objects.all(), required=False, empty_label="Todas las especies", label="Especie",
+    )
+    situacion = forms.ChoiceField(
+        required=False, choices=[("", "Todas las situaciones"), *SITUACIONES], label="Situación",
+    )
+
+
+class CantidadPartidaForm(forms.Form):
+    cantidad_kg = forms.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0.01"), label="Cantidad (kg)",
+        widget=forms.NumberInput(attrs={"step": "0.01"}),
+    )
+
+    def __init__(self, *args, partida, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.partida = partida
+        self.fields["cantidad_kg"].initial = partida.cantidad_inicial_kg
+        self.fields["cantidad_kg"].widget.attrs["max"] = str(partida.cantidad_inicial_kg)
+
+    def clean_cantidad_kg(self):
+        cantidad = self.cleaned_data["cantidad_kg"]
+        if cantidad > self.partida.cantidad_inicial_kg:
+            raise forms.ValidationError("La cantidad no puede superar la cantidad de la partida.")
+        return cantidad
+
+
+class EnviarMantencionForm(CantidadPartidaForm):
+    unidad = forms.ModelChoiceField(
+        queryset=UnidadFrio.objects.filter(activo=True, tipo=UnidadFrio.TipoUnidad.MANTENCION),
+        label="Unidad de mantención",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        unidades = list(self.fields["unidad"].queryset[:2])
+        if len(unidades) == 1:
+            self.fields["unidad"].initial = unidades[0].pk

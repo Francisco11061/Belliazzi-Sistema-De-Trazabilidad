@@ -217,7 +217,7 @@ class RegistroRecepcionServiceTests(TestCase):
         self.assertEqual(Recepcion.objects.count(), 2)
         self.assertEqual(OrigenSernapesca.objects.count(), 2)
         self.assertEqual(DetalleRecepcion.objects.count(), 2)
-        self.assertEqual(PartidaProceso.objects.count(), 0)
+        self.assertEqual(PartidaProceso.objects.count(), 2)
 
 
 class RecepcionViewsTests(TestCase):
@@ -953,9 +953,10 @@ class CorreccionRecepcionTests(TestCase):
         return datos
 
     def procesar(self):
-        return PartidaProceso.objects.create(
-            detalle_recepcion=self.detalle, cantidad_inicial_kg=Decimal("493"), creado_por=self.jefe,
-        )
+        from .services import iniciar_procesamiento
+        partida = self.detalle.partidas.get()
+        iniciar_procesamiento(partida=partida, cantidad_kg=Decimal("493"), usuario=self.jefe)
+        return partida
 
     def assert_sin_cambios(self):
         self.recepcion.refresh_from_db()

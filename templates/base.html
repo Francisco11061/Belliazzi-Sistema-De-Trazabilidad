@@ -33,9 +33,15 @@
                 Inicio
             </a>
             {% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}
-                <a href="{% url 'trazabilidad:lista_recepciones' %}" {% if request.resolver_match.namespace == 'trazabilidad' %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.namespace == 'trazabilidad' %}bg-cyan-50 text-cyan-700{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                <a href="{% url 'trazabilidad:lista_recepciones' %}" {% if request.resolver_match.namespace == 'trazabilidad' and 'partida' not in request.resolver_match.url_name %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.namespace == 'trazabilidad' and 'partida' not in request.resolver_match.url_name %}bg-cyan-50 text-cyan-700{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
                     <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16l2 10v6H2v-6L4 4ZM2 14h6l2 3h4l2-3h6M12 6v6m-3-3 3 3 3-3" /></svg>
                     Recepciones
+                </a>
+            {% endif %}
+            {% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" or user.rol.codigo == "OPERARIA" %}
+                <a href="{% url 'trazabilidad:lista_partidas' %}" {% if 'partida' in request.resolver_match.url_name %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-cyan-700 {% if 'partida' in request.resolver_match.url_name %}bg-cyan-50 text-cyan-700{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5ZM3 8v9l9 5 9-5V8M12 13v9" /></svg>
+                    Partidas
                 </a>
             {% endif %}
         </nav>
