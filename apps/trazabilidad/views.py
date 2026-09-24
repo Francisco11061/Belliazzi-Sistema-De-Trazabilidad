@@ -7,11 +7,12 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from apps.usuarios.permisos import jefe_o_encargada_requerido
+from apps.usuarios.permisos import jefe_o_encargada_requerido, jefe_requerido
 
 from .forms import EspecieRecibidaFormSet, OrigenRecepcionForm, RecepcionFiltroForm, RecepcionForm
-from .models import Recepcion
-from .services import registrar_recepcion
+from .models import Correccion, PartidaProceso, Recepcion
+from .services import registrar_recepcion, corregir_recepcion as corregir_recepcion_service
+from .forms import EspecieCorreccionFormSet, MotivoCorreccionForm, RecepcionCorreccionForm
 
 
 @jefe_o_encargada_requerido
@@ -137,8 +138,79 @@ def detalle_recepcion(request, pk):
         detalle.origen_sernapesca_id: detalle.origen_sernapesca
         for detalle in detalles
     }.values())
+    historial = Correccion.objects.filter(
+        Q(entidad_afectada="Recepcion", identificador_registro=str(recepcion.pk))
+        | Q(entidad_afectada="OrigenSernapesca", identificador_registro__in=[str(o.pk) for o in origenes])
+        | Q(entidad_afectada="DetalleRecepcion", identificador_registro__in=[str(d.pk) for d in detalles])
+    ).select_related("usuario").order_by("-fecha_hora", "-pk")
+    etiquetas = {
+        "fecha_hora_recepcion": "Fecha y hora de recepción", "observaciones": "Observaciones",
+        "folio_origen": "Folio de origen Sernapesca", "tipo_origen": "Tipo de origen",
+        "codigo_agente": "Código agente", "proveedor": "Proveedor", "especie": "Especie",
+        "peso_origen_kg": "Peso de origen", "peso_recepcion_kg": "Peso en recepción",
+    }
+    for entrada in historial:
+        entrada.campo_visible = etiquetas.get(entrada.campo, "Campo corregido")
     return render(
         request,
         "trazabilidad/recepciones/detalle.html",
-        {"recepcion": recepcion, "origenes": origenes},
+        {"recepcion": recepcion, "origenes": origenes, "historial": historial},
     )
+
+
+@jefe_requerido
+def corregir_recepcion(request, pk):
+    recepcion = get_object_or_404(
+        Recepcion.objects.prefetch_related("detalles__especie", "detalles__origen_sernapesca"), pk=pk,
+    )
+    detalles = sorted(recepcion.detalles.all(), key=lambda detalle: detalle.pk)
+    origenes = {detalle.origen_sernapesca_id for detalle in detalles}
+    if len(origenes) != 1:
+        return render(request, "trazabilidad/recepciones/corregir.html", {
+            "recepcion": recepcion,
+            "error_estructura": (
+                "Esta recepción utiliza una estructura histórica que no puede corregirse "
+                "desde este formulario simplificado."
+            ),
+        })
+    origen_actual = detalles[0].origen_sernapesca
+    procesada = PartidaProceso.objects.filter(detalle_recepcion__recepcion=recepcion).exists()
+    datos = request.POST if request.method == "POST" else None
+    form = RecepcionCorreccionForm(datos, initial={
+        "fecha_hora_recepcion": timezone.localtime(recepcion.fecha_hora_recepcion),
+        "observaciones": recepcion.observaciones,
+    })
+    origen = OrigenRecepcionForm(datos, initial={
+        campo: getattr(origen_actual, campo)
+        for campo in ("folio_origen", "tipo_origen", "codigo_agente", "proveedor")
+    })
+    especies = EspecieCorreccionFormSet(
+        datos, prefix="especies", detalle_ids=[d.pk for d in detalles],
+        initial=[{
+            "detalle_id": d.pk, "especie": d.especie_id,
+            "peso_origen_kg": d.peso_origen_kg, "peso_recepcion_kg": d.peso_recepcion_kg,
+        } for d in detalles],
+        form_kwargs={"bloqueada": procesada},
+    )
+    motivo = MotivoCorreccionForm(datos)
+    if request.method == "POST":
+        validos = [form.is_valid(), origen.is_valid(), especies.is_valid(), motivo.is_valid()]
+        if all(validos):
+            try:
+                corregir_recepcion_service(
+                    recepcion=recepcion, usuario=request.user,
+                    fecha_hora_recepcion=form.cleaned_data["fecha_hora_recepcion"],
+                    observaciones=form.cleaned_data["observaciones"],
+                    origen=origen.cleaned_data,
+                    detalles=[especie.cleaned_data for especie in especies],
+                    motivo=motivo.cleaned_data["motivo"],
+                )
+            except ValidationError as error:
+                form.add_error(None, error.messages)
+            else:
+                messages.success(request, "Recepción corregida correctamente.")
+                return redirect("trazabilidad:detalle_recepcion", pk=recepcion.pk)
+    return render(request, "trazabilidad/recepciones/corregir.html", {
+        "recepcion": recepcion, "form": form, "origen": origen, "especies": especies,
+        "motivo": motivo, "procesada": procesada,
+    })

@@ -9,12 +9,13 @@ from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.trazabilidad.services import registrar_recepcion
+from apps.trazabilidad.services import corregir_recepcion, registrar_recepcion
 from apps.usuarios.models import Rol, Usuario
 
 from .forms import EspecieRecibidaForm, EspecieRecibidaFormSet, OrigenRecepcionForm, RecepcionForm
 
 from .models import (
+    Correccion,
     DetalleRecepcion,
     Especie,
     EventoProceso,
@@ -495,7 +496,7 @@ class RecepcionViewsTests(TestCase):
                 especie=self.especie, peso_origen_kg=10, peso_recepcion_kg=11)
         request = RequestFactory().get(reverse("trazabilidad:detalle_recepcion", args=[recepcion.pk]))
         request.user = self.jefe
-        with self.assertNumQueries(4):
+        with self.assertNumQueries(5):  # Incluye una consulta para el historial.
             response = detalle_recepcion(request, recepcion.pk)
         for indice in range(3):
             self.assertContains(response, f"HISTORICO-{indice}")
@@ -901,3 +902,389 @@ class ListadoRecepcionesFiltrosTests(TestCase):
         response = self.client.get(self.url)
         self.assertContains(response, "No hay recepciones registradas.")
         self.assertContains(response, "Registrar primera recepción")
+
+
+class CorreccionRecepcionTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.jefe = Usuario.objects.create_user(username="jefe_correccion", first_name="Jano",
+                                               last_name="Belliazzi", rol=Rol.objects.get(codigo="JEFE"))
+        cls.encargada = Usuario.objects.create_user(username="encargada_correccion", rol=Rol.objects.get(codigo="ENCARGADA"))
+        cls.operaria = Usuario.objects.create_user(username="operaria_correccion", rol=Rol.objects.get(codigo="OPERARIA"))
+        cls.tecnico = Usuario.objects.create_superuser(username="tecnico_correccion")
+        cls.merluza = Especie.objects.create(nombre="Merluza correccion")
+        cls.sierra = Especie.objects.create(nombre="Sierra correccion")
+
+    def setUp(self):
+        self.recepcion = registrar_recepcion(
+            fecha_hora_recepcion=timezone.now() - timedelta(days=1), registrado_por=self.jefe,
+            origen={"folio_origen": "FOLIO-CORREGIR", "proveedor": "Proveedor anterior"},
+            observaciones="Original",
+            detalles=[{"especie": self.merluza, "peso_origen_kg": Decimal("500"), "peso_recepcion_kg": Decimal("493")}],
+        )
+        self.detalle = self.recepcion.detalles.get()
+        self.origen = self.detalle.origen_sernapesca
+        self.url = reverse("trazabilidad:corregir_recepcion", args=[self.recepcion.pk])
+
+    def datos(self, **cambios):
+        datos = {
+            "recepcion": self.recepcion, "usuario": self.jefe,
+            "fecha_hora_recepcion": self.recepcion.fecha_hora_recepcion,
+            "observaciones": "Original",
+            "origen": {"folio_origen": "FOLIO-CORREGIR", "proveedor": "Proveedor anterior"},
+            "detalles": [{"detalle_id": self.detalle.pk, "especie": self.merluza,
+                          "peso_origen_kg": Decimal("500"), "peso_recepcion_kg": Decimal("493")}],
+            "motivo": "  Error de tipeo  ",
+        }
+        datos.update(cambios)
+        return datos
+
+    def web(self, **cambios):
+        datos = {
+            "fecha_hora_recepcion": timezone.localtime(self.recepcion.fecha_hora_recepcion).isoformat(),
+            "observaciones": "Original", "folio_origen": "FOLIO-CORREGIR",
+            "tipo_origen": "", "codigo_agente": "", "proveedor": "Proveedor anterior",
+            "especies-TOTAL_FORMS": "1", "especies-INITIAL_FORMS": "1",
+            "especies-0-detalle_id": str(self.detalle.pk), "especies-0-especie": str(self.merluza.pk),
+            "especies-0-peso_origen_kg": "500.00", "especies-0-peso_recepcion_kg": "493.00",
+            "motivo": "Error de tipeo",
+        }
+        datos.update(cambios)
+        return datos
+
+    def procesar(self):
+        return PartidaProceso.objects.create(
+            detalle_recepcion=self.detalle, cantidad_inicial_kg=Decimal("493"), creado_por=self.jefe,
+        )
+
+    def assert_sin_cambios(self):
+        self.recepcion.refresh_from_db()
+        self.origen.refresh_from_db()
+        self.detalle.refresh_from_db()
+        self.assertEqual(self.recepcion.observaciones, "Original")
+        self.assertEqual(self.origen.proveedor, "Proveedor anterior")
+        self.assertEqual(self.detalle.especie_id, self.merluza.pk)
+        self.assertEqual(self.detalle.peso_recepcion_kg, Decimal("493"))
+        self.assertEqual(Correccion.objects.count(), 0)
+
+    def test_corregir_observaciones_crea_auditoria(self):
+        corregir_recepcion(**self.datos(observaciones="  Observación nueva  "))
+        self.recepcion.refresh_from_db()
+        self.assertEqual(self.recepcion.observaciones, "Observación nueva")
+        auditoria = Correccion.objects.get()
+        self.assertEqual(auditoria.entidad_afectada, "Recepcion")
+        self.assertEqual(auditoria.identificador_registro, str(self.recepcion.pk))
+        self.assertEqual(auditoria.campo, "observaciones")
+        self.assertEqual(auditoria.valor_anterior, "Original")
+        self.assertEqual(auditoria.valor_nuevo, "Observación nueva")
+        self.assertEqual(auditoria.usuario, self.jefe)
+        self.assertEqual(auditoria.motivo, "Error de tipeo")
+        self.assertIsNotNone(auditoria.fecha_hora)
+
+    def test_corregir_proveedor_crea_auditoria(self):
+        datos = self.datos()
+        datos["origen"]["proveedor"] = "Proveedor nuevo"
+        corregir_recepcion(**datos)
+        self.origen.refresh_from_db()
+        self.assertEqual(self.origen.proveedor, "Proveedor nuevo")
+        auditoria = Correccion.objects.get()
+        self.assertEqual(auditoria.entidad_afectada, "OrigenSernapesca")
+        self.assertEqual(auditoria.identificador_registro, str(self.origen.pk))
+        self.assertEqual(auditoria.valor_anterior, "Proveedor anterior")
+        self.assertEqual(auditoria.valor_nuevo, "Proveedor nuevo")
+
+    def test_corregir_varios_campos_crea_una_auditoria_por_campo(self):
+        datos = self.datos(observaciones="Nueva")
+        datos["origen"]["proveedor"] = "Nuevo"
+        corregir_recepcion(**datos)
+        self.assertEqual(set(Correccion.objects.values_list("campo", flat=True)), {"observaciones", "proveedor"})
+        self.assertEqual(Correccion.objects.count(), 2)
+
+    def test_corregir_especie_sin_procesamiento(self):
+        datos = self.datos()
+        datos["detalles"][0]["especie"] = self.sierra
+        corregir_recepcion(**datos)
+        self.detalle.refresh_from_db()
+        self.assertEqual(self.detalle.especie, self.sierra)
+        auditoria = Correccion.objects.get()
+        self.assertEqual(auditoria.valor_anterior, self.merluza.nombre)
+        self.assertEqual(auditoria.valor_nuevo, self.sierra.nombre)
+        self.assertEqual(auditoria.identificador_registro, str(self.detalle.pk))
+
+    def test_corregir_pesos_sin_procesamiento(self):
+        datos = self.datos()
+        datos["detalles"][0]["peso_recepcion_kg"] = Decimal("490")
+        corregir_recepcion(**datos)
+        auditoria = Correccion.objects.get()
+        self.assertEqual(auditoria.valor_anterior, "493.00")
+        self.assertEqual(auditoria.valor_nuevo, "490.00")
+
+    def test_correccion_invalida_hace_rollback(self):
+        datos = self.datos(observaciones="Nueva")
+        datos["origen"]["proveedor"] = "Nuevo"
+        datos["detalles"][0]["peso_recepcion_kg"] = Decimal("503")
+        with self.assertRaises(ValidationError):
+            corregir_recepcion(**datos)
+        self.assert_sin_cambios()
+
+    def test_fallo_de_auditoria_revierte_cambios_y_auditorias_parciales(self):
+        original = Correccion.save
+        llamadas = []
+        def guardar(objeto, *args, **kwargs):
+            llamadas.append(objeto)
+            if len(llamadas) == 2:
+                raise ValidationError("Fallo de auditoría")
+            return original(objeto, *args, **kwargs)
+        datos = self.datos(observaciones="Nueva")
+        datos["origen"]["proveedor"] = "Nuevo"
+        with patch.object(Correccion, "save", guardar):
+            with self.assertRaisesMessage(ValidationError, "Fallo de auditoría"):
+                corregir_recepcion(**datos)
+        self.assert_sin_cambios()
+
+    def test_sin_cambios_no_crea_auditoria(self):
+        with patch.object(Recepcion, "save") as guardar:
+            with self.assertRaisesMessage(ValidationError, "No se detectaron cambios para registrar."):
+                corregir_recepcion(**self.datos())
+        guardar.assert_not_called()
+        self.assert_sin_cambios()
+
+    def test_motivo_vacio_falla(self):
+        with self.assertRaisesMessage(ValidationError, "Indica el motivo"):
+            corregir_recepcion(**self.datos(observaciones="Nueva", motivo="   "))
+        self.assert_sin_cambios()
+
+    def test_detalle_id_de_otra_recepcion_falla(self):
+        otra = Recepcion.objects.create(fecha_hora_recepcion=timezone.now(), registrado_por=self.jefe)
+        ajeno = DetalleRecepcion.objects.create(recepcion=otra, origen_sernapesca=self.origen,
+                  especie=self.sierra, peso_origen_kg=10, peso_recepcion_kg=10)
+        datos = self.datos()
+        datos["detalles"][0]["detalle_id"] = ajeno.pk
+        with self.assertRaises(ValidationError):
+            corregir_recepcion(**datos)
+        self.assert_sin_cambios()
+
+    def test_no_se_puede_omitir_un_detalle(self):
+        with self.assertRaises(ValidationError):
+            corregir_recepcion(**self.datos(detalles=[]))
+        self.assert_sin_cambios()
+
+    def test_no_se_puede_agregar_detalle_desconocido(self):
+        datos = self.datos()
+        datos["detalles"].append({**datos["detalles"][0], "detalle_id": 999999})
+        with self.assertRaises(ValidationError):
+            corregir_recepcion(**datos)
+        self.assert_sin_cambios()
+
+    def test_no_se_pueden_repetir_ids(self):
+        datos = self.datos()
+        datos["detalles"] *= 2
+        with self.assertRaises(ValidationError):
+            corregir_recepcion(**datos)
+        self.assert_sin_cambios()
+
+    def test_procesamiento_bloquea_cambio_de_especie(self):
+        self.procesar()
+        datos = self.datos()
+        datos["detalles"][0]["especie"] = self.sierra
+        with self.assertRaisesMessage(ValidationError, "procesamiento"):
+            corregir_recepcion(**datos)
+        self.assert_sin_cambios()
+
+    def test_procesamiento_bloquea_cambio_de_pesos(self):
+        self.procesar()
+        for campo, valor in (("peso_origen_kg", "501"), ("peso_recepcion_kg", "490")):
+            datos = self.datos()
+            datos["detalles"][0][campo] = Decimal(valor)
+            with self.assertRaisesMessage(ValidationError, "procesamiento"):
+                corregir_recepcion(**datos)
+            self.assert_sin_cambios()
+
+    def test_procesamiento_permite_corregir_proveedor(self):
+        self.procesar()
+        datos = self.datos()
+        datos["origen"]["proveedor"] = "Nuevo"
+        corregir_recepcion(**datos)
+        self.assertEqual(Correccion.objects.get().campo, "proveedor")
+
+    def test_recepcion_historica_con_multiples_origenes_no_se_fusiona(self):
+        otro = OrigenSernapesca.objects.create(folio_origen="HISTORICO")
+        DetalleRecepcion.objects.create(recepcion=self.recepcion, origen_sernapesca=otro,
+                especie=self.sierra, peso_origen_kg=10, peso_recepcion_kg=10)
+        with self.assertRaisesMessage(ValidationError, "estructura histórica"):
+            corregir_recepcion(**self.datos(observaciones="Nueva"))
+        self.assert_sin_cambios()
+        self.client.force_login(self.jefe)
+        self.assertContains(self.client.get(self.url), "estructura histórica")
+        self.assertContains(self.client.post(self.url, self.web()), "estructura histórica")
+
+    def test_origen_compartido_no_modifica_otra_recepcion(self):
+        otra = Recepcion.objects.create(fecha_hora_recepcion=timezone.now(), registrado_por=self.jefe)
+        DetalleRecepcion.objects.create(recepcion=otra, origen_sernapesca=self.origen,
+                                       especie=self.sierra, peso_origen_kg=10, peso_recepcion_kg=10)
+        datos = self.datos()
+        datos["origen"]["proveedor"] = "Nuevo"
+        with self.assertRaisesMessage(ValidationError, "compartido"):
+            corregir_recepcion(**datos)
+        self.assert_sin_cambios()
+
+    def test_jefe_puede_ver_corregir_recepcion(self):
+        self.client.force_login(self.jefe)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="especies-0-detalle_id"')
+        self.assertNotContains(response, "Agregar otra especie")
+        self.assertNotContains(response, "Quitar especie")
+        self.assertNotContains(response, "-DELETE")
+        valor = timezone.localtime(self.recepcion.fecha_hora_recepcion).strftime("%Y-%m-%dT%H:%M:%S")
+        self.assertContains(response, valor)
+
+    def test_superusuario_puede_corregir(self):
+        self.client.force_login(self.tecnico)
+        response = self.client.post(self.url, self.web(observaciones="Nueva"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Correccion.objects.get().usuario, self.tecnico)
+
+    def test_encargada_no_puede_corregir(self):
+        self.client.force_login(self.encargada)
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+        self.assertEqual(self.client.post(self.url, self.web()).status_code, 403)
+        self.assert_sin_cambios()
+
+    def test_operaria_no_puede_corregir(self):
+        self.client.force_login(self.operaria)
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+        self.assertEqual(self.client.post(self.url, self.web()).status_code, 403)
+        self.assert_sin_cambios()
+
+    def test_service_tambien_protege_permiso(self):
+        from django.core.exceptions import PermissionDenied
+        with self.assertRaises(PermissionDenied):
+            corregir_recepcion(**self.datos(usuario=self.encargada, observaciones="Nueva"))
+        self.assert_sin_cambios()
+
+    def test_anonimo_es_redirigido_al_login(self):
+        self.assertRedirects(self.client.get(self.url), f"{reverse('usuarios:login')}?next={self.url}")
+
+    def test_correccion_desde_vista_redirige_al_detalle(self):
+        self.client.force_login(self.jefe)
+        response = self.client.post(self.url, self.web(observaciones="Nueva"))
+        self.assertRedirects(response, reverse("trazabilidad:detalle_recepcion", args=[self.recepcion.pk]))
+        self.assertEqual(Correccion.objects.count(), 1)
+
+    def test_motivo_es_obligatorio(self):
+        self.client.force_login(self.jefe)
+        self.assertContains(self.client.post(self.url, self.web(motivo="  ")), "Indica el motivo")
+        self.assert_sin_cambios()
+
+    def test_error_conserva_formulario(self):
+        self.client.force_login(self.jefe)
+        response = self.client.post(self.url, self.web(**{"especies-0-peso_recepcion_kg": "503",
+                                                        "proveedor": "Nuevo", "motivo": "Revisar peso"}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["origen"]["proveedor"].value(), "Nuevo")
+        self.assertEqual(response.context["motivo"]["motivo"].value(), "Revisar peso")
+        self.assert_sin_cambios()
+
+    def test_sin_cambios_en_vista_conserva_formulario(self):
+        self.client.force_login(self.jefe)
+        self.assertContains(self.client.post(self.url, self.web()), "No se detectaron cambios para registrar.")
+        self.assert_sin_cambios()
+
+    def test_boton_corregir_visible_solo_para_jefe_y_tecnico(self):
+        detalle_url = reverse("trazabilidad:detalle_recepcion", args=[self.recepcion.pk])
+        for usuario in (self.jefe, self.tecnico, self.encargada):
+            self.client.force_login(usuario)
+            response = self.client.get(detalle_url)
+            if usuario == self.encargada:
+                self.assertNotContains(response, self.url)
+            else:
+                self.assertContains(response, self.url)
+
+    def test_historial_aparece_en_detalle_y_ordenado(self):
+        corregir_recepcion(**self.datos(observaciones="Primera nueva"))
+        corregir_recepcion(**self.datos(observaciones="Segunda nueva"))
+        self.client.force_login(self.jefe)
+        response = self.client.get(reverse("trazabilidad:detalle_recepcion", args=[self.recepcion.pk]))
+        for texto in ("Observaciones", "Original", "Primera nueva", "Segunda nueva", "Error de tipeo", "Jano Belliazzi"):
+            self.assertContains(response, texto)
+        self.assertEqual([h.valor_nuevo for h in response.context["historial"]], ["Segunda nueva", "Primera nueva"])
+        self.assertEqual(Correccion.objects.count(), 2)
+
+    def test_aviso_procesamiento_y_post_manipulado(self):
+        self.procesar()
+        self.client.force_login(self.jefe)
+        response = self.client.get(self.url)
+        self.assertContains(response, "ya inició su procesamiento")
+        self.assertIn("disabled", response.context["especies"][0].fields["especie"].widget.attrs)
+        datos = self.web(**{"especies-0-especie": str(self.sierra.pk)})
+        self.assertContains(self.client.post(self.url, datos), "procesamiento")
+        self.assert_sin_cambios()
+
+    def test_post_procesado_sin_campos_disabled_corrige_descripcion(self):
+        self.procesar()
+        self.client.force_login(self.jefe)
+        datos = self.web(proveedor="Nuevo")
+        for campo in ("especie", "peso_origen_kg", "peso_recepcion_kg"):
+            del datos[f"especies-0-{campo}"]
+        self.assertEqual(self.client.post(self.url, datos).status_code, 302)
+        self.assertEqual(Correccion.objects.get().campo, "proveedor")
+
+    def test_post_no_permite_omitir_o_reemplazar_ids(self):
+        self.client.force_login(self.jefe)
+        for cambios in ({"especies-TOTAL_FORMS": "0"}, {"especies-0-detalle_id": "999999"}):
+            self.assertEqual(self.client.post(self.url, self.web(**cambios)).status_code, 200)
+            self.assert_sin_cambios()
+
+    def test_service_reutiliza_validaciones_fecha_folio_y_especie_activa(self):
+        for cambios in ({"fecha_hora_recepcion": timezone.now() + timedelta(days=1)},
+                        {"origen": {"folio_origen": "   "}}):
+            with self.assertRaises(ValidationError):
+                corregir_recepcion(**self.datos(**cambios))
+            self.assert_sin_cambios()
+        Especie.objects.filter(pk=self.merluza.pk).update(activo=False)
+        with self.assertRaisesMessage(ValidationError, "no se encuentra activa"):
+            corregir_recepcion(**self.datos(observaciones="Nueva"))
+        self.assert_sin_cambios()
+
+
+    def test_fecha_visible_sin_microsegundos_no_crea_cambio_involuntario(self):
+        self.client.force_login(self.jefe)
+        fecha = timezone.localtime(self.recepcion.fecha_hora_recepcion).strftime("%Y-%m-%dT%H:%M:%S")
+        response = self.client.post(self.url, self.web(fecha_hora_recepcion=fecha, observaciones="Nueva"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Correccion.objects.get().campo, "observaciones")
+
+
+    def test_listado_muestra_corregir_para_jefe(self):
+        self.client.force_login(self.jefe)
+        response = self.client.get(reverse("trazabilidad:lista_recepciones"))
+        self.assertContains(response, f'href="{self.url}"')
+        self.assertContains(response, f'href="{reverse("trazabilidad:detalle_recepcion", args=[self.recepcion.pk])}"')
+
+    def test_listado_muestra_corregir_para_superusuario(self):
+        self.client.force_login(self.tecnico)
+        response = self.client.get(reverse("trazabilidad:lista_recepciones"))
+        self.assertContains(response, f'href="{self.url}"')
+
+    def test_listado_no_muestra_corregir_para_encargada(self):
+        self.client.force_login(self.encargada)
+        response = self.client.get(reverse("trazabilidad:lista_recepciones"))
+        self.assertNotContains(response, f'href="{self.url}"')
+        self.assertContains(response, f'href="{reverse("trazabilidad:detalle_recepcion", args=[self.recepcion.pk])}"')
+
+    def test_detalle_sigue_mostrando_corregir_para_jefe(self):
+        self.client.force_login(self.jefe)
+        response = self.client.get(reverse("trazabilidad:detalle_recepcion", args=[self.recepcion.pk]))
+        self.assertContains(response, f'href="{self.url}"')
+        html = response.content.decode()
+        volver = html.index('>Volver</a>')
+        corregir = html.index('>Corregir recepción</a>')
+        nueva = html.index('>Nueva recepción</a>')
+        self.assertLess(volver, corregir)
+        self.assertLess(corregir, nueva)
+
+    def test_detalle_no_muestra_corregir_para_encargada(self):
+        self.client.force_login(self.encargada)
+        response = self.client.get(reverse("trazabilidad:detalle_recepcion", args=[self.recepcion.pk]))
+        self.assertNotContains(response, f'href="{self.url}"')

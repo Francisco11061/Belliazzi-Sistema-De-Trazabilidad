@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.forms import BaseFormSet, formset_factory
 from django.utils import timezone
 
-from .models import Especie
+from .models import Correccion, Especie
 
 
 class RecepcionForm(forms.Form):
@@ -140,3 +140,75 @@ class RecepcionFiltroForm(forms.Form):
                 "La fecha inicial no puede ser posterior a la fecha final."
             )
         return datos
+
+
+class MotivoCorreccionForm(forms.Form):
+    motivo = forms.CharField(
+        max_length=Correccion._meta.get_field("motivo").max_length,
+        label="Motivo de la corrección", widget=forms.Textarea,
+        error_messages={"required": "Indica el motivo de la corrección."},
+    )
+
+
+class EspecieCorreccionForm(EspecieRecibidaForm):
+    detalle_id = forms.IntegerField(widget=forms.HiddenInput)
+
+    def __init__(self, *args, bloqueada=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        for nombre in ("especie", "peso_origen_kg", "peso_recepcion_kg"):
+            # Sólo bloqueo visual: los valores POST manipulados se validan
+            # y llegan al service, que vuelve a comprobar el procesamiento.
+            if bloqueada:
+                self.fields[nombre].widget.attrs["disabled"] = True
+
+    def full_clean(self):
+        # Los controles disabled no son enviados por el navegador. Restaurar
+        # sólo los valores ausentes desde initial; nunca sobrescribir un POST.
+        if self.is_bound:
+            datos = self.data.copy()
+            for nombre in ("especie", "peso_origen_kg", "peso_recepcion_kg"):
+                if self.fields[nombre].widget.attrs.get("disabled"):
+                    clave = self.add_prefix(nombre)
+                    if clave not in datos:
+                        datos[clave] = self.initial.get(nombre)
+            self.data = datos
+        super().full_clean()
+
+
+class BaseEspeciesCorreccionFormSet(BaseEspeciesRecibidasFormSet):
+    def __init__(self, *args, detalle_ids, **kwargs):
+        self.detalle_ids = set(detalle_ids)
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        super().clean()
+        if any(self.errors):
+            return
+        enviados = [form.cleaned_data.get("detalle_id") for form in self.forms]
+        if len(enviados) != len(self.detalle_ids) or set(enviados) != self.detalle_ids:
+            raise forms.ValidationError(
+                "Debes corregir exactamente las especies existentes de esta recepción; "
+                "no se permite agregar, quitar ni repetir detalles."
+            )
+
+
+EspecieCorreccionFormSet = formset_factory(
+    EspecieCorreccionForm, formset=BaseEspeciesCorreccionFormSet, extra=0, can_delete=False,
+)
+
+
+class RecepcionCorreccionForm(RecepcionForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["fecha_hora_recepcion"].widget = forms.DateTimeInput(
+            attrs={"type": "datetime-local", "step": "1"}, format="%Y-%m-%dT%H:%M:%S",
+        )
+
+    def clean_fecha_hora_recepcion(self):
+        fecha = super().clean_fecha_hora_recepcion()
+        original = self.initial.get("fecha_hora_recepcion")
+        # El control nativo muestra segundos; conservar los microsegundos de
+        # la BD cuando la fecha visible no fue cambiada.
+        if original and fecha == original.replace(microsecond=0):
+            return original
+        return fecha

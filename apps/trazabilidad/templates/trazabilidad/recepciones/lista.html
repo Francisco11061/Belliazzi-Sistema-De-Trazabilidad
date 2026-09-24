@@ -37,7 +37,7 @@
                             <th scope="col" class="px-5 py-4 font-medium">Fecha y hora</th>
                             <th scope="col" class="px-5 py-4 font-medium">Registrado por</th>
                             <th scope="col" class="px-5 py-4 font-medium text-right">Especies</th>
-                            <th scope="col" class="px-5 py-4 font-medium">Acción</th>
+                            <th scope="col" class="px-5 py-4 font-medium">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -47,7 +47,17 @@
                                 <td class="px-5 py-4 whitespace-nowrap text-slate-600">{{ recepcion.fecha_hora_recepcion|date:"d/m/Y H:i" }}</td>
                                 <td class="px-5 py-4">{{ recepcion.registrado_por.get_full_name|default:recepcion.registrado_por.username }}</td>
                                 <td class="px-5 py-4 text-right tabular-nums">{{ recepcion.detalles.all|length }}</td>
-                                <td class="px-5 py-4"><a href="{% url 'trazabilidad:detalle_recepcion' recepcion.pk %}" class="inline-flex rounded-lg px-3 py-2 font-medium whitespace-nowrap text-cyan-700 hover:bg-cyan-50 hover:text-cyan-800 focus-visible:outline-2 focus-visible:outline-cyan-600">Ver detalle<span class="sr-only"> de recepción #{{ recepcion.pk }}</span></a></td>
+                                <td class="px-5 py-4">
+                                    <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                                        <a href="{% url 'trazabilidad:detalle_recepcion' recepcion.pk %}" class="inline-flex items-center justify-center rounded-lg border border-cyan-700 bg-white px-3 py-2 font-medium whitespace-nowrap text-cyan-700 hover:bg-cyan-50 focus-visible:outline-2 focus-visible:outline-cyan-600">Ver detalle<span class="sr-only"> de recepción #{{ recepcion.pk }}</span></a>
+                                        {% if user.is_superuser or user.rol.codigo == "JEFE" %}
+                                            <a href="{% url 'trazabilidad:corregir_recepcion' recepcion.pk %}" class="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-50 px-3 py-2 font-medium whitespace-nowrap text-cyan-700 hover:bg-cyan-100 focus-visible:outline-2 focus-visible:outline-cyan-600">
+                                                <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5L8 21H3v-5L16 3Zm-2 2 5 5" /></svg>
+                                                Corregir<span class="sr-only"> recepción #{{ recepcion.pk }}</span>
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
                             </tr>
                         {% endfor %}
                     </tbody>

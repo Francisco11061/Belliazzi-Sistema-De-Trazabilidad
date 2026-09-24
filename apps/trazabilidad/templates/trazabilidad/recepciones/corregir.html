@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Corregir recepción #{{ recepcion.pk }} | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Corregir recepción{% endblock %}
+{% block content %}
+<div class="w-full min-w-0 max-w-5xl">
+    <header class="mb-8">
+        <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">Corregir recepción #{{ recepcion.pk }}</h1>
+        <p class="mt-2 text-sm leading-6 text-slate-500">Modifica únicamente los datos que necesiten corrección. Los cambios quedarán registrados en el historial.</p>
+    </header>
+    {% if error_estructura %}
+        <div role="alert" class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ error_estructura }}</div>
+        <a href="{% url 'trazabilidad:detalle_recepcion' recepcion.pk %}" class="text-cyan-700 underline">Volver al detalle</a>
+    {% else %}
+    {% if procesada %}
+        <div role="status" class="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">Esta recepción ya inició su procesamiento. Las especies y sus pesos están bloqueados para preservar la trazabilidad.</div>
+    {% endif %}
+    <form method="post" class="space-y-6 [&_input:disabled]:bg-slate-100 [&_select:disabled]:bg-slate-100 [&_input:disabled]:text-slate-500 [&_select:disabled]:text-slate-500 [&_input:not([type=checkbox])]:block [&_input:not([type=checkbox])]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:rounded-lg [&_select]:border-slate-300 [&_textarea]:block [&_textarea]:w-full [&_textarea]:min-h-32 [&_textarea]:h-32 [&_textarea]:rounded-lg [&_textarea]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600 [&_textarea:focus]:border-cyan-600 [&_textarea:focus]:ring-cyan-600">
+        {% csrf_token %}
+        <section aria-labelledby="datos-title" class="min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 id="datos-title" class="mb-6 text-lg font-semibold">Datos generales</h2>
+            {% if form.non_field_errors %}<div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+            <div class="grid min-w-0 gap-6">
+                {% for campo in form %}{% include "trazabilidad/recepciones/_campo.html" %}{% endfor %}
+            </div>
+        </section>
+        <section aria-labelledby="origen-title" class="min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 id="origen-title" class="mb-6 text-lg font-semibold">Información de origen</h2>
+            {% if origen.non_field_errors %}<div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">{{ origen.non_field_errors }}</div>{% endif %}
+            <div class="grid min-w-0 gap-6 md:grid-cols-2">
+                {% for campo in origen %}{% include "trazabilidad/recepciones/_campo.html" %}{% endfor %}
+            </div>
+        </section>
+        <section aria-labelledby="especies-title" class="min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 id="especies-title" class="mb-6 text-lg font-semibold">Especies recibidas</h2>
+            {{ especies.management_form }}
+            {% if especies.non_form_errors %}<div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">{{ especies.non_form_errors }}</div>{% endif %}
+            <div id="especies-filas" class="space-y-6">
+                {% for especie in especies %}
+                    <fieldset class="min-w-0 rounded-xl border border-slate-200 p-4 sm:p-5">
+                        <legend class="px-2 text-sm font-semibold text-slate-700">Especie {{ forloop.counter }}</legend>
+                        {% for campo in especie.hidden_fields %}{{ campo }}{% if campo.errors %}<div role="alert" class="text-sm text-red-700">{{ campo.errors }}</div>{% endif %}{% endfor %}
+                        {% if especie.non_field_errors %}<div role="alert" class="mb-4 text-sm text-red-700">{{ especie.non_field_errors }}</div>{% endif %}
+                        <div class="grid min-w-0 gap-5 md:grid-cols-3">
+                            {% for campo in especie.visible_fields %}{% include "trazabilidad/recepciones/_campo.html" %}{% endfor %}
+                        </div>
+                    </fieldset>
+                {% endfor %}
+            </div>
+        </section>
+        <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="motivo-title">
+            <h2 id="motivo-title" class="mb-6 text-lg font-semibold">Motivo de la corrección</h2>
+            {% for campo in motivo %}{% include "trazabilidad/recepciones/_campo.html" %}{% endfor %}
+        </section>
+        <div class="flex flex-col gap-3 sm:flex-row">
+            <button type="submit" class="inline-flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow-xs hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 sm:w-auto cursor-pointer">Guardar corrección</button>
+            <a href="{% url 'trazabilidad:detalle_recepcion' recepcion.pk %}" class="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 sm:w-auto">Cancelar</a>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

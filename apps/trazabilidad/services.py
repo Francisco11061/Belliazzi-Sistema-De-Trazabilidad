@@ -1,10 +1,13 @@
 from datetime import datetime
+from decimal import Decimal
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from .models import DetalleRecepcion, Especie, OrigenSernapesca, Recepcion
+from apps.usuarios.permisos import ROL_JEFE, tiene_rol
+
+from .models import Correccion, DetalleRecepcion, Especie, OrigenSernapesca, PartidaProceso, Recepcion
 
 
 def _normalizar_texto(valor, campo):
@@ -13,15 +16,7 @@ def _normalizar_texto(valor, campo):
     return valor.strip()
 
 
-@transaction.atomic
-def registrar_recepcion(
-    *,
-    fecha_hora_recepcion,
-    registrado_por,
-    origen,
-    detalles,
-    observaciones="",
-):
+def _validar_datos_recepcion(*, fecha_hora_recepcion, origen, detalles, observaciones):
     detalles = list(detalles)
     if not detalles:
         raise ValidationError("Debe ingresar al menos una especie recibida.")
@@ -90,6 +85,17 @@ def registrar_recepcion(
             })
         pendientes.append(detalle)
 
+    return textos, observaciones, pendientes
+
+
+@transaction.atomic
+def registrar_recepcion(
+    *, fecha_hora_recepcion, registrado_por, origen, detalles, observaciones="",
+):
+    textos, observaciones, pendientes = _validar_datos_recepcion(
+        fecha_hora_recepcion=fecha_hora_recepcion, origen=origen,
+        detalles=detalles, observaciones=observaciones,
+    )
     recepcion = Recepcion(
         fecha_hora_recepcion=fecha_hora_recepcion,
         registrado_por=registrado_por,
@@ -109,3 +115,113 @@ def registrar_recepcion(
         detalle.save()
 
     return recepcion
+
+
+def _valor_historial(valor):
+    if isinstance(valor, Especie):
+        return valor.nombre
+    if isinstance(valor, Decimal):
+        return format(valor, ".2f")
+    if isinstance(valor, datetime):
+        return timezone.localtime(valor).isoformat(sep=" ")
+    return "" if valor is None else str(valor)
+
+
+@transaction.atomic
+def corregir_recepcion(
+    *, recepcion, usuario, fecha_hora_recepcion, observaciones, origen, detalles, motivo,
+):
+    if not tiene_rol(usuario, ROL_JEFE):
+        raise PermissionDenied
+    actual = Recepcion.objects.select_for_update().get(pk=recepcion.pk)
+    existentes = list(
+        actual.detalles.select_for_update().select_related("especie").order_by("pk")
+    )
+    origen_ids = {detalle.origen_sernapesca_id for detalle in existentes}
+    if len(origen_ids) != 1:
+        raise ValidationError(
+            "Esta recepción utiliza una estructura histórica que no puede corregirse "
+            "desde este formulario simplificado."
+        )
+    origen_actual = OrigenSernapesca.objects.select_for_update().get(pk=origen_ids.pop())
+    detalles = list(detalles)
+    enviados = [datos.get("detalle_id") for datos in detalles]
+    reales = {detalle.pk for detalle in existentes}
+    if (
+        any(type(pk) is not int for pk in enviados)
+        or len(enviados) != len(reales)
+        or set(enviados) != reales
+    ):
+        raise ValidationError(
+            "Debes corregir exactamente las especies existentes de esta recepción; "
+            "no se permite agregar, quitar ni repetir detalles."
+        )
+    motivo = _normalizar_texto(motivo, "motivo")
+    if not motivo:
+        raise ValidationError("Indica el motivo de la corrección.")
+
+    textos, observaciones, pendientes = _validar_datos_recepcion(
+        fecha_hora_recepcion=fecha_hora_recepcion, origen=origen,
+        detalles=detalles, observaciones=observaciones,
+    )
+    por_id = {detalle.pk: detalle for detalle in existentes}
+    procesada = PartidaProceso.objects.filter(detalle_recepcion_id__in=reales).exists()
+    cambios = []
+
+    def preparar(objeto, valores):
+        campos = []
+        for campo, nuevo in valores.items():
+            anterior = getattr(objeto, campo)
+            if anterior != nuevo:
+                cambios.append(Correccion(
+                    usuario=usuario, entidad_afectada=type(objeto).__name__,
+                    identificador_registro=str(objeto.pk), campo=campo,
+                    valor_anterior=_valor_historial(anterior),
+                    valor_nuevo=_valor_historial(nuevo), motivo=motivo,
+                ))
+                setattr(objeto, campo, nuevo)
+                campos.append(campo)
+        return campos
+
+    campos_recepcion = preparar(actual, {
+        "fecha_hora_recepcion": fecha_hora_recepcion, "observaciones": observaciones,
+    })
+    campos_origen = preparar(origen_actual, textos)
+    # Un origen antiguo puede estar compartido entre recepciones. No extender
+    # silenciosamente una corrección a otras recepciones.
+    if campos_origen and origen_actual.detalles_recepcion.exclude(recepcion=actual).exists():
+        raise ValidationError(
+            "El origen está compartido con otras recepciones históricas y no puede "
+            "corregirse desde este formulario simplificado."
+        )
+
+    actualizaciones = [(actual, campos_recepcion), (origen_actual, campos_origen)]
+    for datos, pendiente in zip(detalles, pendientes):
+        detalle = por_id[datos["detalle_id"]]
+        valores = {
+            "especie": pendiente.especie,
+            "peso_origen_kg": pendiente.peso_origen_kg,
+            "peso_recepcion_kg": pendiente.peso_recepcion_kg,
+        }
+        if procesada and any(getattr(detalle, campo) != valor for campo, valor in valores.items()):
+            raise ValidationError(
+                "Esta recepción ya inició su procesamiento. Las especies y sus pesos "
+                "no pueden modificarse para preservar la trazabilidad."
+            )
+        actualizaciones.append((detalle, preparar(detalle, valores)))
+
+    if not cambios:
+        raise ValidationError("No se detectaron cambios para registrar.")
+    # Validar todo antes de escribir. Cualquier fallo posterior también revierte
+    # tanto los cambios como su auditoría mediante transaction.atomic.
+    for objeto, campos in actualizaciones:
+        if campos:
+            objeto.full_clean()
+    for correccion in cambios:
+        correccion.full_clean()
+    for objeto, campos in actualizaciones:
+        if campos:
+            objeto.save(update_fields=campos)
+    for correccion in cambios:
+        correccion.save()
+    return actual
