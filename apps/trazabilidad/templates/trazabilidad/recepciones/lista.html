@@ -10,8 +10,25 @@
         </div>
         <a href="{% url 'trazabilidad:nueva_recepcion' %}" class="inline-flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow-xs hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 sm:w-auto shrink-0">Registrar recepción</a>
     </header>
+    <form method="get" action="{% url 'trazabilidad:lista_recepciones' %}" class="mb-6 min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 [&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:rounded-lg [&_select]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600">
+        {% if filtro.non_field_errors %}<div class="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">{{ filtro.non_field_errors }}</div>{% endif %}
+        <div class="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {% for campo in filtro %}
+                <div class="min-w-0 {% if campo.name == 'q' %}sm:col-span-2 xl:col-span-4{% endif %}">
+                    <label for="{{ campo.id_for_label }}" class="mb-2 block text-sm font-medium">{% if campo.name == 'q' %}Buscar recepción{% else %}{{ campo.label }}{% endif %}</label>
+                    {{ campo }}
+                    {% if campo.errors %}<div class="mt-2 text-sm text-red-700" role="alert">{{ campo.errors }}</div>{% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+            <button type="submit" class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600">Aplicar filtros</button>
+            <a href="{% url 'trazabilidad:lista_recepciones' %}" class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-cyan-600">Limpiar</a>
+        </div>
+    </form>
+    {% if filtros_activos and not filtro.errors %}<p class="mb-4 text-sm text-slate-500" role="status">{{ page_obj.paginator.count }} recepciones encontradas</p>{% endif %}
     <section aria-label="Recepciones registradas" class="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm">
-        {% if recepciones %}
+        {% if page_obj %}
             <div class="overflow-x-auto rounded-2xl focus-visible:outline-2 focus-visible:outline-cyan-600" tabindex="0" role="region" aria-label="Tabla de recepciones">
                 <table class="w-full min-w-[40rem] text-left text-sm">
                     <thead class="border-b border-slate-200 bg-slate-50 text-slate-500">
@@ -24,7 +41,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        {% for recepcion in recepciones %}
+                        {% for recepcion in page_obj %}
                             <tr class="hover:bg-slate-50">
                                 <th scope="row" class="px-5 py-4 font-medium">#{{ recepcion.pk }}</th>
                                 <td class="px-5 py-4 whitespace-nowrap text-slate-600">{{ recepcion.fecha_hora_recepcion|date:"d/m/Y H:i" }}</td>
@@ -38,10 +55,35 @@
             </div>
         {% else %}
             <div class="px-6 py-12 text-center">
-                <p class="mb-6 text-sm text-slate-500">No hay recepciones registradas.</p>
+                {% if filtro.errors %}
+                    <p class="mb-6 text-sm text-slate-500">Revisa los filtros indicados para realizar la búsqueda.</p>
+                {% elif filtros_activos %}
+                    <p class="mb-6 text-sm text-slate-500">No se encontraron recepciones con los criterios seleccionados.</p>
+                {% else %}
+                    <p class="mb-6 text-sm text-slate-500">No hay recepciones registradas.</p>
+                {% endif %}
+                {% if filtros_activos %}
+                    <a href="{% url 'trazabilidad:lista_recepciones' %}" class="inline-flex rounded-lg border border-slate-300 px-5 py-3 text-sm font-medium text-cyan-700 hover:bg-cyan-50">Limpiar filtros</a>
+                {% else %}
                 <a href="{% url 'trazabilidad:nueva_recepcion' %}" class="inline-flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow-xs hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 sm:w-auto">Registrar primera recepción</a>
+                {% endif %}
             </div>
         {% endif %}
     </section>
+    {% if page_obj.paginator.num_pages > 1 %}
+        <nav aria-label="Paginación de recepciones" class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm">
+            {% if pagina_anterior %}
+                <a href="{{ pagina_anterior }}" class="rounded-lg border border-slate-300 bg-white px-4 py-3 font-medium text-cyan-700 hover:bg-cyan-50 focus-visible:outline-2 focus-visible:outline-cyan-600">Anterior</a>
+            {% else %}
+                <span aria-disabled="true" class="rounded-lg border border-slate-200 px-4 py-3 text-slate-400">Anterior</span>
+            {% endif %}
+            <span class="text-slate-500">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            {% if pagina_siguiente %}
+                <a href="{{ pagina_siguiente }}" class="rounded-lg border border-slate-300 bg-white px-4 py-3 font-medium text-cyan-700 hover:bg-cyan-50 focus-visible:outline-2 focus-visible:outline-cyan-600">Siguiente</a>
+            {% else %}
+                <span aria-disabled="true" class="rounded-lg border border-slate-200 px-4 py-3 text-slate-400">Siguiente</span>
+            {% endif %}
+        </nav>
+    {% endif %}
 </div>
 {% endblock %}

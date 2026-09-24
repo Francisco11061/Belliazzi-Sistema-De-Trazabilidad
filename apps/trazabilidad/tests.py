@@ -12,6 +12,8 @@ from django.utils import timezone
 from apps.trazabilidad.services import registrar_recepcion
 from apps.usuarios.models import Rol, Usuario
 
+from .forms import EspecieRecibidaForm, EspecieRecibidaFormSet, OrigenRecepcionForm, RecepcionForm
+
 from .models import (
     DetalleRecepcion,
     Especie,
@@ -185,7 +187,7 @@ class RegistroRecepcionServiceTests(TestCase):
                 fecha_hora_recepcion=timezone.now(), registrado_por=self.usuario,
                 origen={**self.datos_origen, "folio_origen": ""},
                 detalles=[{"especie": self.merluza, "peso_origen_kg": Decimal("10"),
-                           "peso_recepcion_kg": Decimal("11")}],
+                           "peso_recepcion_kg": Decimal("10")}],
             )
         self.assertEqual(Recepcion.objects.count(), 0)
         self.assertEqual(OrigenSernapesca.objects.count(), 0)
@@ -197,7 +199,7 @@ class RegistroRecepcionServiceTests(TestCase):
                 fecha_hora_recepcion=None, registrado_por=self.usuario,
                 origen=self.datos_origen,
                 detalles=[{"especie": self.merluza, "peso_origen_kg": Decimal("10"),
-                           "peso_recepcion_kg": Decimal("11")}],
+                           "peso_recepcion_kg": Decimal("10")}],
             )
         self.assertEqual(Recepcion.objects.count(), 0)
         self.assertEqual(OrigenSernapesca.objects.count(), 0)
@@ -209,7 +211,7 @@ class RegistroRecepcionServiceTests(TestCase):
                 fecha_hora_recepcion=timezone.now(), registrado_por=self.usuario,
                 origen=self.datos_origen,
                 detalles=iter([{"especie": self.merluza, "peso_origen_kg": Decimal("10"),
-                                "peso_recepcion_kg": Decimal("11")}]),
+                                "peso_recepcion_kg": Decimal("10")}]),
             )
         self.assertEqual(Recepcion.objects.count(), 2)
         self.assertEqual(OrigenSernapesca.objects.count(), 2)
@@ -353,6 +355,8 @@ class RecepcionViewsTests(TestCase):
         for indice in (1, 2):
             for campo in ("especie", "peso_origen_kg", "peso_recepcion_kg"):
                 datos[f"especies-{indice}-{campo}"] = datos[f"especies-0-{campo}"]
+        segunda = Especie.objects.create(nombre="Sierra adicional")
+        datos["especies-1-especie"] = str(segunda.pk)
         datos["especies-2-DELETE"] = "on"
         response = self.client.post(reverse("trazabilidad:nueva_recepcion"), datos)
         self.assertEqual(response.status_code, 302)
@@ -495,3 +499,405 @@ class RecepcionViewsTests(TestCase):
             response = detalle_recepcion(request, recepcion.pk)
         for indice in range(3):
             self.assertContains(response, f"HISTORICO-{indice}")
+
+
+class ValidacionesRecepcionTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.usuario = Usuario.objects.create_user(
+            username="validaciones", rol=Rol.objects.get(codigo="JEFE"),
+        )
+        cls.merluza = Especie.objects.create(nombre="Merluza validaciones")
+        cls.sierra = Especie.objects.create(nombre="Sierra validaciones")
+
+    def datos_especie(self, especie=None, origen="500.00", recepcion="493.00"):
+        return {
+            "especie": especie or self.merluza,
+            "peso_origen_kg": Decimal(origen),
+            "peso_recepcion_kg": Decimal(recepcion),
+        }
+
+    def registrar(self, **cambios):
+        datos = {
+            "fecha_hora_recepcion": timezone.now(),
+            "registrado_por": self.usuario,
+            "origen": {"folio_origen": "FOLIO-123"},
+            "detalles": [self.datos_especie()],
+        }
+        datos.update(cambios)
+        return registrar_recepcion(**datos)
+
+    def assert_sin_registros(self):
+        self.assertEqual(Recepcion.objects.count(), 0)
+        self.assertEqual(OrigenSernapesca.objects.count(), 0)
+        self.assertEqual(DetalleRecepcion.objects.count(), 0)
+
+    def datos_web(self, especies=None):
+        datos = {
+            "fecha_hora_recepcion": timezone.localtime().strftime("%Y-%m-%dT%H:%M"),
+            "folio_origen": "FOLIO-123",
+            "observaciones": "Conservar observaciones",
+            "proveedor": "Proveedor prueba",
+            "especies-INITIAL_FORMS": "0",
+        }
+        filas = especies if especies is not None else [self.datos_especie()]
+        datos["especies-TOTAL_FORMS"] = str(len(filas))
+        for indice, fila in enumerate(filas):
+            for campo, valor in fila.items():
+                datos[f"especies-{indice}-{campo}"] = str(valor.pk if campo == "especie" else valor)
+        return datos
+
+    def test_form_fecha_actual_y_pasada_validas_futura_invalida(self):
+        ahora = timezone.now()
+        with patch("apps.trazabilidad.forms.timezone.now", return_value=ahora):
+            for delta in (timedelta(), timedelta(days=-10)):
+                form = RecepcionForm({"fecha_hora_recepcion": ahora + delta})
+                self.assertTrue(form.is_valid(), form.errors)
+            form = RecepcionForm({"fecha_hora_recepcion": ahora + timedelta(seconds=1)})
+            self.assertFalse(form.is_valid())
+            self.assertIn("La recepción no puede registrarse con una fecha y hora posterior a la actual.",
+                          form.errors["fecha_hora_recepcion"])
+
+    def test_forms_normalizan_textos_y_folio_obligatorio(self):
+        form = OrigenRecepcionForm({
+            "folio_origen": "   FOLIO-123   ", "tipo_origen": "  Desembarque ",
+            "codigo_agente": "   ", "proveedor": "  Proveedor prueba  ",
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data, {
+            "folio_origen": "FOLIO-123", "tipo_origen": "Desembarque",
+            "codigo_agente": "", "proveedor": "Proveedor prueba",
+        })
+        for folio in ("", "    "):
+            form = OrigenRecepcionForm({"folio_origen": folio})
+            self.assertFalse(form.is_valid())
+            self.assertIn("El folio de origen Sernapesca es obligatorio.", form.errors["folio_origen"])
+        form = OrigenRecepcionForm({"folio_origen": "X" * 51})
+        self.assertFalse(form.is_valid())
+        for texto, esperado in (("  Observación prueba  ", "Observación prueba"), ("   ", "")):
+            form = RecepcionForm({"fecha_hora_recepcion": timezone.now(), "observaciones": texto})
+            self.assertTrue(form.is_valid(), form.errors)
+            self.assertEqual(form.cleaned_data["observaciones"], esperado)
+
+    def test_formset_distintas_validas_duplicadas_un_solo_error(self):
+        datos = self.datos_web([self.datos_especie(), self.datos_especie(self.sierra)])
+        formset = EspecieRecibidaFormSet(datos, prefix="especies")
+        self.assertTrue(formset.is_valid(), formset.errors)
+        datos = self.datos_web([self.datos_especie()] * 3)
+        formset = EspecieRecibidaFormSet(datos, prefix="especies")
+        self.assertFalse(formset.is_valid())
+        self.assertEqual(len(formset.non_form_errors()), 1)
+        self.assertIn("ya fue agregada", formset.non_form_errors()[0])
+        self.assertIn(self.merluza.nombre, formset.non_form_errors()[0])
+
+    def test_formset_ignora_duplicados_eliminados_y_filas_vacias(self):
+        datos = self.datos_web([self.datos_especie()] * 2)
+        datos.update({"especies-1-DELETE": "on", "especies-TOTAL_FORMS": "3"})
+        formset = EspecieRecibidaFormSet(datos, prefix="especies")
+        self.assertTrue(formset.is_valid(), formset.errors)
+
+    def test_form_pesos_menor_igual_validos_mayor_invalido(self):
+        for recibido in ("493", "500", "503"):
+            form = EspecieRecibidaForm({
+                "especie": self.merluza.pk, "peso_origen_kg": "500",
+                "peso_recepcion_kg": recibido,
+            })
+            self.assertEqual(form.is_valid(), recibido != "503")
+            if recibido == "503":
+                self.assertIn("El peso en recepción no puede ser mayor que el peso de origen.",
+                              form.errors["peso_recepcion_kg"])
+
+    def test_form_pesos_cero_negativos_precision_y_digitos_invalidos(self):
+        for campo in ("peso_origen_kg", "peso_recepcion_kg"):
+            for valor in ("0", "-1", "1.001", "100000000.00"):
+                with self.subTest(campo=campo, valor=valor):
+                    datos = {"especie": self.merluza.pk, "peso_origen_kg": "500",
+                             "peso_recepcion_kg": "493", campo: valor}
+                    form = EspecieRecibidaForm(datos)
+                    self.assertFalse(form.is_valid())
+                    self.assertIn(campo, form.errors)
+
+    def test_fecha_futura_no_crea_recepcion(self):
+        with self.assertRaisesMessage(ValidationError, "La recepción no puede registrarse con una fecha y hora posterior a la actual."):
+            self.registrar(fecha_hora_recepcion=timezone.now() + timedelta(days=1))
+        self.assert_sin_registros()
+
+    def test_service_fecha_actual_y_pasada_validas(self):
+        ahora = timezone.now()
+        with patch("apps.trazabilidad.services.timezone.now", return_value=ahora):
+            for delta in (timedelta(), timedelta(days=-10)):
+                self.registrar(fecha_hora_recepcion=ahora + delta)
+        self.assertEqual(Recepcion.objects.count(), 2)
+
+    def test_especie_duplicada_revierte_todo(self):
+        with self.assertRaises(ValidationError) as error:
+            self.registrar(detalles=[self.datos_especie()] * 3)
+        self.assertEqual(len(error.exception.messages), 1)
+        self.assertIn("ya fue agregada", error.exception.messages[0])
+        self.assert_sin_registros()
+
+    def test_especie_inactiva_no_se_puede_registrar(self):
+        # The caller still holds an active instance; the database is authoritative.
+        Especie.objects.filter(pk=self.merluza.pk).update(activo=False)
+        self.assertTrue(self.merluza.activo)
+        with self.assertRaisesMessage(ValidationError,
+                                     f"La especie '{self.merluza.nombre}' no se encuentra activa."):
+            self.registrar()
+        self.assert_sin_registros()
+        self.assertTrue(self.merluza.activo)  # The service did not mutate the caller's object.
+
+    def test_peso_recepcion_mayor_que_origen_revierte_todo(self):
+        with self.assertRaisesMessage(ValidationError, "no puede ser mayor"):
+            self.registrar(detalles=[self.datos_especie(),
+                                    self.datos_especie(self.sierra, recepcion="503")])
+        self.assert_sin_registros()
+
+    def test_peso_recepcion_igual_origen_es_valido(self):
+        recepcion = self.registrar(detalles=[self.datos_especie(recepcion="500")])
+        detalle = recepcion.detalles.get()
+        self.assertEqual(detalle.peso_origen_kg, detalle.peso_recepcion_kg)
+        self.assertEqual(OrigenSernapesca.objects.count(), 1)
+
+    def test_service_pesos_invalidos_no_guardan(self):
+        for campo in ("peso_origen_kg", "peso_recepcion_kg"):
+            for valor in ("0", "-1", "1.001", "100000000.00", "NaN"):
+                with self.subTest(campo=campo, valor=valor):
+                    datos = self.datos_especie()
+                    datos[campo] = Decimal(valor)
+                    with self.assertRaises(ValidationError):
+                        self.registrar(detalles=[datos])
+                    self.assert_sin_registros()
+
+    def test_textos_se_normalizan(self):
+        recepcion = self.registrar(
+            origen={"folio_origen": "  FOLIO-123  ", "proveedor": "  Proveedor prueba  ",
+                    "tipo_origen": "  Desembarque ", "codigo_agente": "  "},
+            observaciones="  Observación prueba  ",
+        )
+        origen = recepcion.detalles.get().origen_sernapesca
+        self.assertEqual(origen.folio_origen, "FOLIO-123")
+        self.assertEqual(origen.proveedor, "Proveedor prueba")
+        self.assertEqual(origen.tipo_origen, "Desembarque")
+        self.assertEqual(origen.codigo_agente, "")
+        self.assertEqual(recepcion.observaciones, "Observación prueba")
+        recepcion = self.registrar(observaciones="   ")
+        self.assertEqual(recepcion.observaciones, "")
+
+    def test_folio_solo_espacios_falla(self):
+        with self.assertRaisesMessage(ValidationError, "El folio de origen Sernapesca es obligatorio."):
+            self.registrar(origen={"folio_origen": "   "})
+        self.assert_sin_registros()
+
+    def test_service_rechaza_textos_no_string_y_longitudes_invalidas(self):
+        for campo in ("folio_origen", "tipo_origen", "codigo_agente", "proveedor"):
+            with self.subTest(campo=campo):
+                with self.assertRaises(ValidationError):
+                    self.registrar(origen={"folio_origen": "FOLIO", campo: 123})
+                self.assert_sin_registros()
+        with self.assertRaises(ValidationError):
+            self.registrar(observaciones=123)
+        with self.assertRaises(ValidationError):
+            self.registrar(origen={"folio_origen": "X" * 51})
+        self.assert_sin_registros()
+
+    def test_error_tardio_revierte_recepcion_origen_y_detalles(self):
+        with patch.object(DetalleRecepcion, "full_clean",
+                          side_effect=[None, ValidationError("Error al validar segunda especie")]):
+            with self.assertRaisesMessage(ValidationError, "segunda especie"):
+                self.registrar(detalles=[self.datos_especie(), self.datos_especie(self.sierra)])
+        self.assert_sin_registros()
+
+    def test_web_fecha_futura_duplicado_y_peso_mayor_no_guardan(self):
+        self.client.force_login(self.usuario)
+        casos = [
+            ({"fecha_hora_recepcion": (timezone.localtime() + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M")},
+             "La recepción no puede registrarse con una fecha y hora posterior a la actual."),
+            ({"especies-TOTAL_FORMS": "2", "especies-1-especie": str(self.merluza.pk),
+              "especies-1-peso_origen_kg": "500", "especies-1-peso_recepcion_kg": "493"},
+             "ya fue agregada"),
+            ({"especies-0-peso_recepcion_kg": "503"},
+             "El peso en recepción no puede ser mayor que el peso de origen."),
+        ]
+        for cambios, mensaje in casos:
+            with self.subTest(cambios=cambios):
+                datos = self.datos_web()
+                datos.update(cambios)
+                response = self.client.post(reverse("trazabilidad:nueva_recepcion"), datos)
+                self.assertContains(response, mensaje, status_code=200)
+                self.assertEqual(response.context["form"]["observaciones"].value(), "Conservar observaciones")
+                self.assertEqual(response.context["origen"]["proveedor"].value(), "Proveedor prueba")
+                self.assert_sin_registros()
+
+
+class ListadoRecepcionesFiltrosTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.jefe = Usuario.objects.create_user(username="filtro_jefe", rol=Rol.objects.get(codigo="JEFE"))
+        cls.encargada = Usuario.objects.create_user(username="filtro_encargada", rol=Rol.objects.get(codigo="ENCARGADA"))
+        cls.operaria = Usuario.objects.create_user(username="filtro_operaria", rol=Rol.objects.get(codigo="OPERARIA"))
+        cls.merluza = Especie.objects.create(nombre="Merluza filtro")
+        cls.sierra = Especie.objects.create(nombre="Sierra filtro")
+        cls.primera = cls.crear("2025-09-01T00:00:00", "FOLIO-ALFA", "Pesquera Austral", cls.jefe, [cls.merluza, cls.sierra])
+        cls.ultima = cls.crear("2025-09-30T23:59:59.999999", "FOLIO-BETA", "Pacifico", cls.encargada, [cls.sierra])
+        cls.fuera = cls.crear("2025-08-31T23:59:59", "FOLIO-GAMMA", "Pesquera Austral", cls.jefe, [cls.merluza])
+
+    @classmethod
+    def crear(cls, fecha, folio, proveedor, usuario, especies):
+        from datetime import datetime
+
+        recepcion = Recepcion.objects.create(
+            fecha_hora_recepcion=timezone.make_aware(datetime.fromisoformat(fecha)),
+            registrado_por=usuario,
+        )
+        origen = OrigenSernapesca.objects.create(folio_origen=folio, proveedor=proveedor)
+        for especie in especies:
+            DetalleRecepcion.objects.create(
+                recepcion=recepcion, origen_sernapesca=origen, especie=especie,
+                peso_origen_kg=500, peso_recepcion_kg=493,
+            )
+        return recepcion
+
+    def setUp(self):
+        self.client.force_login(self.jefe)
+        self.url = reverse("trazabilidad:lista_recepciones")
+
+    def ids(self, response):
+        return [r.pk for r in response.context["page_obj"]]
+
+    def test_buscar_recepcion_por_id(self):
+        response = self.client.get(self.url, {"q": str(self.primera.pk)})
+        self.assertEqual(self.ids(response), [self.primera.pk])
+
+    def test_buscar_por_folio(self):
+        response = self.client.get(self.url, {"q": "  folio-al  "})
+        self.assertEqual(self.ids(response), [self.primera.pk])
+        self.assertEqual(response.context["page_obj"].paginator.count, 1)
+
+    def test_buscar_por_proveedor(self):
+        response = self.client.get(self.url, {"q": "austral"})
+        self.assertEqual(self.ids(response), [self.primera.pk, self.fuera.pk])
+
+    def test_filtrar_por_especie(self):
+        response = self.client.get(self.url, {"especie": self.merluza.pk})
+        self.assertEqual(self.ids(response), [self.primera.pk, self.fuera.pk])
+
+    def test_filtrar_por_rango_de_fechas(self):
+        self.crear("2025-10-01T00:00:00", "POSTERIOR", "Otro", self.jefe, [self.merluza])
+        response = self.client.get(self.url, {"fecha_desde": "2025-09-01", "fecha_hasta": "2025-09-30"})
+        self.assertEqual(self.ids(response), [self.ultima.pk, self.primera.pk])
+        # Local late evening falls on the following UTC date and must be included.
+        response = self.client.get(self.url, {"fecha_desde": "2025-09-30", "fecha_hasta": "2025-09-30"})
+        self.assertEqual(self.ids(response), [self.ultima.pk])
+
+    def test_fechas_individuales_y_filtros_futuros_permitidos(self):
+        response = self.client.get(self.url, {"fecha_hasta": "2025-08-31"})
+        self.assertEqual(self.ids(response), [self.fuera.pk])
+        response = self.client.get(self.url, {"fecha_desde": "2025-09-30"})
+        self.assertEqual(self.ids(response), [self.ultima.pk])
+        response = self.client.get(self.url, {"fecha_desde": "2090-01-01"})
+        self.assertFalse(response.context["filtro"].errors)
+        self.assertEqual(self.ids(response), [])
+
+    def test_rango_de_fechas_invalido(self):
+        response = self.client.get(self.url, {"fecha_desde": "2025-10-01", "fecha_hasta": "2025-09-01"})
+        self.assertContains(response, "La fecha inicial no puede ser posterior a la fecha final.", status_code=200)
+
+    def test_parametros_invalidos_no_producen_excepcion(self):
+        for parametros in ({"fecha_desde": "no-fecha"}, {"especie": "99999999"}, {"registrado_por": "no-usuario"}):
+            with self.subTest(parametros=parametros):
+                response = self.client.get(self.url, parametros)
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.context["filtro"].errors)
+                self.assertEqual(self.ids(response), [])
+
+    def test_filtrar_por_usuario(self):
+        response = self.client.get(self.url, {"registrado_por": self.jefe.pk})
+        self.assertEqual(self.ids(response), [self.primera.pk, self.fuera.pk])
+
+    def test_combinar_filtros(self):
+        response = self.client.get(self.url, {
+            "q": "Austral", "especie": self.merluza.pk,
+            "fecha_desde": "2025-09-01", "fecha_hasta": "2025-09-30", "registrado_por": self.jefe.pk,
+        })
+        self.assertEqual(self.ids(response), [self.primera.pk])
+
+    def test_busqueda_sin_resultados(self):
+        response = self.client.get(self.url, {"q": "SIN-COINCIDENCIAS"})
+        self.assertContains(response, "No se encontraron recepciones con los criterios seleccionados.")
+        self.assertContains(response, "Limpiar filtros")
+        self.assertContains(response, "0 recepciones encontradas")
+
+    def test_paginacion(self):
+        nuevas = [self.crear("2025-09-15T12:00:00", f"PAG-{i}", "Otro", self.jefe, [self.merluza])
+                  for i in range(8)]
+        primera = self.client.get(self.url)
+        segunda = self.client.get(self.url, {"page": 2})
+        self.assertEqual(len(self.ids(primera)), 10)
+        self.assertEqual(len(self.ids(segunda)), 1)
+        self.assertEqual(primera.context["page_obj"].paginator.count, 11)
+        self.assertEqual(self.ids(primera)[1:9], [r.pk for r in reversed(nuevas)])
+        self.assertEqual(self.ids(segunda), [self.fuera.pk])
+        self.assertIsNone(primera.context["pagina_anterior"])
+        self.assertIsNone(segunda.context["pagina_siguiente"])
+
+    def test_paginacion_conserva_filtros(self):
+        from urllib.parse import parse_qs, urlsplit
+        from html import escape
+
+        for i in range(11):
+            self.crear("2025-09-15T12:00:00", f"ENCODE-{i}", "Austral & Sur", self.jefe, [self.merluza])
+        parametros = {"q": "Austral & Sur", "especie": str(self.merluza.pk),
+                      "fecha_desde": "2025-09-01", "fecha_hasta": "2025-09-30",
+                      "registrado_por": str(self.jefe.pk)}
+        response = self.client.get(self.url, parametros)
+        enlace = response.context["pagina_siguiente"]
+        self.assertEqual(parse_qs(urlsplit(enlace).query), {**{k: [v] for k, v in parametros.items()}, "page": ["2"]})
+        self.assertContains(response, escape(enlace, quote=True))
+        response = self.client.get(self.url + enlace)
+        self.assertEqual(len(self.ids(response)), 1)
+        self.assertEqual(parse_qs(urlsplit(response.context["pagina_anterior"]).query)["q"], ["Austral & Sur"])
+
+    def test_paginas_invalidas_y_busqueda_numerica_grande(self):
+        for pagina in ("abc", "-1", "99999"):
+            response = self.client.get(self.url, {"page": pagina})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.context["page_obj"].number, 1)
+        response = self.client.get(self.url, {"q": "9" * 100})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.ids(response), [])
+
+    def test_listado_no_genera_n_mas_uno(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        from .views import lista_recepciones
+
+        def consultas():
+            request = RequestFactory().get(self.url)
+            request.user = self.jefe
+            with CaptureQueriesContext(connection) as capturadas:
+                response = lista_recepciones(request)
+            self.assertEqual(response.status_code, 200)
+            return len(capturadas)
+
+        pocas = consultas()
+        for i in range(8):
+            self.crear("2025-09-15T12:00:00", f"PERF-{i}", "Otro", self.jefe, [self.merluza, self.sierra])
+        muchas = consultas()
+        self.assertEqual(pocas, muchas)
+        self.assertLessEqual(muchas, 8)
+
+    def test_operaria_sigue_sin_acceso(self):
+        self.client.force_login(self.operaria)
+        self.assertEqual(self.client.get(self.url, {"q": "Austral"}).status_code, 403)
+
+    def test_anonimo_sigue_redirigiendo_al_login(self):
+        self.client.logout()
+        response = self.client.get(self.url)
+        self.assertRedirects(response, f"{reverse('usuarios:login')}?next={self.url}")
+
+    def test_listado_vacio_sin_filtros(self):
+        DetalleRecepcion.objects.all().delete()
+        Recepcion.objects.all().delete()
+        response = self.client.get(self.url)
+        self.assertContains(response, "No hay recepciones registradas.")
+        self.assertContains(response, "Registrar primera recepción")

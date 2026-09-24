@@ -1,11 +1,15 @@
+from datetime import datetime, time
+
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from apps.usuarios.permisos import jefe_o_encargada_requerido
 
-from .forms import EspecieRecibidaFormSet, OrigenRecepcionForm, RecepcionForm
+from .forms import EspecieRecibidaFormSet, OrigenRecepcionForm, RecepcionFiltroForm, RecepcionForm
 from .models import Recepcion
 from .services import registrar_recepcion
 
@@ -16,10 +20,57 @@ def lista_recepciones(request):
         "detalles__especie",
         "detalles__origen_sernapesca",
     )
+    filtro = RecepcionFiltroForm(request.GET)
+    filtros_activos = any(request.GET.get(campo, "").strip() for campo in filtro.fields)
+    if filtro.is_valid():
+        datos = filtro.cleaned_data
+        q = datos["q"]
+        if q:
+            busqueda = Q(detalles__origen_sernapesca__folio_origen__icontains=q) | Q(
+                detalles__origen_sernapesca__proveedor__icontains=q
+            )
+            if q.isdecimal():
+                try:
+                    pk = int(q)
+                except ValueError:
+                    pass  # Una cadena numérica excesiva sigue siendo texto de búsqueda.
+                else:
+                    busqueda |= Q(pk=pk)
+            recepciones = recepciones.filter(busqueda)
+        if datos["especie"]:
+            recepciones = recepciones.filter(detalles__especie=datos["especie"])
+        if datos["fecha_desde"]:
+            inicio = timezone.make_aware(datetime.combine(datos["fecha_desde"], time.min))
+            recepciones = recepciones.filter(fecha_hora_recepcion__gte=inicio)
+        if datos["fecha_hasta"]:
+            fin = timezone.make_aware(datetime.combine(datos["fecha_hasta"], time.max))
+            recepciones = recepciones.filter(fecha_hora_recepcion__lte=fin)
+        if datos["registrado_por"]:
+            recepciones = recepciones.filter(registrado_por=datos["registrado_por"])
+    else:
+        recepciones = recepciones.none()
+
+    recepciones = recepciones.distinct().order_by("-fecha_hora_recepcion", "-pk")
+    page_obj = Paginator(recepciones, 10).get_page(request.GET.get("page"))
+    parametros = request.GET.copy()
+    parametros.pop("page", None)
+
+    def enlace_pagina(numero):
+        consulta = parametros.copy()
+        consulta["page"] = numero
+        return "?" + consulta.urlencode()
+
     return render(
         request,
         "trazabilidad/recepciones/lista.html",
-        {"recepciones": recepciones},
+        {
+            "filtro": filtro,
+            "filtros_activos": filtros_activos,
+            "page_obj": page_obj,
+            "recepciones": page_obj.object_list,
+            "pagina_anterior": enlace_pagina(page_obj.previous_page_number()) if page_obj.has_previous() else None,
+            "pagina_siguiente": enlace_pagina(page_obj.next_page_number()) if page_obj.has_next() else None,
+        },
     )
 
 
