@@ -17,6 +17,7 @@
             <div><dt class="text-slate-500">Situación</dt><dd class="mt-1 font-medium text-cyan-800">{{ partida.situacion_visible }}</dd></div>
             <div><dt class="text-slate-500">Inicio del procesamiento</dt><dd class="mt-1 font-medium">{{ general.fecha_hora_inicio|date:"d/m/Y H:i"|default:"—" }}</dd></div>
         </dl>
+        <div class="mt-5">{% include "trazabilidad/partidas/_accion_merma.html" %}</div>
     </section>
     {% if puede_asignar_ruta %}
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">

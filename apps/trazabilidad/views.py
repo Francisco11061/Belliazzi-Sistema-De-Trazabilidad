@@ -23,6 +23,12 @@ from .services import (
     asignar_ruta_proceso, enviar_a_tunel, finalizar_etapa_proceso,
     iniciar_etapa_proceso, retirar_de_tunel,
 )
+from .forms import PesoPostprocesoForm, MermaProcesoForm
+from .selectors import resumen_pesajes_mermas, ADVERTENCIA_PESO_SUPERIOR
+from .services import (
+    registrar_peso_postproceso as registrar_peso_postproceso_service,
+    registrar_merma_proceso as registrar_merma_proceso_service,
+)
 
 
 @jefe_o_encargada_requerido
@@ -259,6 +265,7 @@ def detalle_partida(request, pk):
     partida = presentar_partida(get_object_or_404(partidas_con_situacion(), pk=pk))
     return render(request, "trazabilidad/partidas/detalle.html", {
         "partida": partida,
+        **resumen_pesajes_mermas(partida),
         "hijas": partida.subpartidas.order_by("pk"),
         "estancias": partida.estancias_frio.select_related("unidad_frio", "ingresado_por", "retirado_por").order_by("fecha_hora_ingreso", "pk"),
         "eventos": partida.eventos.select_related("tipo_proceso", "iniciado_por", "finalizado_por").order_by("fecha_hora_inicio", "pk"),
@@ -367,5 +374,40 @@ def retirar_partida_tunel(request, pk):
     except ValidationError as error:
         messages.error(request, " ".join(error.messages))
     else:
-        messages.success(request, "Producto retirado del túnel. Listo para empaque.")
+        messages.success(request, "Producto retirado del túnel. Pendiente de pesaje postproceso.")
     return redirect("trazabilidad:detalle_partida", pk=pk)
+
+
+def _registrar_medicion(request, pk, *, es_pesaje):
+    partida = presentar_partida(get_object_or_404(partidas_con_situacion(), pk=pk))
+    clase = PesoPostprocesoForm if es_pesaje else MermaProcesoForm
+    servicio = registrar_peso_postproceso_service if es_pesaje else registrar_merma_proceso_service
+    form = clase(request.POST if request.method == "POST" else None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            registro = servicio(partida=partida, usuario=request.user, **form.cleaned_data)
+        except ValidationError as error:
+            form.add_error(None, error.messages)
+        else:
+            messages.success(request, "Peso postproceso registrado correctamente." if es_pesaje else "Pérdida o merma registrada correctamente.")
+            if es_pesaje and registro.peso_kg > registro.partida.cantidad_inicial_kg:
+                messages.warning(request, ADVERTENCIA_PESO_SUPERIOR)
+            return redirect("trazabilidad:detalle_partida", pk=pk)
+    return render(request, "trazabilidad/partidas/registrar_medicion.html", {
+        "partida": partida, "form": form, "es_pesaje": es_pesaje,
+        "titulo": "Registrar peso postproceso" if es_pesaje else "Registrar pérdida o merma",
+        "compatible": partida.situacion == "PENDIENTE_PESAJE" if es_pesaje else partida.puede_registrar_merma,
+        **resumen_pesajes_mermas(partida),
+    })
+
+
+@personal_operativo_requerido
+@require_http_methods(["GET", "POST"])
+def registrar_peso_postproceso(request, pk):
+    return _registrar_medicion(request, pk, es_pesaje=True)
+
+
+@personal_operativo_requerido
+@require_http_methods(["GET", "POST"])
+def registrar_merma_proceso(request, pk):
+    return _registrar_medicion(request, pk, es_pesaje=False)

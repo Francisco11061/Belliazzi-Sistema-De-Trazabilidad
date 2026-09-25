@@ -5,6 +5,8 @@ from . import views
 app_name = "trazabilidad"
 
 urlpatterns = [
+    path("partidas/<int:pk>/peso-postproceso/", views.registrar_peso_postproceso, name="registrar_peso_postproceso"),
+    path("partidas/<int:pk>/merma/", views.registrar_merma_proceso, name="registrar_merma_proceso"),
     path("partidas/<int:pk>/procesamiento/", views.gestionar_procesamiento, name="gestionar_procesamiento"),
     path("partidas/<int:pk>/etapas/<int:etapa_pk>/iniciar/", views.operar_etapa, {"accion": "iniciar"}, name="iniciar_etapa"),
     path("partidas/<int:pk>/etapas/<int:etapa_pk>/finalizar/", views.operar_etapa, {"accion": "finalizar"}, name="finalizar_etapa"),

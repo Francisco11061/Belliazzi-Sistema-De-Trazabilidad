@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ titulo }} | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Seguimiento de proceso / {{ titulo }}{% endblock %}
+{% block content %}
+{% language "es" %}
+<div class="w-full min-w-0 max-w-2xl">
+    <a href="{% url 'trazabilidad:detalle_partida' partida.pk %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver al seguimiento</a>
+    <h1 class="mt-4 break-words text-2xl font-semibold sm:text-3xl">{{ partida.detalle_recepcion.especie.nombre }}</h1>
+    <p class="mt-2 text-sm text-slate-500">Seguimiento #{{ partida.pk }} · {{ partida.situacion_visible }}</p>
+    <section class="mt-6 min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 class="text-lg font-semibold">{{ titulo }}</h2>
+        <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+            <div><dt class="text-slate-500">Cantidad del seguimiento procesado</dt><dd class="mt-1 font-semibold">{{ partida.cantidad_inicial_kg|floatformat:2 }} kg</dd></div>
+            <div><dt class="text-slate-500">Total de pérdidas, descartes y mermas</dt><dd class="mt-1 font-semibold">{{ total_mermas|floatformat:2 }} kg</dd></div>
+        </dl>
+        {% if es_pesaje %}<p class="mt-4 text-sm text-slate-500">Peso recibido en recepción (origen): {{ partida.detalle_recepcion.peso_recepcion_kg|floatformat:2 }} kg</p>{% endif %}
+        {% if form.non_field_errors %}<div role="alert" class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
+        {% if compatible %}
+        <form method="post" class="mt-6 space-y-5 [&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_textarea]:w-full [&_textarea]:min-w-0 [&_textarea]:max-w-full [&_textarea]:rounded-lg [&_textarea]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600 [&_textarea:focus]:border-cyan-600 [&_textarea:focus]:ring-cyan-600">
+            {% csrf_token %}
+            {% for campo in form %}{% include "trazabilidad/recepciones/_campo.html" %}{% endfor %}
+            <p class="text-sm leading-6 text-slate-500">Este registro se conservará en el historial. Revisa los datos antes de confirmar.</p>
+            <div class="flex flex-col gap-3 sm:flex-row">
+                <button type="submit" class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Registrar</button>
+                <a href="{% url 'trazabilidad:detalle_partida' partida.pk %}" class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm text-slate-700 hover:bg-slate-50">Cancelar</a>
+            </div>
+        </form>
+        {% else %}<p role="alert" class="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">Esta operación no está disponible para la situación actual del seguimiento.</p>{% endif %}
+    </section>
+</div>
+{% endlanguage %}
+{% endblock %}

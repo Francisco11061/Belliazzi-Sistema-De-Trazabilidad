@@ -1,0 +1,29 @@
+<section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <h2 class="text-lg font-semibold">Pesajes</h2>
+    <div class="mt-4 space-y-4 text-sm">
+    {% for pesaje in pesajes %}
+        <article class="break-words rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <h3 class="font-medium">{{ pesaje.tipo_visible }}</h3>
+            <p class="mt-2 text-lg font-semibold">{{ pesaje.peso_kg|floatformat:2 }} kg</p>
+            <p class="mt-2 text-slate-600">{{ pesaje.fecha_hora_evento|date:"d/m/Y H:i" }}</p>
+            <p class="mt-1 text-slate-600">Registrado por: {{ pesaje.registrado_por.get_full_name|default:pesaje.registrado_por.username }}</p>
+        </article>
+    {% empty %}<p class="text-slate-500">Sin pesajes registrados.</p>{% endfor %}
+    </div>
+</section>
+<section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <h2 class="text-lg font-semibold">Pérdidas, descartes y mermas</h2>
+    <p class="mt-3 text-sm text-slate-500">Total registrado: {{ total_mermas|floatformat:2 }} kg</p>
+    <div class="mt-4 space-y-4 text-sm">
+    {% for merma in mermas %}
+        <article class="break-words rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <h3 class="font-medium">{{ merma.get_tipo_display }}</h3>
+            <p class="mt-2 text-lg font-semibold">{{ merma.cantidad_kg|floatformat:2 }} kg</p>
+            <p class="mt-2 text-slate-600">Motivo: {{ merma.motivo }}</p>
+            <p class="mt-1 text-slate-600">Etapa: {{ merma.evento_proceso.tipo_proceso.nombre|default:"—" }}</p>
+            <p class="mt-1 text-slate-600">{{ merma.fecha_hora_evento|date:"d/m/Y H:i" }}</p>
+            <p class="mt-1 text-slate-600">Registrado por: {{ merma.registrado_por.get_full_name|default:merma.registrado_por.username }}</p>
+        </article>
+    {% empty %}<p class="text-slate-500">Sin pérdidas, descartes ni mermas registradas.</p>{% endfor %}
+    </div>
+</section>

@@ -322,7 +322,7 @@ class ProcesamientoTests(DatosProcesamiento, TestCase):
         with self.assertRaises(ValidationError):
             self.enviar()
 
-    def test_retiro_tunel_cierra_estancia_y_deja_lista_para_empaque(self):
+    def test_retiro_tunel_cierra_estancia_y_deja_pendiente_pesaje(self):
         self.iniciar()
         self.completar()
         estancia = self.enviar()
@@ -331,7 +331,7 @@ class ProcesamientoTests(DatosProcesamiento, TestCase):
         self.assertEqual(retirada.pk, estancia.pk)
         self.assertEqual(retirada.retirado_por, self.jefe)
         self.assertIsNotNone(retirada.fecha_hora_salida)
-        self.assertEqual(self.situacion(), "LISTA_PARA_EMPAQUE")
+        self.assertEqual(self.situacion(), "PENDIENTE_PESAJE")
         with self.assertRaises(ValidationError):
             retirar_de_tunel(partida=self.partida, usuario=self.jefe)
 
@@ -482,7 +482,7 @@ class ProcesamientoTests(DatosProcesamiento, TestCase):
                 self.assertEqual(self.client.post(reverse("trazabilidad:enviar_partida_tunel", args=[seleccionada.pk]), {"unidad": self.tunel.pk}).status_code, 302)
                 self.assertEqual(self.situacion(seleccionada), "EN_CONGELACION")
                 self.assertEqual(self.client.post(reverse("trazabilidad:retirar_partida_tunel", args=[seleccionada.pk])).status_code, 302)
-                self.assertEqual(self.situacion(seleccionada), "LISTA_PARA_EMPAQUE")
+                self.assertEqual(self.situacion(seleccionada), "PENDIENTE_PESAJE")
 
     def test_anonimo_sin_rol_operativo_y_gets_no_mutan(self):
         urls = [reverse("trazabilidad:" + nombre, args=[self.partida.pk]) for nombre in
@@ -527,11 +527,11 @@ class ProcesamientoTests(DatosProcesamiento, TestCase):
         self.assertNotContains(respuesta, "Gestionar procesamiento")
         retirar_de_tunel(partida=self.partida, usuario=self.usuario)
         respuesta = self.client.get(detalle)
-        self.assertContains(respuesta, "Procesamiento y congelación completados.")
+        self.assertContains(respuesta, "Registra el peso obtenido antes de continuar al empaque.")
         for accion in ("Retirar del túnel", "Gestionar procesamiento", "Enviar a proceso", "Enviar a cámara"):
             self.assertNotContains(respuesta, accion)
 
-    def test_filtros_congelacion_empaque_sin_n_mas_uno(self):
+    def test_filtros_congelacion_pesaje_sin_n_mas_uno(self):
         self.iniciar()
         self.completar()
         self.enviar()
@@ -540,7 +540,7 @@ class ProcesamientoTests(DatosProcesamiento, TestCase):
         respuesta = self.client.get(url, {"situacion": "EN_CONGELACION"})
         self.assertEqual([p.pk for p in respuesta.context["page_obj"]], [self.partida.pk])
         retirar_de_tunel(partida=self.partida, usuario=self.usuario)
-        respuesta = self.client.get(url, {"situacion": "LISTA_PARA_EMPAQUE"})
+        respuesta = self.client.get(url, {"situacion": "PENDIENTE_PESAJE"})
         self.assertEqual([p.pk for p in respuesta.context["page_obj"]], [self.partida.pk])
         gestionar = reverse("trazabilidad:gestionar_procesamiento", args=[self.partida.pk])
         with CaptureQueriesContext(connection) as consultas:
@@ -591,4 +591,4 @@ class ConcurrenciaProcesamientoTests(DatosProcesamiento, TransactionTestCase):
         self.enviar()
         self.competir(retirar_de_tunel)
         self.assertEqual(EstanciaPartida.objects.count(), 1)
-        self.assertEqual(self.situacion(), "LISTA_PARA_EMPAQUE")
+        self.assertEqual(self.situacion(), "PENDIENTE_PESAJE")

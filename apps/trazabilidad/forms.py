@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.forms import BaseFormSet, formset_factory
 from django.utils import timezone
 
-from .models import Correccion, Especie, UnidadFrio, RutaProceso
+from .models import Correccion, Especie, UnidadFrio, RutaProceso, Pesaje, MermaProceso
 from .selectors import SITUACIONES
 
 
@@ -296,4 +296,17 @@ class TunelPartidaForm(forms.Form):
     unidad = forms.ModelChoiceField(
         queryset=UnidadFrio.objects.filter(activo=True, tipo=UnidadFrio.TipoUnidad.TUNEL_CONGELADO),
         label="Unidad de congelado",
+    )
+
+
+class PesoPostprocesoForm(forms.Form):
+    peso_kg = Pesaje._meta.get_field("peso_kg").formfield(label="Peso postproceso (kg)", min_value=Decimal("0.01"))
+
+
+class MermaProcesoForm(forms.Form):
+    tipo = forms.ChoiceField(choices=MermaProceso.Tipo.choices, initial=MermaProceso.Tipo.MERMA, label="Tipo")
+    cantidad_kg = MermaProceso._meta.get_field("cantidad_kg").formfield(label="Cantidad (kg)", min_value=Decimal("0.01"))
+    motivo = forms.CharField(
+        max_length=MermaProceso._meta.get_field("motivo").max_length, strip=True,
+        label="Motivo", widget=forms.Textarea(attrs={"rows": 3}),
     )

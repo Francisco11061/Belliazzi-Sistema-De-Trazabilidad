@@ -1,4 +1,6 @@
 """Lecturas compartidas de situación y uso de las partidas, sin escribir datos."""
+from decimal import Decimal, ROUND_HALF_UP
+
 from django.db.models import Case, CharField, Count, Exists, OuterRef, Subquery, Value, When
 
 from .models import (
@@ -11,7 +13,14 @@ SITUACIONES = (
     ("EN_MANTENCION", "En cámara de mantención"),
     ("EN_PROCESO", "En proceso"),
     ("EN_CONGELACION", "En congelación"),
+    ("PENDIENTE_PESAJE", "Pendiente de pesaje"),
     ("LISTA_PARA_EMPAQUE", "Lista para empaque"),
+)
+
+SITUACIONES_MERMA = {"EN_PROCESO", "EN_CONGELACION", "PENDIENTE_PESAJE"}
+ADVERTENCIA_PESO_SUPERIOR = (
+    "El peso postproceso supera la cantidad registrada al inicio de este seguimiento. "
+    "Verifique que el valor ingresado sea correcto."
 )
 
 
@@ -29,6 +38,7 @@ def partidas_con_situacion():
         "detalle_recepcion__origen_sernapesca", "creado_por", "ruta_proceso",
     ).annotate(
         tiene_hijas=Exists(PartidaProceso.objects.filter(partida_padre_id=OuterRef("pk"))),
+        tiene_postproceso=Exists(Pesaje.objects.filter(partida_id=OuterRef("pk"), tipo=Pesaje.POSTPROCESO)),
         tiene_estancia=Exists(abiertas),
         en_mantencion=Exists(mantencion),
         en_congelacion=Exists(tunel),
@@ -51,8 +61,10 @@ def partidas_con_situacion():
         When(en_congelacion=True, then=Value("EN_CONGELACION")),
         When(tiene_estancia=True, then=Value("NO_OPERABLE")),
         When(proceso_abierto=True, then=Value("EN_PROCESO")),
-        When(proceso_completado=True, tunel_completado=True, tiene_consumos=False,
+        When(proceso_completado=True, tunel_completado=True, tiene_consumos=False, tiene_postproceso=True,
              then=Value("LISTA_PARA_EMPAQUE")),
+        When(proceso_completado=True, tunel_completado=True, tiene_consumos=False, tiene_postproceso=False,
+             then=Value("PENDIENTE_PESAJE")),
         # No devolver kilos históricos usados a Disponible ante registros incompletos.
         When(procesamiento_iniciado=True, then=Value("NO_OPERABLE")),
         When(ruta_proceso__isnull=False, then=Value("NO_OPERABLE")),
@@ -63,7 +75,27 @@ def partidas_con_situacion():
 def presentar_partida(partida):
     etiquetas = dict(SITUACIONES) | dict(PartidaProceso.Estado.choices)
     partida.situacion_visible = etiquetas.get(partida.situacion, "No operable")
+    partida.puede_registrar_merma = partida.situacion in SITUACIONES_MERMA and not partida.tiene_postproceso
     return partida
+
+
+def resumen_pesajes_mermas(partida):
+    """Historial completo y cálculos de presentación, sin campos derivados persistidos."""
+    pesajes = list(partida.pesajes.select_related("registrado_por").order_by("fecha_hora_evento", "pk"))
+    mermas = list(partida.mermas.select_related(
+        "registrado_por", "evento_proceso__tipo_proceso",
+    ).order_by("fecha_hora_evento", "pk"))
+    postproceso = next((p for p in pesajes if p.tipo == Pesaje.POSTPROCESO), None)
+    cantidad = partida.cantidad_inicial_kg
+    return {
+        "pesajes": pesajes, "mermas": mermas, "peso_postproceso": postproceso,
+        "total_mermas": sum((m.cantidad_kg for m in mermas), Decimal("0.00")),
+        "diferencia": cantidad - postproceso.peso_kg if postproceso else None,
+        "rendimiento": (postproceso.peso_kg / cantidad * 100).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP,
+        ) if postproceso and cantidad > 0 else None,
+        "advertencia_peso": ADVERTENCIA_PESO_SUPERIOR if postproceso and postproceso.peso_kg > cantidad else "",
+    }
 
 
 def partidas_con_uso():

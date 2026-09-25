@@ -218,8 +218,23 @@ class EstanciaPartidaAdmin(admin.ModelAdmin):
     list_filter = ("unidad_frio", "fecha_hora_ingreso")
 
 
+class RegistroHistoricoAdmin(admin.ModelAdmin):
+    """Consulta de auditoría; las altas operativas pasan por los services."""
+    actions = None
+    list_select_related = ("partida__detalle_recepcion__especie", "registrado_por", "evento_proceso__tipo_proceso")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(Pesaje)
-class PesajeAdmin(admin.ModelAdmin):
+class PesajeAdmin(RegistroHistoricoAdmin):
     list_display = (
         "id",
         "partida",
@@ -236,16 +251,18 @@ class PesajeAdmin(admin.ModelAdmin):
 
 
 @admin.register(MermaProceso)
-class MermaProcesoAdmin(admin.ModelAdmin):
+class MermaProcesoAdmin(RegistroHistoricoAdmin):
     list_display = (
         "id",
         "partida",
         "cantidad_kg",
+        "tipo",
+        "evento_proceso",
         "motivo",
         "fecha_hora_evento",
         "registrado_por",
     )
-    list_filter = ("fecha_hora_evento",)
+    list_filter = ("tipo", "fecha_hora_evento")
     search_fields = (
         "motivo",
         "partida__detalle_recepcion__especie__nombre",

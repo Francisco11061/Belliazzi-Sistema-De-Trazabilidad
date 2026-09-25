@@ -308,6 +308,12 @@ class EstanciaPartida(models.Model):
 
 
 class Pesaje(models.Model):
+    POSTPROCESO = "POSTPROCESO"
+
+    @property
+    def tipo_visible(self):
+        return "Peso postproceso" if self.tipo == self.POSTPROCESO else self.tipo
+
     partida = models.ForeignKey(
         PartidaProceso,
         on_delete=models.PROTECT,
@@ -339,6 +345,13 @@ class Pesaje(models.Model):
 
 
 class MermaProceso(models.Model):
+    class Tipo(models.TextChoices):
+        MERMA = "MERMA", "Merma"
+        DESCARTE = "DESCARTE", "Descarte"
+        PERDIDA = "PERDIDA", "Pérdida"
+
+    tipo = models.CharField(max_length=10, choices=Tipo.choices, default=Tipo.MERMA)
+
     partida = models.ForeignKey(
         PartidaProceso,
         on_delete=models.PROTECT,

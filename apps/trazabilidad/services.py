@@ -8,8 +8,8 @@ from django.utils import timezone
 from apps.usuarios.permisos import ROL_ENCARGADA, ROL_JEFE, ROL_OPERARIA, tiene_rol
 
 from .models import Correccion, DetalleRecepcion, Especie, OrigenSernapesca, PartidaProceso, Recepcion
-from .models import EstanciaPartida, EventoProceso, TipoProceso, UnidadFrio, RutaProceso
-from .selectors import recepcion_con_actividad
+from .models import EstanciaPartida, EventoProceso, TipoProceso, UnidadFrio, RutaProceso, Pesaje, MermaProceso
+from .selectors import recepcion_con_actividad, partidas_con_situacion, SITUACIONES_MERMA
 from .rutas import validar_etapas_ruta
 
 
@@ -463,3 +463,54 @@ def retirar_de_tunel(*, partida, usuario):
     estancia.retirado_por = usuario
     estancia.save(update_fields=["fecha_hora_salida", "retirado_por"])
     return estancia
+
+
+def _validar_decimal_registro(modelo, campo, valor):
+    if not isinstance(valor, Decimal) or not valor.is_finite():
+        raise ValidationError("Ingrese una cantidad decimal válida.")
+    # Reutilizar precisión y mínimo del modelo también en llamadas directas al service.
+    modelo._meta.get_field(campo).clean(valor, None)
+
+
+@transaction.atomic
+def registrar_peso_postproceso(*, partida, peso_kg, usuario):
+    partida = _bloquear_partida(partida, usuario)
+    actual = partidas_con_situacion().get(pk=partida.pk)
+    if actual.situacion != "PENDIENTE_PESAJE" or actual.tiene_postproceso:
+        raise ValidationError("El seguimiento debe estar pendiente de pesaje y no tener un peso postproceso registrado.")
+    _validar_decimal_registro(Pesaje, "peso_kg", peso_kg)
+    pesaje = Pesaje(
+        partida=partida, tipo=Pesaje.POSTPROCESO, peso_kg=peso_kg,
+        fecha_hora_evento=timezone.now(), registrado_por=usuario,
+    )
+    pesaje.full_clean()
+    pesaje.save()
+    return pesaje
+
+
+@transaction.atomic
+def registrar_merma_proceso(*, partida, tipo, cantidad_kg, motivo, usuario):
+    partida = _bloquear_partida(partida, usuario)
+    actual = partidas_con_situacion().get(pk=partida.pk)
+    if actual.situacion not in SITUACIONES_MERMA or actual.tiene_postproceso:
+        raise ValidationError("Solo se pueden registrar pérdidas o mermas durante el proceso, la congelación o antes del pesaje postproceso.")
+    _validar_decimal_registro(MermaProceso, "cantidad_kg", cantidad_kg)
+    motivo = _normalizar_texto(motivo, "motivo")
+    # Todas las escrituras operativas comparten el bloqueo detalle -> seguimiento.
+    # Leer después de adquirirlo incluye los registros de la transacción anterior.
+    cantidades = partida.mermas.select_for_update().values_list("cantidad_kg", flat=True)
+    if sum(cantidades, Decimal("0.00")) + cantidad_kg > partida.cantidad_inicial_kg:
+        raise ValidationError("Las pérdidas, descartes y mermas acumuladas no pueden superar la cantidad del seguimiento.")
+    abiertas = list(partida.eventos.select_for_update().filter(
+        etapa_ruta__isnull=False, fecha_hora_termino__isnull=True,
+    ))
+    if len(abiertas) > 1:
+        raise ValidationError("Existe más de una etapa abierta. Revise el historial antes de registrar una merma.")
+    merma = MermaProceso(
+        partida=partida, tipo=tipo, cantidad_kg=cantidad_kg, motivo=motivo,
+        evento_proceso=abiertas[0] if abiertas else None,
+        fecha_hora_evento=timezone.now(), registrado_por=usuario,
+    )
+    merma.full_clean()
+    merma.save()
+    return merma
