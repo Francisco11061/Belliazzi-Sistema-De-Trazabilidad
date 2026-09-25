@@ -1,4 +1,7 @@
 from django.contrib import admin
+from django.core.exceptions import ValidationError
+from django.forms.models import BaseInlineFormSet
+from .rutas import validar_etapas_ruta
 
 from .models import (
     LoteProduccion,
@@ -18,6 +21,8 @@ from .models import (
     Recepcion,
     TipoProceso,
     UnidadFrio,
+    RutaProceso,
+    EtapaRutaProceso,
 )
 
 
@@ -61,6 +66,7 @@ class DetalleRecepcionAdmin(admin.ModelAdmin):
 
 @admin.register(PartidaProceso)
 class PartidaProcesoAdmin(admin.ModelAdmin):
+    readonly_fields = ("ruta_proceso",)
     list_display = (
         "id",
         "detalle_recepcion",
@@ -82,9 +88,102 @@ class TipoProcesoAdmin(admin.ModelAdmin):
     search_fields = ("codigo", "nombre")
     list_filter = ("activo",)
 
+    def get_readonly_fields(self, request, obj=None):
+        if obj and (obj.codigo in {"PROCESAMIENTO", "DESCABEZADO", "FILETEO", "EMPARRILLADO"}
+                    or obj.etapas_ruta.exists() or obj.eventos.exists()):
+            return ("codigo", "nombre")
+        return ()
+
+
+class EtapasRutaFormSet(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        if any(self.errors):
+            return
+        if self.instance.pk and self.instance.partidas.exists():
+            if any(form.has_changed() for form in self.forms):
+                raise ValidationError("Las etapas de una ruta utilizada no pueden modificarse.")
+            return
+        etapas = [form.instance for form in self.forms
+                  if form.cleaned_data and not form.cleaned_data.get("DELETE", False)]
+        validar_etapas_ruta(sorted(etapas, key=lambda etapa: etapa.orden))
+
+
+class EtapaRutaProcesoInline(admin.TabularInline):
+    model = EtapaRutaProceso
+    formset = EtapasRutaFormSet
+    extra = 1
+    fields = ("orden", "tipo_proceso")
+
+    def get_readonly_fields(self, request, obj=None):
+        return self.fields if obj and obj.partidas.exists() else ()
+
+    def has_add_permission(self, request, obj=None):
+        return super().has_add_permission(request, obj) and not (obj and obj.partidas.exists())
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj) and not (obj and obj.partidas.exists())
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "tipo_proceso":
+            kwargs["queryset"] = TipoProceso.objects.filter(activo=True).exclude(codigo="PROCESAMIENTO")
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+@admin.register(RutaProceso)
+class RutaProcesoAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "especie", "predeterminada", "activo")
+    list_filter = ("especie", "activo", "predeterminada")
+    search_fields = ("nombre", "especie__nombre")
+    list_select_related = ("especie",)
+    inlines = (EtapaRutaProcesoInline,)
+
+    def get_object(self, request, object_id, from_field=None):
+        objeto = super().get_object(request, object_id, from_field)
+        # changeform_view ya abre una transacción para POST. Serializa la
+        # edición del catálogo con la primera asignación operativa de la ruta.
+        if objeto and request.method == "POST":
+            return RutaProceso.objects.select_for_update().get(pk=objeto.pk)
+        return objeto
+
+    def get_readonly_fields(self, request, obj=None):
+        return ("especie", "nombre", "descripcion") if obj and obj.partidas.exists() else ()
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj) and not (obj and obj.partidas.exists())
+
+
+@admin.register(EtapaRutaProceso)
+class EtapaRutaProcesoAdmin(admin.ModelAdmin):
+    list_display = ("ruta", "orden", "tipo_proceso")
+    list_filter = ("ruta__especie", "tipo_proceso")
+    list_select_related = ("ruta__especie", "tipo_proceso")
+    search_fields = ("ruta__nombre", "tipo_proceso__nombre")
+    actions = None
+
+    def get_object(self, request, object_id, from_field=None):
+        objeto = super().get_object(request, object_id, from_field)
+        if objeto and request.method == "POST":
+            RutaProceso.objects.select_for_update().get(pk=objeto.ruta_id)
+        return objeto
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj) and not (obj and obj.ruta.partidas.exists())
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj) and not (obj and obj.ruta.partidas.exists())
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "tipo_proceso":
+            kwargs["queryset"] = TipoProceso.objects.filter(activo=True).exclude(codigo="PROCESAMIENTO")
+        if db_field.name == "ruta":
+            kwargs["queryset"] = RutaProceso.objects.filter(partidas__isnull=True)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
 
 @admin.register(EventoProceso)
 class EventoProcesoAdmin(admin.ModelAdmin):
+    readonly_fields = ("etapa_ruta",)
     list_display = (
         "id",
         "partida",

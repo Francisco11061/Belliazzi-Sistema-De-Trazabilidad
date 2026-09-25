@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.forms import BaseFormSet, formset_factory
 from django.utils import timezone
 
-from .models import Correccion, Especie, UnidadFrio
+from .models import Correccion, Especie, UnidadFrio, RutaProceso
 from .selectors import SITUACIONES
 
 
@@ -216,7 +216,7 @@ class RecepcionCorreccionForm(RecepcionForm):
 
 
 class PartidaFiltroForm(forms.Form):
-    partida = forms.IntegerField(required=False, min_value=1, max_value=9223372036854775807, label="ID de partida")
+    partida = forms.IntegerField(required=False, min_value=1, max_value=9223372036854775807, label="ID de seguimiento")
     recepcion = forms.IntegerField(required=False, min_value=1, max_value=9223372036854775807, label="ID de recepción")
     especie = forms.ModelChoiceField(
         queryset=Especie.objects.all(), required=False, empty_label="Todas las especies", label="Especie",
@@ -241,7 +241,7 @@ class CantidadPartidaForm(forms.Form):
     def clean_cantidad_kg(self):
         cantidad = self.cleaned_data["cantidad_kg"]
         if cantidad > self.partida.cantidad_inicial_kg:
-            raise forms.ValidationError("La cantidad no puede superar la cantidad de la partida.")
+            raise forms.ValidationError("La cantidad no puede superar la cantidad de este seguimiento.")
         return cantidad
 
 
@@ -256,3 +256,44 @@ class EnviarMantencionForm(CantidadPartidaForm):
         unidades = list(self.fields["unidad"].queryset[:2])
         if len(unidades) == 1:
             self.fields["unidad"].initial = unidades[0].pk
+
+
+class SeleccionRutaMixin:
+    def configurar_rutas(self, partida):
+        rutas = RutaProceso.objects.filter(
+            activo=True, especie_id=partida.detalle_recepcion.especie_id,
+        ).select_related("especie")
+        self.fields["ruta"].queryset = rutas
+        opciones = list(rutas)
+        predeterminadas = [ruta for ruta in opciones if ruta.predeterminada]
+        if len(predeterminadas) == 1:
+            self.fields["ruta"].initial = predeterminadas[0].pk
+        elif not predeterminadas and len(opciones) == 1:
+            self.fields["ruta"].initial = opciones[0].pk
+        elif len(predeterminadas) > 1:
+            self.fields["ruta"].help_text = "Hay varias rutas predeterminadas. La configuración es ambigua; seleccione una ruta."
+        if not opciones:
+            self.fields["ruta"].help_text = "No hay rutas activas para esta especie. Solicite su configuración en Administración."
+
+
+class RutaPartidaForm(SeleccionRutaMixin, forms.Form):
+    ruta = forms.ModelChoiceField(queryset=RutaProceso.objects.none(), label="Ruta de procesamiento")
+
+    def __init__(self, *args, partida, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.configurar_rutas(partida)
+
+
+class IniciarProcesamientoForm(SeleccionRutaMixin, CantidadPartidaForm):
+    ruta = forms.ModelChoiceField(queryset=RutaProceso.objects.none(), label="Ruta de procesamiento")
+
+    def __init__(self, *args, partida, **kwargs):
+        super().__init__(*args, partida=partida, **kwargs)
+        self.configurar_rutas(partida)
+
+
+class TunelPartidaForm(forms.Form):
+    unidad = forms.ModelChoiceField(
+        queryset=UnidadFrio.objects.filter(activo=True, tipo=UnidadFrio.TipoUnidad.TUNEL_CONGELADO),
+        label="Unidad de congelado",
+    )

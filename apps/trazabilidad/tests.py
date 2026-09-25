@@ -953,9 +953,11 @@ class CorreccionRecepcionTests(TestCase):
         return datos
 
     def procesar(self):
-        from .services import iniciar_procesamiento
         partida = self.detalle.partidas.get()
-        iniciar_procesamiento(partida=partida, cantidad_kg=Decimal("493"), usuario=self.jefe)
+        EventoProceso.objects.create(
+            partida=partida, tipo_proceso=TipoProceso.objects.get(codigo="PROCESAMIENTO"),
+            fecha_hora_inicio=timezone.now(), iniciado_por=self.jefe,
+        )
         return partida
 
     def assert_sin_cambios(self):

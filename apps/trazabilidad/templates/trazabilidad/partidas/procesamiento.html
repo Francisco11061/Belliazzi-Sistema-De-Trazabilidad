@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Procesamiento de {{ partida.detalle_recepcion.especie.nombre }} | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Seguimiento de proceso / Procesamiento{% endblock %}
+{% block content %}
+<div class="w-full min-w-0 max-w-4xl space-y-6">
+    <header>
+        <a href="{% url 'trazabilidad:detalle_partida' partida.pk %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver al seguimiento</a>
+        <h1 class="mt-4 text-2xl font-semibold sm:text-3xl">Procesamiento de {{ partida.detalle_recepcion.especie.nombre }}</h1>
+        <p class="mt-2 text-sm text-slate-500">Seguimiento #{{ partida.pk }} · {{ partida.cantidad_inicial_kg|floatformat:2 }} kg</p>
+    </header>
+    <section aria-label="Resumen de procesamiento" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <dl class="grid gap-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <div><dt class="text-slate-500">Especie</dt><dd class="mt-1 font-medium">{{ partida.detalle_recepcion.especie.nombre }}</dd></div>
+            <div><dt class="text-slate-500">Cantidad</dt><dd class="mt-1 font-medium">{{ partida.cantidad_inicial_kg|floatformat:2 }} kg</dd></div>
+            <div><dt class="text-slate-500">Recepción de origen</dt><dd class="mt-1 font-medium">#{{ partida.detalle_recepcion.recepcion_id }}</dd></div>
+            <div><dt class="text-slate-500">Ruta seleccionada</dt><dd class="mt-1 font-medium">{{ partida.ruta_proceso.nombre|default:"Sin ruta asignada" }}</dd></div>
+            <div><dt class="text-slate-500">Situación</dt><dd class="mt-1 font-medium text-cyan-800">{{ partida.situacion_visible }}</dd></div>
+            <div><dt class="text-slate-500">Inicio del procesamiento</dt><dd class="mt-1 font-medium">{{ general.fecha_hora_inicio|date:"d/m/Y H:i"|default:"—" }}</dd></div>
+        </dl>
+    </section>
+    {% if puede_asignar_ruta %}
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 class="text-lg font-semibold">Seleccionar ruta</h2>
+        <p class="mt-2 text-sm leading-6 text-slate-500">El procesamiento comenzó antes de configurar las rutas. Selecciona la ruta que seguirá el producto antes de comenzar las etapas.</p>
+        <form method="post" class="mt-5 space-y-5 [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600">
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
+            {% for campo in form %}{% include "trazabilidad/recepciones/_campo.html" %}{% if campo.help_text %}<p class="text-sm text-slate-600">{{ campo.help_text }}</p>{% endif %}{% endfor %}
+            <button type="submit" class="w-full rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800 sm:w-auto">Asignar ruta</button>
+        </form>
+    </section>
+    {% elif not partida.ruta_proceso_id %}
+    <p class="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600">No hay una ruta asignada. La situación actual del seguimiento no permite asignarla desde esta pantalla.</p>
+    {% endif %}
+    {% if partida.ruta_proceso_id %}
+    <section aria-label="Ruta de procesamiento" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 class="text-lg font-semibold">Ruta de procesamiento</h2>
+        <ol class="mt-5 space-y-4">
+        {% for fila in etapas_proceso %}
+            <li class="min-w-0 rounded-xl border p-4 sm:p-5 {% if fila.estado == 'EN CURSO' %}border-cyan-200 bg-cyan-50{% else %}border-slate-200 bg-slate-50{% endif %}">
+                <div class="flex items-start gap-3">
+                    <span aria-hidden="true" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full {% if fila.estado == 'COMPLETADA' %}bg-cyan-700 text-white{% else %}border border-slate-300 bg-white text-cyan-700{% endif %}">{% if fila.estado == 'COMPLETADA' %}✓{% elif fila.estado == 'EN CURSO' %}●{% else %}○{% endif %}</span>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="font-semibold">{{ fila.etapa.orden }}. {{ fila.etapa.tipo_proceso.nombre }}</h3>
+                        <p class="mt-1 text-sm font-medium text-cyan-800">{{ fila.estado|capfirst }}</p>
+                        {% if fila.evento %}
+                        <p class="mt-3 text-sm leading-6 text-slate-600">Inicio: {{ fila.evento.fecha_hora_inicio|date:"d/m/Y H:i" }} · {{ fila.evento.iniciado_por.get_full_name|default:fila.evento.iniciado_por.username }}</p>
+                        {% if fila.evento.fecha_hora_termino %}<p class="text-sm leading-6 text-slate-600">Término: {{ fila.evento.fecha_hora_termino|date:"d/m/Y H:i" }} · {{ fila.evento.finalizado_por.get_full_name|default:fila.evento.finalizado_por.username }}</p>{% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                {% if fila.puede_iniciar %}
+                <form method="post" action="{% url 'trazabilidad:iniciar_etapa' partida.pk fila.etapa.pk %}" class="mt-4">{% csrf_token %}<button type="submit" class="w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-800 sm:w-auto">Iniciar etapa<span class="sr-only"> {{ fila.etapa.tipo_proceso.nombre }}</span></button></form>
+                {% elif fila.puede_finalizar %}
+                <form method="post" action="{% url 'trazabilidad:finalizar_etapa' partida.pk fila.etapa.pk %}" class="mt-4">{% csrf_token %}<button type="submit" class="w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-800 sm:w-auto">Finalizar etapa<span class="sr-only"> {{ fila.etapa.tipo_proceso.nombre }}</span></button></form>
+                {% endif %}
+            </li>
+        {% endfor %}
+        </ol>
+        {% if puede_enviar_tunel %}
+        <div class="mt-6 rounded-xl border border-cyan-100 bg-cyan-50 p-4">
+            <p class="text-sm leading-6 text-cyan-800">Procesamiento completado. El producto está listo para ingresar al túnel de congelado.</p>
+            <a href="{% url 'trazabilidad:enviar_partida_tunel' partida.pk %}" class="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-center text-sm font-semibold text-white hover:bg-cyan-800 sm:w-auto">Enviar a túnel de congelado</a>
+        </div>
+        {% endif %}
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

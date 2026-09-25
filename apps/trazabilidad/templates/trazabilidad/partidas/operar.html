@@ -1,27 +1,28 @@
 {% extends "base.html" %}
 {% block title %}{{ titulo }} | Pesquera Belliazzi{% endblock %}
-{% block page_title %}Partidas / {{ titulo }}{% endblock %}
+{% block page_title %}Seguimiento de proceso / {{ titulo }}{% endblock %}
 {% block content %}
 <div class="w-full min-w-0 max-w-2xl">
-    <a href="{% url 'trazabilidad:detalle_partida' partida.pk %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver a la partida</a>
+    <a href="{% url 'trazabilidad:detalle_partida' partida.pk %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver al seguimiento</a>
     <h1 class="mt-4 text-2xl font-semibold sm:text-3xl">{{ titulo }}</h1>
     <section class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <p class="font-semibold">Partida #{{ partida.pk }} · {{ partida.detalle_recepcion.especie.nombre }}</p>
+        <p class="font-semibold">{{ partida.detalle_recepcion.especie.nombre }}</p>
+        <p class="mt-2 text-sm text-slate-500">Seguimiento #{{ partida.pk }}</p>
         <p class="mt-2 text-sm text-slate-500">{{ partida.situacion_visible }}{% if partida.ubicacion %} · {{ partida.ubicacion }}{% endif %}</p>
         <p class="mt-4 text-lg font-medium">Cantidad {% if partida.situacion == 'DISPONIBLE' %}disponible{% else %}actual{% endif %}: {{ partida.cantidad_inicial_kg|floatformat:2 }} kg</p>
         {% if compatible %}
         <form method="post" class="mt-6 space-y-5 [&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600">
             {% csrf_token %}
             {% if form.non_field_errors %}<div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
-            {% for campo in form %}{% include "trazabilidad/recepciones/_campo.html" %}{% endfor %}
-            <p class="text-sm leading-6 text-slate-500">Si indicas una cantidad menor, el resto se conservará en una partida independiente con el mismo origen.</p>
+            {% for campo in form %}{% include "trazabilidad/recepciones/_campo.html" %}{% if campo.help_text %}<p class="text-sm text-slate-600">{{ campo.help_text }}</p>{% endif %}{% endfor %}
+            <p class="text-sm leading-6 text-slate-500">Si indicas una cantidad menor, el resto tendrá un seguimiento independiente y conservará el mismo origen.</p>
             <div class="flex flex-col gap-3 sm:flex-row">
                 <button type="submit" class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">{{ titulo }}</button>
                 <a href="{% url 'trazabilidad:detalle_partida' partida.pk %}" class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm text-slate-700 hover:bg-slate-50">Cancelar</a>
             </div>
         </form>
         {% else %}
-        <p role="alert" class="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">Esta operación no está disponible para la situación actual de la partida.</p>
+        <p role="alert" class="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">Esta operación no está disponible para la situación actual del seguimiento.</p>
         {% endif %}
     </section>
 </div>

@@ -11,12 +11,18 @@ from django.views.decorators.http import require_http_methods
 from apps.usuarios.permisos import jefe_o_encargada_requerido, jefe_requerido, personal_operativo_requerido
 
 from .forms import EspecieRecibidaFormSet, OrigenRecepcionForm, RecepcionFiltroForm, RecepcionForm
-from .models import Correccion, PartidaProceso, Recepcion
+from .models import Correccion, EtapaRutaProceso, PartidaProceso, Recepcion
 from .services import registrar_recepcion, corregir_recepcion as corregir_recepcion_service
 from .forms import EspecieCorreccionFormSet, MotivoCorreccionForm, RecepcionCorreccionForm
 from .forms import CantidadPartidaForm, EnviarMantencionForm, PartidaFiltroForm
 from .selectors import partidas_con_situacion, presentar_partida, recepcion_con_actividad
 from .services import enviar_a_mantencion, iniciar_procesamiento, retirar_de_mantencion
+from .forms import IniciarProcesamientoForm, RutaPartidaForm, TunelPartidaForm
+from .selectors import resumen_procesamiento
+from .services import (
+    asignar_ruta_proceso, enviar_a_tunel, finalizar_etapa_proceso,
+    iniciar_etapa_proceso, retirar_de_tunel,
+)
 
 
 @jefe_o_encargada_requerido
@@ -255,7 +261,7 @@ def detalle_partida(request, pk):
         "partida": partida,
         "hijas": partida.subpartidas.order_by("pk"),
         "estancias": partida.estancias_frio.select_related("unidad_frio", "ingresado_por", "retirado_por").order_by("fecha_hora_ingreso", "pk"),
-        "eventos": partida.eventos.select_related("tipo_proceso", "iniciado_por").order_by("fecha_hora_inicio", "pk"),
+        "eventos": partida.eventos.select_related("tipo_proceso", "iniciado_por", "finalizado_por").order_by("fecha_hora_inicio", "pk"),
     })
 
 
@@ -265,10 +271,10 @@ def operar_partida(request, pk, operacion):
     partida = presentar_partida(get_object_or_404(partidas_con_situacion(), pk=pk))
     opciones = {
         "mantencion": ("Enviar a cámara", "DISPONIBLE", EnviarMantencionForm, enviar_a_mantencion,
-                       "Partida enviada a cámara de mantención correctamente."),
+                       "Producto enviado a cámara de mantención correctamente."),
         "retirar": ("Retirar de cámara", "EN_MANTENCION", CantidadPartidaForm, retirar_de_mantencion,
-                    "Partida retirada de la cámara de mantención correctamente."),
-        "procesar": ("Iniciar procesamiento", "DISPONIBLE", CantidadPartidaForm, iniciar_procesamiento,
+                    "Producto retirado de la cámara de mantención correctamente."),
+        "procesar": ("Iniciar procesamiento", "DISPONIBLE", IniciarProcesamientoForm, iniciar_procesamiento,
                      "Procesamiento iniciado correctamente."),
     }
     titulo, situacion, clase, servicio, mensaje = opciones[operacion]
@@ -281,14 +287,85 @@ def operar_partida(request, pk, operacion):
             form.add_error(None, error.messages)
         else:
             if restante:
-                destino = "en cámara" if operacion == "retirar" else "disponibles"
                 cantidad = format(seleccionada.cantidad_inicial_kg, ".2f").replace(".", ",")
                 resto = format(restante.cantidad_inicial_kg, ".2f").replace(".", ",")
-                mensaje += (
-                    f" Cantidad: {cantidad} kg; quedaron {resto} kg {destino}."
-                )
+                mensaje = {
+                    "mantencion": f"Se enviaron {cantidad} kg a cámara de mantención y quedaron {resto} kg disponibles.",
+                    "retirar": f"Se retiraron {cantidad} kg de la cámara de mantención y quedaron {resto} kg en cámara.",
+                    "procesar": f"Se enviaron {cantidad} kg a procesamiento y quedaron {resto} kg disponibles.",
+                }[operacion]
             messages.success(request, mensaje)
             return redirect("trazabilidad:detalle_partida", pk=seleccionada.pk)
     return render(request, "trazabilidad/partidas/operar.html", {
         "partida": partida, "form": form, "titulo": titulo, "compatible": compatible,
     })
+
+
+@personal_operativo_requerido
+@require_http_methods(["GET", "POST"])
+def gestionar_procesamiento(request, pk):
+    partida = presentar_partida(get_object_or_404(partidas_con_situacion(), pk=pk))
+    resumen = resumen_procesamiento(partida)
+    form = RutaPartidaForm(request.POST if request.method == "POST" else None, partida=partida)
+    if request.method == "POST" and form.is_valid():
+        try:
+            asignar_ruta_proceso(partida=partida, ruta=form.cleaned_data["ruta"], usuario=request.user)
+        except ValidationError as error:
+            form.add_error(None, error.messages)
+        else:
+            messages.success(request, "Ruta de procesamiento asignada correctamente.")
+            return redirect("trazabilidad:gestionar_procesamiento", pk=pk)
+    return render(request, "trazabilidad/partidas/procesamiento.html", {
+        "partida": partida, "form": form, **resumen,
+    })
+
+
+@personal_operativo_requerido
+@require_http_methods(["POST"])
+def operar_etapa(request, pk, etapa_pk, accion):
+    partida = get_object_or_404(PartidaProceso, pk=pk)
+    etapa = get_object_or_404(EtapaRutaProceso, pk=etapa_pk)
+    servicio = iniciar_etapa_proceso if accion == "iniciar" else finalizar_etapa_proceso
+    try:
+        servicio(partida=partida, etapa=etapa, usuario=request.user)
+    except ValidationError as error:
+        messages.error(request, " ".join(error.messages))
+    else:
+        actual = presentar_partida(partidas_con_situacion().get(pk=pk))
+        if accion == "finalizar" and resumen_procesamiento(actual)["ruta_completa"]:
+            messages.success(request, "Procesamiento completado. El producto está listo para ingresar al túnel de congelado.")
+        else:
+            messages.success(request, "Etapa iniciada correctamente." if accion == "iniciar" else "Etapa finalizada correctamente.")
+    return redirect("trazabilidad:gestionar_procesamiento", pk=pk)
+
+
+@personal_operativo_requerido
+@require_http_methods(["GET", "POST"])
+def enviar_partida_tunel(request, pk):
+    partida = presentar_partida(get_object_or_404(partidas_con_situacion(), pk=pk))
+    form = TunelPartidaForm(request.POST if request.method == "POST" else None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            enviar_a_tunel(partida=partida, unidad=form.cleaned_data["unidad"], usuario=request.user)
+        except ValidationError as error:
+            form.add_error(None, error.messages)
+        else:
+            messages.success(request, "Producto enviado al túnel de congelado correctamente.")
+            return redirect("trazabilidad:detalle_partida", pk=pk)
+    return render(request, "trazabilidad/partidas/tunel.html", {
+        "partida": partida, "form": form,
+        "compatible": resumen_procesamiento(partida)["puede_enviar_tunel"],
+    })
+
+
+@personal_operativo_requerido
+@require_http_methods(["POST"])
+def retirar_partida_tunel(request, pk):
+    partida = get_object_or_404(PartidaProceso, pk=pk)
+    try:
+        retirar_de_tunel(partida=partida, usuario=request.user)
+    except ValidationError as error:
+        messages.error(request, " ".join(error.messages))
+    else:
+        messages.success(request, "Producto retirado del túnel. Listo para empaque.")
+    return redirect("trazabilidad:detalle_partida", pk=pk)

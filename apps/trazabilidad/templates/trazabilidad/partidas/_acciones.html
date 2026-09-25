@@ -5,6 +5,14 @@
 {% elif partida.situacion == 'EN_MANTENCION' %}
     <a href="{% url 'trazabilidad:retirar_partida_mantencion' partida.pk %}" class="inline-flex items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-cyan-600">Retirar de cámara</a>
 {% elif partida.situacion == 'EN_PROCESO' %}
-    <p class="rounded-lg border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm text-cyan-800">Esta partida ya ingresó a procesamiento.</p>
+    <p class="rounded-lg border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm text-cyan-800">El producto ya ingresó a procesamiento.</p>
+    <a href="{% url 'trazabilidad:gestionar_procesamiento' partida.pk %}" class="inline-flex items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Gestionar procesamiento</a>
+{% elif partida.situacion == 'EN_CONGELACION' %}
+    <p class="text-sm text-slate-600">{{ partida.ubicacion }} · Desde: {{ partida.ingreso_actual|date:"d/m/Y H:i" }}</p>
+    <form method="post" action="{% url 'trazabilidad:retirar_partida_tunel' partida.pk %}">
+        {% csrf_token %}<button type="submit" class="w-full rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Retirar del túnel</button>
+    </form>
+{% elif partida.situacion == 'LISTA_PARA_EMPAQUE' %}
+    <p class="rounded-lg border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm text-cyan-800">Procesamiento y congelación completados.</p>
 {% endif %}
 </div>

@@ -15,13 +15,21 @@ from .forms import EnviarMantencionForm
 from .models import (
     ConsumoLote, Correccion, DetalleRecepcion, Especie, EstanciaPartida,
     EventoProceso, LoteProduccion, MermaProceso, OrigenSernapesca,
-    PartidaProceso, Pesaje, Recepcion, TipoProceso, UnidadFrio,
+    PartidaProceso, Pesaje, Recepcion, TipoProceso, UnidadFrio, RutaProceso, EtapaRutaProceso,
 )
 from .selectors import partidas_con_situacion, recepcion_con_actividad
 from .services import (
     _dividir_partida, corregir_recepcion, enviar_a_mantencion,
     iniciar_procesamiento, registrar_recepcion, retirar_de_mantencion,
 )
+
+
+def crear_ruta_prueba(especie):
+    TipoProceso.objects.get_or_create(codigo="PROCESAMIENTO", defaults={"nombre": "Procesamiento"})
+    tipo, _ = TipoProceso.objects.get_or_create(codigo="EMPARRILLADO", defaults={"nombre": "Emparrillado"})
+    ruta = RutaProceso.objects.create(especie=especie, nombre="Ruta de prueba")
+    EtapaRutaProceso.objects.create(ruta=ruta, tipo_proceso=tipo, orden=1)
+    return ruta
 
 
 class PartidasTests(TestCase):
@@ -36,6 +44,7 @@ class PartidasTests(TestCase):
         )
         cls.merluza = Especie.objects.create(nombre="Merluza Austral partidas")
         cls.congrio = Especie.objects.create(nombre="Congrio partidas")
+        cls.rutas = {especie.pk: crear_ruta_prueba(especie) for especie in (cls.merluza, cls.congrio)}
         cls.camara = UnidadFrio.objects.create(nombre="Cámara mantención", tipo="MANTENCION")
 
     def setUp(self):
@@ -59,7 +68,9 @@ class PartidasTests(TestCase):
         return retirar_de_mantencion(partida=partida or self.partida, cantidad_kg=Decimal(cantidad), usuario=self.operaria)
 
     def procesar(self, cantidad="500", partida=None):
-        return iniciar_procesamiento(partida=partida or self.partida, cantidad_kg=Decimal(cantidad), usuario=self.operaria)
+        partida = partida or self.partida
+        return iniciar_procesamiento(partida=partida, cantidad_kg=Decimal(cantidad),
+                                     ruta=self.rutas[partida.detalle_recepcion.especie_id], usuario=self.operaria)
 
     def situacion(self, partida):
         return partidas_con_situacion().get(pk=partida.pk).situacion
@@ -112,7 +123,7 @@ class PartidasTests(TestCase):
             self.client.get(reverse("trazabilidad:detalle_recepcion", args=[self.recepcion.pk]))
             self.client.get(reverse("trazabilidad:detalle_partida", args=[self.partida.pk]))
         self.assertEqual(PartidaProceso.objects.count(), 1)
-        self.assertFalse(TipoProceso.objects.filter(codigo="PROCESAMIENTO").exists())
+        self.assertEqual(TipoProceso.objects.filter(codigo="PROCESAMIENTO").count(), 1)
 
     def test_cantidad_total_no_divide(self):
         seleccionada, restante = _dividir_partida(partida=self.partida, cantidad_seleccionada=Decimal("500"), usuario=self.jefe)
@@ -248,12 +259,14 @@ class PartidasTests(TestCase):
     def test_evento_cerrado_no_vuelve_disponible_silenciosamente(self):
         self.procesar()
         EventoProceso.objects.update(fecha_hora_termino=timezone.now())
-        self.assertEqual(self.situacion(self.partida), "EN_PROCESO")
+        self.assertEqual(self.situacion(self.partida), "NO_OPERABLE")
         with self.assertRaises(ValidationError):
             self.procesar()
 
     def test_catalogo_se_reutiliza_y_respeta_inactivo(self):
-        tipo = TipoProceso.objects.create(codigo="PROCESAMIENTO", nombre="Procesamiento", activo=False)
+        tipo = TipoProceso.objects.get(codigo="PROCESAMIENTO")
+        tipo.activo = False
+        tipo.save()
         with self.assertRaises(ValidationError):
             self.procesar("300")
         self.assertEqual(PartidaProceso.objects.count(), 1)
@@ -276,13 +289,13 @@ class PartidasTests(TestCase):
         self.assertIsNone(EstanciaPartida.objects.get().fecha_hora_salida)
         self.assertEqual(PartidaProceso.objects.count(), 1)
 
-    def test_rollback_proceso_fallido_revierte_division_y_catalogo(self):
+    def test_rollback_proceso_fallido_revierte_division_y_conserva_catalogo(self):
         with patch.object(EventoProceso, "save", side_effect=RuntimeError), self.assertRaises(RuntimeError):
             self.procesar("300")
         self.partida.refresh_from_db()
         self.assertEqual(self.partida.estado, "ACTIVA")
         self.assertEqual(PartidaProceso.objects.count(), 1)
-        self.assertFalse(TipoProceso.objects.filter(codigo="PROCESAMIENTO").exists())
+        self.assertEqual(TipoProceso.objects.filter(codigo="PROCESAMIENTO").count(), 1)
 
     def test_instancia_obsoleta_no_puede_reutilizar_padre(self):
         self.enviar("300")
@@ -369,7 +382,7 @@ class PartidasTests(TestCase):
                 self.assertEqual(self.client.post(reverse("trazabilidad:retirar_partida_mantencion", args=[partida.pk]),
                                                  {"cantidad_kg": "500"}).status_code, 302)
                 self.assertEqual(self.client.post(reverse("trazabilidad:procesar_partida", args=[partida.pk]),
-                                                 {"cantidad_kg": "500"}).status_code, 302)
+                                                 {"cantidad_kg": "500", "ruta": self.rutas[self.merluza.pk].pk}).status_code, 302)
 
     def test_anonimo_y_sin_rol_no_acceden(self):
         urls = [reverse("trazabilidad:lista_partidas")] + [reverse(f"trazabilidad:{nombre}", args=[self.partida.pk])
@@ -381,7 +394,7 @@ class PartidasTests(TestCase):
             self.assertEqual(self.client.get(url).status_code, 403)
             self.assertEqual(self.client.post(url, {"cantidad_kg": "500"}).status_code, 403)
         with self.assertRaises(PermissionDenied):
-            iniciar_procesamiento(partida=self.partida, cantidad_kg=Decimal("500"), usuario=self.sin_rol)
+            iniciar_procesamiento(partida=self.partida, cantidad_kg=Decimal("500"), ruta=self.rutas[self.merluza.pk], usuario=self.sin_rol)
 
     def test_acciones_segun_situacion_y_post_manipulado(self):
         self.client.force_login(self.operaria)
@@ -438,7 +451,7 @@ class PartidasTests(TestCase):
         self.assertContains(respuesta, "Dividida")
         self.assertNotContains(respuesta, "Enviar a proceso")
         respuesta = self.client.get(reverse("trazabilidad:detalle_partida", args=[seleccionada.pk]))
-        self.assertContains(respuesta, "Proviene de")
+        self.assertContains(respuesta, "Proviene del")
         self.assertContains(respuesta, "FOLIO-PARTIDAS")
 
     def test_flujo_completo_dos_especies(self):
@@ -472,6 +485,7 @@ class ConcurrenciaPartidasTests(TransactionTestCase):
         )
         self.partida = PartidaProceso.objects.get(detalle_recepcion__recepcion=recepcion)
         self.camara = UnidadFrio.objects.create(nombre="Cámara concurrencia", tipo="MANTENCION")
+        self.ruta = crear_ruta_prueba(especie)
 
     def competir(self, operaciones):
         barrera = Barrier(2)
@@ -488,7 +502,7 @@ class ConcurrenciaPartidasTests(TransactionTestCase):
                     if operacion == "camara":
                         enviar_a_mantencion(partida=partida, cantidad_kg=Decimal("300"), unidad=unidad, usuario=usuario)
                     else:
-                        iniciar_procesamiento(partida=partida, cantidad_kg=Decimal("300"), usuario=usuario)
+                        iniciar_procesamiento(partida=partida, cantidad_kg=Decimal("300"), ruta=self.ruta, usuario=usuario)
                 except ValidationError:
                     return "rechazada"
                 return "aceptada"

@@ -8,8 +8,9 @@ from django.utils import timezone
 from apps.usuarios.permisos import ROL_ENCARGADA, ROL_JEFE, ROL_OPERARIA, tiene_rol
 
 from .models import Correccion, DetalleRecepcion, Especie, OrigenSernapesca, PartidaProceso, Recepcion
-from .models import EstanciaPartida, EventoProceso, TipoProceso, UnidadFrio
+from .models import EstanciaPartida, EventoProceso, TipoProceso, UnidadFrio, RutaProceso
 from .selectors import recepcion_con_actividad
+from .rutas import validar_etapas_ruta
 
 
 def _normalizar_texto(valor, campo):
@@ -249,7 +250,7 @@ def _bloquear_partida(partida, usuario):
     DetalleRecepcion.objects.select_for_update().get(pk=detalle_id)
     actual = PartidaProceso.objects.select_for_update().get(pk=partida.pk)
     if actual.estado != PartidaProceso.Estado.ACTIVA or actual.subpartidas.exists():
-        raise ValidationError("Solo se puede operar una partida activa sin divisiones.")
+        raise ValidationError("Solo se puede operar un seguimiento activo sin divisiones.")
     return actual
 
 
@@ -259,12 +260,12 @@ def _validar_cantidad(partida, cantidad):
     if cantidad.as_tuple().exponent < -2:
         raise ValidationError("La cantidad admite como máximo dos decimales.")
     if cantidad <= 0 or cantidad > partida.cantidad_inicial_kg:
-        raise ValidationError("La cantidad debe ser mayor que cero y no superar la cantidad de la partida.")
+        raise ValidationError("La cantidad debe ser mayor que cero y no superar la cantidad de este seguimiento.")
 
 
 def _comprobar_disponible(partida):
-    if partida.estancias_frio.filter(fecha_hora_salida__isnull=True).exists() or partida.eventos.exists():
-        raise ValidationError("La partida no está disponible: está en cámara o ya inició procesamiento.")
+    if partida.ruta_proceso_id or partida.estancias_frio.filter(fecha_hora_salida__isnull=True).exists() or partida.eventos.exists():
+        raise ValidationError("El producto no está disponible: está en cámara o ya inició procesamiento.")
 
 
 @transaction.atomic
@@ -307,9 +308,9 @@ def retirar_de_mantencion(*, partida, cantidad_kg, usuario):
     _validar_cantidad(partida, cantidad_kg)
     abiertas = list(partida.estancias_frio.select_for_update().filter(fecha_hora_salida__isnull=True))
     if len(abiertas) != 1 or abiertas[0].unidad_frio.tipo != UnidadFrio.TipoUnidad.MANTENCION:
-        raise ValidationError("La partida debe tener exactamente una estancia abierta en mantención.")
+        raise ValidationError("El seguimiento debe tener exactamente una estancia abierta en mantención.")
     if partida.eventos.exists():
-        raise ValidationError("La partida ya inició procesamiento.")
+        raise ValidationError("El producto ya inició procesamiento.")
     estancia = abiertas[0]
     ahora = timezone.now()
     estancia.fecha_hora_salida = ahora
@@ -327,22 +328,138 @@ def retirar_de_mantencion(*, partida, cantidad_kg, usuario):
 
 
 @transaction.atomic
-def iniciar_procesamiento(*, partida, cantidad_kg, usuario):
+def iniciar_procesamiento(*, partida, cantidad_kg, ruta, usuario):
     partida = _bloquear_partida(partida, usuario)
     _validar_cantidad(partida, cantidad_kg)
     _comprobar_disponible(partida)
-    # Catálogo reproducible creado sólo en esta operación explícita, nunca en GET.
-    tipo, _ = TipoProceso.objects.get_or_create(
-        codigo="PROCESAMIENTO", defaults={"nombre": "Procesamiento"},
-    )
-    tipo = TipoProceso.objects.select_for_update().get(pk=tipo.pk)
-    if not tipo.activo:
+    ruta, _ = _validar_ruta(partida, ruta, nueva=True)
+    tipo = TipoProceso.objects.select_for_update().filter(codigo="PROCESAMIENTO").first()
+    if tipo is None or not tipo.activo:
         raise ValidationError("El tipo de procesamiento general está inactivo.")
     seleccionada, restante = _dividir_partida(
         partida=partida, cantidad_seleccionada=cantidad_kg, usuario=usuario,
     )
+    seleccionada.ruta_proceso = ruta
+    seleccionada.save(update_fields=["ruta_proceso"])
     EventoProceso.objects.create(
         partida=seleccionada, tipo_proceso=tipo,
         fecha_hora_inicio=timezone.now(), iniciado_por=usuario,
     )
     return seleccionada, restante
+
+
+def _validar_ruta(partida, ruta, *, nueva):
+    ruta = RutaProceso.objects.select_for_update().filter(pk=getattr(ruta, "pk", None)).first()
+    if ruta is None:
+        raise ValidationError("Seleccione una ruta de procesamiento.")
+    if ruta.especie_id != partida.detalle_recepcion.especie_id:
+        raise ValidationError("La ruta debe corresponder a la especie de este seguimiento.")
+    if nueva and not ruta.activo:
+        raise ValidationError("La ruta seleccionada está inactiva.")
+    etapas = list(ruta.etapas.select_for_update().select_related("tipo_proceso").order_by("orden"))
+    validar_etapas_ruta(etapas, exigir_activos=nueva)
+    return ruta, etapas
+
+
+def _evento_general_abierto(partida):
+    if partida.estancias_frio.filter(fecha_hora_salida__isnull=True).exists():
+        raise ValidationError("El producto está en una unidad de frío, no en procesamiento.")
+    generales = list(partida.eventos.select_for_update().filter(
+        tipo_proceso__codigo="PROCESAMIENTO", etapa_ruta__isnull=True,
+        fecha_hora_termino__isnull=True,
+    ))
+    if len(generales) != 1:
+        raise ValidationError("El seguimiento debe tener exactamente un procesamiento general abierto.")
+    return generales[0]
+
+
+def _contexto_etapas(partida):
+    ruta, etapas = _validar_ruta(partida, partida.ruta_proceso, nueva=False)
+    general = _evento_general_abierto(partida)
+    eventos = list(partida.eventos.select_for_update().exclude(pk=general.pk))
+    por_etapa = {}
+    tipos = {etapa.pk: etapa.tipo_proceso_id for etapa in etapas}
+    for evento in eventos:
+        if (evento.etapa_ruta_id not in tipos or evento.etapa_ruta_id in por_etapa
+                or evento.tipo_proceso_id != tipos[evento.etapa_ruta_id]):
+            raise ValidationError("El historial de etapas es inconsistente y requiere revisión.")
+        por_etapa[evento.etapa_ruta_id] = evento
+    return general, etapas, por_etapa
+
+
+@transaction.atomic
+def asignar_ruta_proceso(*, partida, ruta, usuario):
+    partida = _bloquear_partida(partida, usuario)
+    ruta, _ = _validar_ruta(partida, ruta, nueva=True)
+    _evento_general_abierto(partida)
+    if partida.ruta_proceso_id or partida.eventos.filter(etapa_ruta__isnull=False).exists():
+        raise ValidationError("No se puede cambiar una ruta ya asignada o con etapas iniciadas.")
+    if partida.eventos.exclude(tipo_proceso__codigo="PROCESAMIENTO").exists():
+        raise ValidationError("Los eventos históricos específicos requieren revisión antes de asignar una ruta.")
+    partida.ruta_proceso = ruta
+    partida.save(update_fields=["ruta_proceso"])
+    return partida
+
+
+@transaction.atomic
+def iniciar_etapa_proceso(*, partida, etapa, usuario):
+    partida = _bloquear_partida(partida, usuario)
+    _, etapas, eventos = _contexto_etapas(partida)
+    actual = next((e for e in etapas if e.pk == etapa.pk), None)
+    if actual is None:
+        raise ValidationError("La etapa no pertenece a la ruta de este seguimiento.")
+    if actual.pk in eventos:
+        raise ValidationError("La etapa ya fue iniciada.")
+    if any(e.fecha_hora_termino is None for e in eventos.values()):
+        raise ValidationError("Debe finalizar la etapa en curso antes de iniciar otra.")
+    if any(e.pk not in eventos or eventos[e.pk].fecha_hora_termino is None
+           for e in etapas if e.orden < actual.orden):
+        raise ValidationError("Debe completar todas las etapas anteriores; no se pueden saltar etapas.")
+    return EventoProceso.objects.create(
+        partida=partida, etapa_ruta=actual, tipo_proceso=actual.tipo_proceso,
+        fecha_hora_inicio=timezone.now(), iniciado_por=usuario,
+    )
+
+
+@transaction.atomic
+def finalizar_etapa_proceso(*, partida, etapa, usuario):
+    partida = _bloquear_partida(partida, usuario)
+    _, _, eventos = _contexto_etapas(partida)
+    evento = eventos.get(etapa.pk)
+    if evento is None or evento.fecha_hora_termino is not None:
+        raise ValidationError("No existe una etapa abierta para finalizar.")
+    evento.fecha_hora_termino = timezone.now()
+    evento.finalizado_por = usuario
+    evento.save(update_fields=["fecha_hora_termino", "finalizado_por"])
+    return evento
+
+
+@transaction.atomic
+def enviar_a_tunel(*, partida, unidad, usuario):
+    partida = _bloquear_partida(partida, usuario)
+    general, etapas, eventos = _contexto_etapas(partida)
+    if any(e.pk not in eventos or eventos[e.pk].fecha_hora_termino is None for e in etapas):
+        raise ValidationError("Complete todas las etapas, incluido Emparrillado, antes de enviar al túnel.")
+    unidad = UnidadFrio.objects.select_for_update().filter(pk=unidad.pk).first()
+    if unidad is None or not unidad.activo or unidad.tipo != UnidadFrio.TipoUnidad.TUNEL_CONGELADO:
+        raise ValidationError("Seleccione un túnel de congelado activo.")
+    ahora = timezone.now()
+    general.fecha_hora_termino = ahora
+    general.finalizado_por = usuario
+    general.save(update_fields=["fecha_hora_termino", "finalizado_por"])
+    return EstanciaPartida.objects.create(
+        partida=partida, unidad_frio=unidad, fecha_hora_ingreso=ahora, ingresado_por=usuario,
+    )
+
+
+@transaction.atomic
+def retirar_de_tunel(*, partida, usuario):
+    partida = _bloquear_partida(partida, usuario)
+    abiertas = list(partida.estancias_frio.select_for_update().filter(fecha_hora_salida__isnull=True))
+    if len(abiertas) != 1 or abiertas[0].unidad_frio.tipo != UnidadFrio.TipoUnidad.TUNEL_CONGELADO:
+        raise ValidationError("El seguimiento debe tener exactamente una estancia abierta en túnel de congelado.")
+    estancia = abiertas[0]
+    estancia.fecha_hora_salida = timezone.now()
+    estancia.retirado_por = usuario
+    estancia.save(update_fields=["fecha_hora_salida", "retirado_por"])
+    return estancia

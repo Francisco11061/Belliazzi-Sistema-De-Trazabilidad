@@ -1,8 +1,9 @@
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
-from django.db import models
+from django.db import models, transaction
 
 
 class Especie(models.Model):
@@ -86,6 +87,10 @@ class PartidaProceso(models.Model):
         on_delete=models.PROTECT,
         related_name="partidas",
     )
+    ruta_proceso = models.ForeignKey(
+        "RutaProceso", null=True, blank=True, on_delete=models.PROTECT,
+        related_name="partidas",
+    )
     partida_padre = models.ForeignKey(
         "self",
         on_delete=models.PROTECT,
@@ -127,6 +132,10 @@ class TipoProceso(models.Model):
 
 
 class EventoProceso(models.Model):
+    etapa_ruta = models.ForeignKey(
+        "EtapaRutaProceso", null=True, blank=True, on_delete=models.PROTECT,
+        related_name="eventos",
+    )
     partida = models.ForeignKey(
         PartidaProceso,
         on_delete=models.PROTECT,
@@ -167,6 +176,77 @@ class EventoProceso(models.Model):
 
     def __str__(self):
         return f"{self.tipo_proceso} - Partida {self.partida_id}"
+
+
+class RutaProceso(models.Model):
+    especie = models.ForeignKey(Especie, on_delete=models.PROTECT, related_name="rutas_proceso")
+    nombre = models.CharField(max_length=120)
+    descripcion = models.TextField(blank=True)
+    predeterminada = models.BooleanField(default=False)
+    activo = models.BooleanField(default=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["especie__nombre", "nombre"]
+        constraints = [models.UniqueConstraint(fields=["especie", "nombre"], name="ruta_nombre_unico_por_especie")]
+
+    def __str__(self):
+        return f"{self.especie} / {self.nombre}"
+
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        if self.pk:
+            original = RutaProceso.objects.select_for_update().get(pk=self.pk)
+            if original.partidas.exists() and any(
+                getattr(original, campo) != getattr(self, campo)
+                for campo in ("especie_id", "nombre", "descripcion")
+            ):
+                raise ValidationError("Una ruta utilizada conserva su especie, nombre y descripción. Cree otra ruta.")
+        super().save(*args, **kwargs)
+
+
+class EtapaRutaProceso(models.Model):
+    ruta = models.ForeignKey(RutaProceso, on_delete=models.CASCADE, related_name="etapas")
+    tipo_proceso = models.ForeignKey(TipoProceso, on_delete=models.PROTECT, related_name="etapas_ruta")
+    orden = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
+
+    class Meta:
+        ordering = ["ruta_id", "orden"]
+        constraints = [
+            models.UniqueConstraint(fields=["ruta", "orden"], name="etapa_orden_unico_por_ruta"),
+            models.CheckConstraint(condition=models.Q(orden__gt=0), name="etapa_orden_positivo"),
+        ]
+
+    def __str__(self):
+        return f"{self.orden}. {self.tipo_proceso}"
+
+    def clean(self):
+        super().clean()
+        if self.tipo_proceso_id:
+            tipo = self.tipo_proceso
+            if tipo.codigo == "PROCESAMIENTO":
+                raise ValidationError({"tipo_proceso": "Procesamiento es el evento general, no una etapa."})
+            if not tipo.activo and not (self.pk and self.ruta.partidas.exists()):
+                raise ValidationError({"tipo_proceso": "Seleccione un tipo de proceso activo."})
+
+    def _bloquear_rutas_editables(self):
+        ids = {self.ruta_id}
+        if self.pk:
+            ids.update(EtapaRutaProceso.objects.filter(pk=self.pk).values_list("ruta_id", flat=True))
+        for ruta in RutaProceso.objects.select_for_update().filter(pk__in=ids).order_by("pk"):
+            if ruta.partidas.exists():
+                raise ValidationError("No se pueden agregar, modificar ni borrar etapas de una ruta utilizada.")
+
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        self._bloquear_rutas_editables()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @transaction.atomic
+    def delete(self, *args, **kwargs):
+        self._bloquear_rutas_editables()
+        return super().delete(*args, **kwargs)
 
 
 class UnidadFrio(models.Model):
