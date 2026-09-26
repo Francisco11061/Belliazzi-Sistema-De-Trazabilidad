@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}Lote {{ lote.codigo_lote }} | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Producto terminado / Detalle del lote{% endblock %}
+{% block content %}{% language "es" %}
+<div class="w-full min-w-0 max-w-5xl space-y-6">
+    <header><a href="{% url 'producto_terminado:lista_lotes' %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver a lotes de producción</a><h1 class="mt-4 text-2xl font-semibold sm:text-3xl">Lote {{ lote.codigo_lote }}</h1><p class="mt-2 text-lg font-medium">{{ lote.especie.nombre }}</p><p class="mt-1 text-sm text-slate-500">{{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p></header>
+    <section class="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 sm:p-6">
+        <dl class="grid gap-5 sm:grid-cols-2">
+            <div><dt class="text-sm text-slate-500">Total asignado</dt><dd class="mt-1 text-2xl font-semibold text-cyan-800">{{ lote.total_asignado|floatformat:2 }} kg</dd></div>
+            <div><dt class="text-sm text-slate-500">Fuentes</dt><dd class="mt-1 text-lg font-semibold">{{ lote.numero_fuentes }} seguimiento{{ lote.numero_fuentes|pluralize:"s" }}</dd></div>
+        </dl>
+        {% if lote.ruta_proceso_id %}<a href="{% url 'producto_terminado:agregar_producto_lote' lote.pk %}" class="mt-5 inline-flex rounded-lg bg-cyan-700 px-5 py-3 text-center text-sm font-semibold text-white hover:bg-cyan-800">Agregar producto</a>
+        {% else %}<p class="mt-5 text-sm text-slate-600">Lote histórico sin ruta documentada. Se conserva para consulta; requiere revisión antes de recibir nuevos aportes.</p>{% endif %}
+    </section>
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 class="text-lg font-semibold">Datos del lote</h2>
+        <dl class="mt-5 grid gap-5 text-sm sm:grid-cols-2">
+            <div><dt class="text-slate-500">Fecha de elaboración</dt><dd class="mt-1 font-medium">{{ lote.fecha_elaboracion|date:"d/m/Y" }}</dd></div>
+            <div><dt class="text-slate-500">Fecha de vencimiento</dt><dd class="mt-1 font-medium">{{ lote.fecha_vencimiento|date:"d/m/Y"|default:"No informada" }}</dd></div>
+            <div><dt class="text-slate-500">Registrado por</dt><dd class="mt-1 font-medium">{{ lote.registrado_por.get_full_name|default:lote.registrado_por.username }}</dd></div>
+            <div><dt class="text-slate-500">Registro</dt><dd class="mt-1 font-medium">{{ lote.creado_en|date:"d/m/Y H:i" }}</dd></div>
+        </dl>
+        <h3 class="mt-5 text-sm text-slate-500">Observaciones</h3><div class="mt-2 text-sm leading-6">{{ lote.observaciones|default:"Sin observaciones."|linebreaksbr }}</div>
+    </section>
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 class="text-lg font-semibold">Origen del producto</h2>
+        <ul class="mt-5 space-y-4">
+            {% for consumo in consumos %}
+            <li class="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
+                <div><h3 class="font-semibold">Seguimiento #{{ consumo.partida_id }}</h3><p class="mt-2">{{ consumo.partida.detalle_recepcion.especie.nombre }} · <strong>{{ consumo.cantidad_kg_utilizada|floatformat:2 }} kg</strong></p><p class="mt-1 text-slate-500">Recepción #{{ consumo.partida.detalle_recepcion.recepcion_id }}</p></div>
+                <a class="rounded-lg border border-cyan-700 px-4 py-3 text-center font-medium text-cyan-700 hover:bg-cyan-50" href="{% url 'trazabilidad:detalle_partida' consumo.partida_id %}">Ver seguimiento</a>
+            </li>
+            {% empty %}<li class="text-sm text-slate-500">Este lote histórico no tiene aportes registrados.</li>{% endfor %}
+        </ul>
+    </section>
+</div>
+{% endlanguage %}{% endblock %}

@@ -270,10 +270,12 @@ class MermaProcesoAdmin(RegistroHistoricoAdmin):
 
 
 @admin.register(LoteProduccion)
-class LoteProduccionAdmin(admin.ModelAdmin):
+class LoteProduccionAdmin(RegistroHistoricoAdmin):
+    list_select_related = ("especie", "ruta_proceso", "registrado_por")
     list_display = (
         "codigo_lote",
         "especie",
+        "ruta_proceso",
         "fecha_elaboracion",
         "fecha_vencimiento",
         "registrado_por",
@@ -289,7 +291,8 @@ class LoteProduccionAdmin(admin.ModelAdmin):
 
 
 @admin.register(ConsumoLote)
-class ConsumoLoteAdmin(admin.ModelAdmin):
+class ConsumoLoteAdmin(RegistroHistoricoAdmin):
+    list_select_related = ("partida__detalle_recepcion__especie", "lote_produccion")
     list_display = (
         "id",
         "partida",

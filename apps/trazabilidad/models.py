@@ -384,6 +384,11 @@ class MermaProceso(models.Model):
 
 class LoteProduccion(models.Model):
     codigo_lote = models.CharField(max_length=80, unique=True)
+    # Los lotes anteriores a este flujo pueden no tener una ruta documentada.
+    ruta_proceso = models.ForeignKey(
+        RutaProceso, null=True, blank=True, on_delete=models.PROTECT,
+        related_name="lotes_produccion",
+    )
     especie = models.ForeignKey(
         Especie,
         on_delete=models.PROTECT,
@@ -431,6 +436,11 @@ class ConsumoLote(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0.01"))],
     )
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=["partida", "lote_produccion"], name="consumo_unico_partida_lote",
+        )]
 
     def __str__(self):
         return f"Partida {self.partida_id} -> {self.lote_produccion}"

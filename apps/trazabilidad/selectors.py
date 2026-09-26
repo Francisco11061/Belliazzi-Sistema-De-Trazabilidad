@@ -1,11 +1,12 @@
 """Lecturas compartidas de situación y uso de las partidas, sin escribir datos."""
 from decimal import Decimal, ROUND_HALF_UP
 
-from django.db.models import Case, CharField, Count, Exists, OuterRef, Subquery, Value, When
+from django.db.models import Case, CharField, Count, DecimalField, Exists, F, OuterRef, Subquery, Sum, Value, When
+from django.db.models.functions import Coalesce
 
 from .models import (
     ConsumoLote, EstanciaPartida, EventoProceso, MermaProceso,
-    PartidaProceso, Pesaje, UnidadFrio,
+    PartidaProceso, Pesaje, UnidadFrio, LoteProduccion,
 )
 
 SITUACIONES = (
@@ -61,7 +62,7 @@ def partidas_con_situacion():
         When(en_congelacion=True, then=Value("EN_CONGELACION")),
         When(tiene_estancia=True, then=Value("NO_OPERABLE")),
         When(proceso_abierto=True, then=Value("EN_PROCESO")),
-        When(proceso_completado=True, tunel_completado=True, tiene_consumos=False, tiene_postproceso=True,
+        When(proceso_completado=True, tunel_completado=True, tiene_postproceso=True,
              then=Value("LISTA_PARA_EMPAQUE")),
         When(proceso_completado=True, tunel_completado=True, tiene_consumos=False, tiene_postproceso=False,
              then=Value("PENDIENTE_PESAJE")),
@@ -77,6 +78,48 @@ def presentar_partida(partida):
     partida.situacion_visible = etiquetas.get(partida.situacion, "No operable")
     partida.puede_registrar_merma = partida.situacion in SITUACIONES_MERMA and not partida.tiene_postproceso
     return partida
+
+
+def partidas_con_disponibilidad():
+    """Peso final menos aportes a lotes; subconsultas separadas evitan multiplicar sumas."""
+    decimal = DecimalField(max_digits=20, decimal_places=2)
+    postprocesos = Pesaje.objects.filter(partida_id=OuterRef("pk"), tipo=Pesaje.POSTPROCESO)
+    consumos = ConsumoLote.objects.filter(partida_id=OuterRef("pk")).order_by().values("partida_id")
+    return partidas_con_situacion().annotate(
+        peso_final_kg=Subquery(postprocesos.order_by("pk").values("peso_kg")[:1], output_field=decimal),
+        numero_postprocesos=Subquery(postprocesos.order_by().values("partida_id").annotate(
+            n=Count("pk"),
+        ).values("n")),
+        asignado_lotes_kg=Coalesce(Subquery(consumos.annotate(
+            total=Sum("cantidad_kg_utilizada"),
+        ).values("total"), output_field=decimal), Value(Decimal("0.00")), output_field=decimal),
+    ).annotate(disponible_lote_kg=F("peso_final_kg") - F("asignado_lotes_kg"))
+
+
+def partidas_para_lote(lote=None):
+    partidas = partidas_con_disponibilidad().filter(
+        situacion="LISTA_PARA_EMPAQUE", numero_postprocesos=1,
+        disponible_lote_kg__gt=0, ruta_proceso__isnull=False,
+    )
+    if lote is not None:
+        if not lote.ruta_proceso_id:
+            return partidas.none()
+        partidas = partidas.filter(
+            detalle_recepcion__especie_id=lote.especie_id, ruta_proceso_id=lote.ruta_proceso_id,
+        ).exclude(consumos_lote__lote_produccion=lote)
+    return partidas.order_by("pk")
+
+
+def puede_asignar_lote(partida):
+    return (partida.situacion == "LISTA_PARA_EMPAQUE" and partida.ruta_proceso_id is not None
+            and partida.numero_postprocesos == 1 and partida.disponible_lote_kg > 0)
+
+
+def lotes_con_totales():
+    return LoteProduccion.objects.select_related("especie", "ruta_proceso", "registrado_por").annotate(
+        total_asignado=Sum("consumos__cantidad_kg_utilizada", default=Decimal("0.00")),
+        numero_fuentes=Count("consumos"),
+    )
 
 
 def resumen_pesajes_mermas(partida):

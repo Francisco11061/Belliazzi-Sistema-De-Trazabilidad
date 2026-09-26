@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}Lotes de producción | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Producto terminado / Lotes de producción{% endblock %}
+{% block content %}{% language "es" %}
+<div class="w-full min-w-0 max-w-6xl space-y-6">
+    <header><h1 class="text-2xl font-semibold sm:text-3xl">Lotes de producción</h1><p class="mt-2 text-sm leading-6 text-slate-500">Consulta los lotes y el origen de sus aportes. Para crear uno, asigna producto desde un seguimiento listo para empaque.</p><a href="{% url 'trazabilidad:lista_partidas' %}?situacion=LISTA_PARA_EMPAQUE" class="mt-4 inline-flex text-sm font-medium text-cyan-700 hover:underline">Ver seguimientos listos para empaque</a></header>
+    <form method="get" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 [&_input]:w-full [&_input]:min-w-0 [&_input]:rounded-lg [&_input]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600">
+        {% for campo in filtro %}{% include "trazabilidad/recepciones/_campo.html" %}{% endfor %}
+        <div class="mt-4 flex flex-col gap-3 sm:flex-row"><button type="submit" class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Buscar</button><a href="{% url 'producto_terminado:lista_lotes' %}" class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm text-slate-700 hover:bg-slate-50">Limpiar</a></div>
+    </form>
+    <section aria-label="Lotes de producción" class="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm">
+        {% if page_obj %}
+        <div class="overflow-x-auto rounded-2xl" tabindex="0" role="region" aria-label="Tabla de lotes de producción">
+            <table class="w-full min-w-[48rem] text-left text-sm whitespace-nowrap">
+                <thead class="border-b border-slate-200 bg-slate-50 text-slate-500"><tr><th scope="col" class="px-4 py-4 font-medium">Código</th><th scope="col" class="px-4 py-4 font-medium">Especie</th><th scope="col" class="px-4 py-4 font-medium">Ruta</th><th scope="col" class="px-4 py-4 font-medium">Elaboración</th><th scope="col" class="px-4 py-4 font-medium">Vencimiento</th><th scope="col" class="px-4 py-4 text-right font-medium">Kg asignados</th><th scope="col" class="px-4 py-4 font-medium">Acciones</th></tr></thead>
+                <tbody class="divide-y divide-slate-100">{% for lote in page_obj %}<tr class="hover:bg-slate-50"><th scope="row" class="px-4 py-4 font-medium">{{ lote.codigo_lote }}</th><td class="px-4 py-4">{{ lote.especie.nombre }}</td><td class="px-4 py-4">{{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</td><td class="px-4 py-4">{{ lote.fecha_elaboracion|date:"d/m/Y" }}</td><td class="px-4 py-4">{{ lote.fecha_vencimiento|date:"d/m/Y"|default:"—" }}</td><td class="px-4 py-4 text-right tabular-nums">{{ lote.total_asignado|floatformat:2 }}</td><td class="px-4 py-4"><a href="{% url 'producto_terminado:detalle_lote' lote.pk %}" class="inline-flex rounded-lg border border-cyan-700 px-3 py-2 font-medium text-cyan-700 hover:bg-cyan-50">Ver detalle<span class="sr-only"> de {{ lote.codigo_lote }}</span></a></td></tr>{% endfor %}</tbody>
+            </table>
+        </div>
+        {% else %}<p class="px-6 py-12 text-center text-sm text-slate-500">{% if filtro.errors %}Revisa la búsqueda indicada.{% else %}No hay lotes que coincidan con la búsqueda.{% endif %}</p>{% endif %}
+    </section>
+    {% if page_obj.paginator.num_pages > 1 %}<nav aria-label="Paginación de lotes" class="flex flex-wrap items-center justify-between gap-3 text-sm">{% if pagina_anterior %}<a href="{{ pagina_anterior }}" class="rounded-lg border border-slate-300 bg-white px-4 py-3 text-cyan-700">Anterior</a>{% endif %}<span class="text-slate-500">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>{% if pagina_siguiente %}<a href="{{ pagina_siguiente }}" class="rounded-lg border border-slate-300 bg-white px-4 py-3 text-cyan-700">Siguiente</a>{% endif %}</nav>{% endif %}
+</div>
+{% endlanguage %}{% endblock %}

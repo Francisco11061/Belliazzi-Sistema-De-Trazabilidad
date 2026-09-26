@@ -21,6 +21,7 @@
         <div class="mt-6">{% include "trazabilidad/partidas/_acciones.html" %}</div>
     </section>
     {% include "trazabilidad/partidas/_pesajes_mermas.html" %}
+    {% include "trazabilidad/partidas/_lotes.html" %}
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-lg font-semibold">Trazabilidad de origen</h2>
         {% with detalle=partida.detalle_recepcion %}

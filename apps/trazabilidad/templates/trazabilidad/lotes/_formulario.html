@@ -1,0 +1,3 @@
+<div class="space-y-5 [&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_textarea]:w-full [&_textarea]:min-w-0 [&_textarea]:max-w-full [&_textarea]:rounded-lg [&_textarea]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600 [&_textarea:focus]:border-cyan-600 [&_textarea:focus]:ring-cyan-600">
+    {% for campo in form %}{% include "trazabilidad/recepciones/_campo.html" %}{% if campo.help_text %}<p class="text-sm text-slate-500">{{ campo.help_text }}</p>{% endif %}{% endfor %}
+</div>

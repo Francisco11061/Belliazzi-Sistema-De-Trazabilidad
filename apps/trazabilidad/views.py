@@ -24,6 +24,9 @@ from .services import (
     iniciar_etapa_proceso, retirar_de_tunel,
 )
 from .forms import PesoPostprocesoForm, MermaProcesoForm
+from .forms import CrearLoteForm, AgregarConsumoLoteForm, LoteFiltroForm
+from .selectors import partidas_con_disponibilidad, puede_asignar_lote, lotes_con_totales
+from .services import crear_lote_produccion, agregar_consumo_lote
 from .selectors import resumen_pesajes_mermas, ADVERTENCIA_PESO_SUPERIOR
 from .services import (
     registrar_peso_postproceso as registrar_peso_postproceso_service,
@@ -262,10 +265,12 @@ def lista_partidas(request):
 
 @personal_operativo_requerido
 def detalle_partida(request, pk):
-    partida = presentar_partida(get_object_or_404(partidas_con_situacion(), pk=pk))
+    partida = presentar_partida(get_object_or_404(partidas_con_disponibilidad(), pk=pk))
     return render(request, "trazabilidad/partidas/detalle.html", {
         "partida": partida,
         **resumen_pesajes_mermas(partida),
+        "puede_asignar_lote": puede_asignar_lote(partida),
+        "consumos_lotes": partida.consumos_lote.select_related("lote_produccion").order_by("pk"),
         "hijas": partida.subpartidas.order_by("pk"),
         "estancias": partida.estancias_frio.select_related("unidad_frio", "ingresado_por", "retirado_por").order_by("fecha_hora_ingreso", "pk"),
         "eventos": partida.eventos.select_related("tipo_proceso", "iniciado_por", "finalizado_por").order_by("fecha_hora_inicio", "pk"),
@@ -411,3 +416,73 @@ def registrar_peso_postproceso(request, pk):
 @require_http_methods(["GET", "POST"])
 def registrar_merma_proceso(request, pk):
     return _registrar_medicion(request, pk, es_pesaje=False)
+
+
+@personal_operativo_requerido
+def lista_lotes(request):
+    filtro = LoteFiltroForm(request.GET)
+    lotes = lotes_con_totales()
+    if filtro.is_valid():
+        q = filtro.cleaned_data["q"]
+        if q:
+            lotes = lotes.filter(Q(codigo_lote__icontains=q) | Q(especie__nombre__icontains=q))
+    else:
+        lotes = lotes.none()
+    pagina = Paginator(lotes.order_by("-fecha_elaboracion", "-pk"), 10).get_page(request.GET.get("page"))
+
+    def enlace(numero):
+        parametros = request.GET.copy()
+        parametros["page"] = numero
+        return "?" + parametros.urlencode()
+
+    return render(request, "trazabilidad/lotes/lista.html", {
+        "filtro": filtro, "page_obj": pagina,
+        "pagina_anterior": enlace(pagina.previous_page_number()) if pagina.has_previous() else None,
+        "pagina_siguiente": enlace(pagina.next_page_number()) if pagina.has_next() else None,
+    })
+
+
+@personal_operativo_requerido
+def detalle_lote(request, pk):
+    lote = get_object_or_404(lotes_con_totales(), pk=pk)
+    return render(request, "trazabilidad/lotes/detalle.html", {
+        "lote": lote,
+        "consumos": lote.consumos.select_related("partida__detalle_recepcion__especie").order_by("pk"),
+    })
+
+
+@personal_operativo_requerido
+@require_http_methods(["GET", "POST"])
+def crear_lote(request, pk):
+    partida = presentar_partida(get_object_or_404(partidas_con_disponibilidad(), pk=pk))
+    form = CrearLoteForm(request.POST if request.method == "POST" else None,
+                         initial={"fecha_elaboracion": timezone.localdate()})
+    if request.method == "POST" and form.is_valid():
+        try:
+            lote = crear_lote_produccion(partida=partida, usuario=request.user, **form.cleaned_data)
+        except ValidationError as error:
+            form.add_error(None, error.messages)
+        else:
+            messages.success(request, "Lote de producción creado y producto asignado correctamente.")
+            return redirect("producto_terminado:detalle_lote", pk=lote.pk)
+    return render(request, "trazabilidad/lotes/crear.html", {
+        "partida": partida, "form": form, "compatible": puede_asignar_lote(partida),
+    })
+
+
+@personal_operativo_requerido
+@require_http_methods(["GET", "POST"])
+def agregar_producto_lote(request, pk):
+    lote = get_object_or_404(lotes_con_totales(), pk=pk)
+    form = AgregarConsumoLoteForm(request.POST if request.method == "POST" else None, lote=lote)
+    if request.method == "POST" and form.is_valid():
+        try:
+            agregar_consumo_lote(lote=lote, usuario=request.user, **form.cleaned_data)
+        except ValidationError as error:
+            form.add_error(None, error.messages)
+        else:
+            messages.success(request, "Producto agregado al lote correctamente.")
+            return redirect("producto_terminado:detalle_lote", pk=lote.pk)
+    return render(request, "trazabilidad/lotes/agregar.html", {
+        "lote": lote, "form": form, "hay_seguimientos": form.fields["partida"].queryset.exists(),
+    })

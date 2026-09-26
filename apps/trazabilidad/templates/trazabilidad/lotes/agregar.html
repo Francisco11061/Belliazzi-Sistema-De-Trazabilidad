@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}Agregar producto | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Producto terminado / Agregar producto{% endblock %}
+{% block content %}{% language "es" %}
+<div class="w-full min-w-0 max-w-2xl space-y-6">
+    <header><a href="{% url 'producto_terminado:detalle_lote' lote.pk %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver al lote</a><h1 class="mt-4 text-2xl font-semibold sm:text-3xl">Agregar producto</h1><p class="mt-2 text-sm text-slate-500">Lote {{ lote.codigo_lote }}</p></header>
+    <section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 class="text-lg font-semibold">{{ lote.especie.nombre }}</h2>
+        <p class="mt-2 text-sm text-slate-500">{{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p>
+        <p class="mt-4 text-sm">Total asignado: <strong>{{ lote.total_asignado|floatformat:2 }} kg</strong></p>
+        {% if form.non_field_errors %}<div role="alert" class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
+        {% if hay_seguimientos %}
+        <p class="mt-5 text-sm leading-6 text-slate-500">Selecciona un seguimiento de la misma especie y ruta. Cada opción indica sus kilos disponibles. Los seguimientos ya incluidos no se vuelven a ofrecer.</p>
+        <form method="post" class="mt-5 space-y-5">
+            {% csrf_token %}{% include "trazabilidad/lotes/_formulario.html" %}
+            <div class="flex flex-col gap-3 sm:flex-row">
+                <button class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800" type="submit">Agregar producto</button>
+                <a class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm text-slate-700 hover:bg-slate-50" href="{% url 'producto_terminado:detalle_lote' lote.pk %}">Cancelar</a>
+            </div>
+        </form>
+        {% else %}<p role="status" class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">No hay seguimientos compatibles con producto disponible para este lote.</p>{% endif %}
+    </section>
+</div>
+{% endlanguage %}{% endblock %}

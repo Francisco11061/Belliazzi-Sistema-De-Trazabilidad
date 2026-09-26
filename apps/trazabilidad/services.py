@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.usuarios.permisos import ROL_ENCARGADA, ROL_JEFE, ROL_OPERARIA, tiene_rol
@@ -11,6 +11,8 @@ from .models import Correccion, DetalleRecepcion, Especie, OrigenSernapesca, Par
 from .models import EstanciaPartida, EventoProceso, TipoProceso, UnidadFrio, RutaProceso, Pesaje, MermaProceso
 from .selectors import recepcion_con_actividad, partidas_con_situacion, SITUACIONES_MERMA
 from .rutas import validar_etapas_ruta
+from .models import LoteProduccion, ConsumoLote
+from .selectors import partidas_con_disponibilidad, puede_asignar_lote
 
 
 def _normalizar_texto(valor, campo):
@@ -514,3 +516,60 @@ def registrar_merma_proceso(*, partida, tipo, cantidad_kg, motivo, usuario):
     merma.full_clean()
     merma.save()
     return merma
+
+
+def _validar_asignacion_lote(partida, cantidad_kg):
+    # El llamador ya bloqueó detalle -> seguimiento. Releer saldo dentro de atomic.
+    actual = partidas_con_disponibilidad().get(pk=partida.pk)
+    if not puede_asignar_lote(actual):
+        raise ValidationError("El seguimiento debe estar listo para empaque, tener ruta, un peso postproceso y cantidad disponible.")
+    _validar_decimal_registro(ConsumoLote, "cantidad_kg_utilizada", cantidad_kg)
+    if cantidad_kg > actual.disponible_lote_kg:
+        raise ValidationError("La cantidad a asignar no puede superar el peso postproceso disponible.")
+    return actual
+
+
+def _crear_consumo(lote, partida, cantidad_kg):
+    if lote.consumos.filter(partida=partida).exists():
+        raise ValidationError("Este seguimiento ya fue asignado a este lote. No se permite modificar su aporte.")
+    consumo = ConsumoLote(partida=partida, lote_produccion=lote, cantidad_kg_utilizada=cantidad_kg)
+    consumo.full_clean()
+    consumo.save()
+    return consumo
+
+
+@transaction.atomic
+def crear_lote_produccion(*, partida, codigo, cantidad_kg, fecha_elaboracion,
+                         fecha_vencimiento, observaciones, usuario):
+    partida = _bloquear_partida(partida, usuario)
+    actual = _validar_asignacion_lote(partida, cantidad_kg)
+    lote = LoteProduccion(
+        codigo_lote=_normalizar_texto(codigo, "codigo"),
+        especie_id=actual.detalle_recepcion.especie_id, ruta_proceso_id=actual.ruta_proceso_id,
+        fecha_elaboracion=fecha_elaboracion, fecha_vencimiento=fecha_vencimiento,
+        observaciones=_normalizar_texto(observaciones, "observaciones"), registrado_por=usuario,
+    )
+    lote.full_clean()
+    try:
+        # Savepoint para traducir una colisión de código entre seguimientos distintos.
+        with transaction.atomic():
+            lote.save()
+    except IntegrityError:
+        if LoteProduccion.objects.filter(codigo_lote=lote.codigo_lote).exists():
+            raise ValidationError("Ya existe un lote con este código.") from None
+        raise
+    _crear_consumo(lote, partida, cantidad_kg)
+    return lote
+
+
+@transaction.atomic
+def agregar_consumo_lote(*, lote, partida, cantidad_kg, usuario):
+    # Mismo orden que los demás flujos: detalle -> seguimiento -> lote.
+    partida = _bloquear_partida(partida, usuario)
+    actual = _validar_asignacion_lote(partida, cantidad_kg)
+    lote = LoteProduccion.objects.select_for_update().filter(pk=lote.pk).first()
+    if lote is None or not lote.ruta_proceso_id:
+        raise ValidationError("El lote no existe o no tiene una ruta documentada para recibir producto.")
+    if lote.especie_id != actual.detalle_recepcion.especie_id or lote.ruta_proceso_id != actual.ruta_proceso_id:
+        raise ValidationError("El producto debe tener la misma especie y la misma ruta de procesamiento del lote.")
+    return _crear_consumo(lote, partida, cantidad_kg)

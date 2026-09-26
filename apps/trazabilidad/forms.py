@@ -7,6 +7,8 @@ from django.utils import timezone
 
 from .models import Correccion, Especie, UnidadFrio, RutaProceso, Pesaje, MermaProceso
 from .selectors import SITUACIONES
+from .models import LoteProduccion, ConsumoLote
+from .selectors import partidas_para_lote
 
 
 class RecepcionForm(forms.Form):
@@ -310,3 +312,48 @@ class MermaProcesoForm(forms.Form):
         max_length=MermaProceso._meta.get_field("motivo").max_length, strip=True,
         label="Motivo", widget=forms.Textarea(attrs={"rows": 3}),
     )
+
+
+class CantidadLoteForm(forms.Form):
+    cantidad_kg = ConsumoLote._meta.get_field("cantidad_kg_utilizada").formfield(
+        label="Cantidad a asignar (kg)", min_value=Decimal("0.01"),
+    )
+
+
+class CrearLoteForm(CantidadLoteForm):
+    codigo = forms.CharField(max_length=LoteProduccion._meta.get_field("codigo_lote").max_length,
+                             strip=True, label="Código de lote")
+    fecha_elaboracion = forms.DateField(label="Fecha de elaboración", widget=forms.DateInput(
+        format="%Y-%m-%d", attrs={"type": "date"},
+    ))
+    fecha_vencimiento = forms.DateField(required=False, label="Fecha de vencimiento", widget=forms.DateInput(
+        format="%Y-%m-%d", attrs={"type": "date"},
+    ), help_text="Ingresa la fecha cuando esté definida. No se calcula automáticamente.")
+    observaciones = forms.CharField(required=False, label="Observaciones", widget=forms.Textarea(attrs={"rows": 3}))
+    field_order = ["codigo", "fecha_elaboracion", "fecha_vencimiento", "cantidad_kg", "observaciones"]
+
+    def clean(self):
+        datos = super().clean()
+        inicio, fin = datos.get("fecha_elaboracion"), datos.get("fecha_vencimiento")
+        if inicio and fin and fin < inicio:
+            self.add_error("fecha_vencimiento", "La fecha de vencimiento no puede ser anterior a la elaboración.")
+        return datos
+
+
+class SeguimientoLoteChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, partida):
+        disponible = format(partida.disponible_lote_kg, ".2f").replace(".", ",")
+        return f"Seguimiento #{partida.pk} · {disponible} kg disponibles"
+
+
+class AgregarConsumoLoteForm(CantidadLoteForm):
+    partida = SeguimientoLoteChoiceField(queryset=partidas_para_lote(), label="Seguimiento")
+    field_order = ["partida", "cantidad_kg"]
+
+    def __init__(self, *args, lote, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["partida"].queryset = partidas_para_lote(lote)
+
+
+class LoteFiltroForm(forms.Form):
+    q = forms.CharField(required=False, label="Buscar por código o especie", max_length=200)
