@@ -27,6 +27,11 @@ from .forms import PesoPostprocesoForm, MermaProcesoForm
 from .forms import CrearLoteForm, AgregarConsumoLoteForm, LoteFiltroForm
 from .selectors import partidas_con_disponibilidad, puede_asignar_lote, lotes_con_totales
 from .services import crear_lote_produccion, agregar_consumo_lote
+from .forms import ComposicionCajaFormSet, CajaFiltroForm, CajaForm
+from .constantes import PESO_MAXIMO_CAJA_KG
+from .models import PresentacionBolsa
+from .selectors import lotes_con_empaque, cajas_con_peso, puede_crear_caja
+from .services import crear_caja as crear_caja_service
 from .selectors import resumen_pesajes_mermas, ADVERTENCIA_PESO_SUPERIOR
 from .services import (
     registrar_peso_postproceso as registrar_peso_postproceso_service,
@@ -421,7 +426,7 @@ def registrar_merma_proceso(request, pk):
 @personal_operativo_requerido
 def lista_lotes(request):
     filtro = LoteFiltroForm(request.GET)
-    lotes = lotes_con_totales()
+    lotes = lotes_con_empaque()
     if filtro.is_valid():
         q = filtro.cleaned_data["q"]
         if q:
@@ -444,9 +449,11 @@ def lista_lotes(request):
 
 @personal_operativo_requerido
 def detalle_lote(request, pk):
-    lote = get_object_or_404(lotes_con_totales(), pk=pk)
+    lote = get_object_or_404(lotes_con_empaque(), pk=pk)
     return render(request, "trazabilidad/lotes/detalle.html", {
         "lote": lote,
+        "puede_crear_caja": puede_crear_caja(lote),
+        "cajas": cajas_con_peso().filter(lote_produccion=lote).order_by("pk"),
         "consumos": lote.consumos.select_related("partida__detalle_recepcion__especie").order_by("pk"),
     })
 
@@ -485,4 +492,67 @@ def agregar_producto_lote(request, pk):
             return redirect("producto_terminado:detalle_lote", pk=lote.pk)
     return render(request, "trazabilidad/lotes/agregar.html", {
         "lote": lote, "form": form, "hay_seguimientos": form.fields["partida"].queryset.exists(),
+    })
+
+
+@personal_operativo_requerido
+@require_http_methods(["GET", "POST"])
+def crear_caja(request, pk):
+    lote = get_object_or_404(lotes_con_empaque(), pk=pk)
+    composiciones = ComposicionCajaFormSet(request.POST if request.method == "POST" else None, prefix="composiciones")
+    form = CajaForm(request.POST if request.method == "POST" else None)
+    errores = []
+    if request.method == "POST" and all([composiciones.is_valid(), form.is_valid()]):
+        datos = [form.cleaned_data for form in composiciones
+                 if form.cleaned_data and not form.cleaned_data.get("DELETE", False)]
+        try:
+            caja = crear_caja_service(lote=lote, composiciones=datos, peso_neto_kg=form.cleaned_data["peso_neto_kg"], usuario=request.user)
+        except ValidationError as error:
+            errores = error.messages
+            lote = lotes_con_empaque().get(pk=lote.pk)
+        else:
+            messages.success(request, "Caja registrada correctamente.")
+            return redirect("producto_terminado:detalle_caja", pk=caja.pk)
+    return render(request, "trazabilidad/cajas/crear.html", {
+        "lote": lote, "composiciones": composiciones, "errores": errores,
+        "form": form, "peso_maximo_caja_kg": PESO_MAXIMO_CAJA_KG,
+        "compatible": puede_crear_caja(lote),
+        "pesos_presentaciones": {str(p.pk): format(p.peso_nominal_kg, ".2f")
+                                  for p in PresentacionBolsa.objects.filter(activo=True)},
+    })
+
+
+@personal_operativo_requerido
+def lista_cajas(request):
+    cajas = cajas_con_peso()
+    filtro = CajaFiltroForm(request.GET)
+    if filtro.is_valid():
+        q = filtro.cleaned_data["q"]
+        if q:
+            busqueda = Q(lote_produccion__codigo_lote__icontains=q) | Q(lote_produccion__especie__nombre__icontains=q)
+            if q.isdecimal() and len(q) <= 19 and int(q) <= 9223372036854775807:
+                busqueda |= Q(pk=int(q))
+            cajas = cajas.filter(busqueda)
+    else:
+        cajas = cajas.none()
+    pagina = Paginator(cajas.order_by("-fecha_armado", "-pk"), 10).get_page(request.GET.get("page"))
+
+    def enlace(numero):
+        parametros = request.GET.copy()
+        parametros["page"] = numero
+        return "?" + parametros.urlencode()
+
+    return render(request, "trazabilidad/cajas/lista.html", {
+        "filtro": filtro, "page_obj": pagina,
+        "pagina_anterior": enlace(pagina.previous_page_number()) if pagina.has_previous() else None,
+        "pagina_siguiente": enlace(pagina.next_page_number()) if pagina.has_next() else None,
+    })
+
+
+@personal_operativo_requerido
+def detalle_caja(request, pk):
+    caja = get_object_or_404(cajas_con_peso(), pk=pk)
+    return render(request, "trazabilidad/cajas/detalle.html", {
+        "caja": caja,
+        "composiciones": caja.composiciones.select_related("presentacion").order_by("pk"),
     })

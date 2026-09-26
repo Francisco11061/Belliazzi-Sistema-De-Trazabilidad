@@ -8,10 +8,19 @@
     <section class="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 sm:p-6">
         <dl class="grid gap-5 sm:grid-cols-2">
             <div><dt class="text-sm text-slate-500">Total asignado</dt><dd class="mt-1 text-2xl font-semibold text-cyan-800">{{ lote.total_asignado|floatformat:2 }} kg</dd></div>
+            <div><dt class="text-sm text-slate-500">Total empacado real</dt><dd class="mt-1 text-lg font-semibold">{% if lote.historial_empaque_incompleto %}Requiere revisión{% else %}{{ lote.total_empacado|floatformat:2 }} kg{% endif %}</dd></div>
+            <div><dt class="text-sm text-slate-500">Disponible para empacar</dt><dd class="mt-1 text-lg font-semibold">{% if lote.historial_empaque_incompleto %}Requiere revisión{% else %}{{ lote.disponible_empacar|floatformat:2 }} kg{% endif %}</dd></div>
+            <div><dt class="text-sm text-slate-500">Cantidad de cajas</dt><dd class="mt-1 text-lg font-semibold">{{ lote.numero_cajas }}</dd></div>
             <div><dt class="text-sm text-slate-500">Fuentes</dt><dd class="mt-1 text-lg font-semibold">{{ lote.numero_fuentes }} seguimiento{{ lote.numero_fuentes|pluralize:"s" }}</dd></div>
         </dl>
+        {% if puede_crear_caja %}<a href="{% url 'producto_terminado:crear_caja' lote.pk %}" class="mt-5 inline-flex rounded-lg bg-cyan-700 px-5 py-3 text-center text-sm font-semibold text-white hover:bg-cyan-800">Crear caja</a>{% endif %}
+        {% if lote.historial_empaque_incompleto %}<p role="alert" class="mt-5 text-sm text-slate-600">Hay cajas históricas sin peso neto documentado. El saldo requiere revisión antes de crear nuevas cajas.</p>{% elif lote.disponible_empacar == 0 %}<p class="mt-5 text-sm text-cyan-800">Todo el producto asignado a este lote ya fue empacado.</p>{% endif %}
         {% if lote.ruta_proceso_id %}<a href="{% url 'producto_terminado:agregar_producto_lote' lote.pk %}" class="mt-5 inline-flex rounded-lg bg-cyan-700 px-5 py-3 text-center text-sm font-semibold text-white hover:bg-cyan-800">Agregar producto</a>
         {% else %}<p class="mt-5 text-sm text-slate-600">Lote histórico sin ruta documentada. Se conserva para consulta; requiere revisión antes de recibir nuevos aportes.</p>{% endif %}
+    </section>
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 class="text-lg font-semibold">Cajas</h2>
+        <ul class="mt-5 space-y-3 text-sm">{% for caja in cajas %}<li class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-4"><div><p class="font-semibold">Caja #{{ caja.pk }}</p><p class="mt-1 text-slate-500">{% if caja.peso_neto_kg != None %}{{ caja.peso_neto_kg|floatformat:2 }} kg{% else %}Peso neto no documentado{% endif %}</p></div><a href="{% url 'producto_terminado:detalle_caja' caja.pk %}" class="font-medium text-cyan-700 underline">Ver caja</a></li>{% empty %}<li class="text-slate-500">Sin cajas registradas.</li>{% endfor %}</ul>
     </section>
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-lg font-semibold">Datos del lote</h2>

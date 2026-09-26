@@ -9,6 +9,8 @@ from .models import Correccion, Especie, UnidadFrio, RutaProceso, Pesaje, MermaP
 from .selectors import SITUACIONES
 from .models import LoteProduccion, ConsumoLote
 from .selectors import partidas_para_lote
+from .models import PresentacionBolsa
+from .constantes import PESO_MAXIMO_CAJA_KG
 
 
 class RecepcionForm(forms.Form):
@@ -357,3 +359,48 @@ class AgregarConsumoLoteForm(CantidadLoteForm):
 
 class LoteFiltroForm(forms.Form):
     q = forms.CharField(required=False, label="Buscar por código o especie", max_length=200)
+
+
+class CajaForm(forms.Form):
+    peso_neto_kg = forms.DecimalField(
+        label="Peso neto real de la caja (kg)", max_digits=10, decimal_places=2,
+        min_value=Decimal("0.01"), max_value=PESO_MAXIMO_CAJA_KG,
+        help_text="Ingrese el peso obtenido al pesar la caja terminada.",
+        widget=forms.NumberInput(attrs={"step": "0.01"}),
+    )
+
+
+class ComposicionCajaForm(forms.Form):
+    presentacion = forms.ModelChoiceField(queryset=PresentacionBolsa.objects.filter(activo=True), label="Presentación")
+    cantidad = forms.IntegerField(min_value=1, max_value=2147483647, label="Cantidad de bolsas",
+                                  widget=forms.NumberInput(attrs={"step": "1"}))
+
+
+class BaseComposicionCajaFormSet(BaseFormSet):
+    def clean(self):
+        super().clean()
+        if any(self.errors):
+            return
+        filas = [form.cleaned_data for form in self.forms
+                 if form.cleaned_data and not form.cleaned_data.get("DELETE", False)]
+        if not filas:
+            raise forms.ValidationError("Agrega al menos una presentación a la caja.")
+        vistas = set()
+        for datos in filas:
+            pk = datos["presentacion"].pk
+            if pk in vistas:
+                raise forms.ValidationError("No repitas una presentación en la misma caja; consolida la cantidad de bolsas.")
+            vistas.add(pk)
+        teorico = sum((datos["cantidad"] * datos["presentacion"].peso_nominal_kg for datos in filas), Decimal("0"))
+        if teorico > PESO_MAXIMO_CAJA_KG:
+            raise forms.ValidationError(f"El peso teórico de la composición no puede superar {PESO_MAXIMO_CAJA_KG} kg.")
+
+
+ComposicionCajaFormSet = formset_factory(
+    ComposicionCajaForm, formset=BaseComposicionCajaFormSet, extra=2, can_delete=True,
+    max_num=50, validate_max=True, absolute_max=100,
+)
+
+
+class CajaFiltroForm(forms.Form):
+    q = forms.CharField(required=False, max_length=200, label="Buscar por ID de caja, código de lote o especie")

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.forms.models import BaseInlineFormSet
 from .rutas import validar_etapas_ruta
+from .selectors import cajas_con_peso
 
 from .models import (
     LoteProduccion,
@@ -317,11 +318,14 @@ class PresentacionBolsaAdmin(admin.ModelAdmin):
 
 
 @admin.register(Caja)
-class CajaAdmin(admin.ModelAdmin):
+class CajaAdmin(RegistroHistoricoAdmin):
+    list_select_related = ("lote_produccion", "registrado_por")
     list_display = (
+        "id",
         "codigo_caja",
         "lote_produccion",
-        "peso_total_kg",
+        "peso_derivado",
+        "peso_neto_kg",
         "fecha_armado",
         "registrado_por",
     )
@@ -331,9 +335,17 @@ class CajaAdmin(admin.ModelAdmin):
     )
     list_filter = ("fecha_armado",)
 
+    def get_queryset(self, request):
+        return cajas_con_peso()
+
+    @admin.display(description="Peso teórico (kg)", ordering="peso_teorico_kg")
+    def peso_derivado(self, obj):
+        return obj.peso_teorico_kg
+
 
 @admin.register(ComposicionCaja)
-class ComposicionCajaAdmin(admin.ModelAdmin):
+class ComposicionCajaAdmin(RegistroHistoricoAdmin):
+    list_select_related = ("caja", "presentacion")
     list_display = (
         "id",
         "caja",

@@ -6,7 +6,7 @@ from django.db.models.functions import Coalesce
 
 from .models import (
     ConsumoLote, EstanciaPartida, EventoProceso, MermaProceso,
-    PartidaProceso, Pesaje, UnidadFrio, LoteProduccion,
+    PartidaProceso, Pesaje, UnidadFrio, LoteProduccion, Caja, ComposicionCaja,
 )
 
 SITUACIONES = (
@@ -120,6 +120,36 @@ def lotes_con_totales():
         total_asignado=Sum("consumos__cantidad_kg_utilizada", default=Decimal("0.00")),
         numero_fuentes=Count("consumos"),
     )
+
+
+def cajas_con_peso():
+    return Caja.objects.select_related(
+        "lote_produccion__especie", "lote_produccion__ruta_proceso", "registrado_por",
+    ).annotate(peso_teorico_kg=Sum(
+        F("composiciones__cantidad") * F("composiciones__peso_unitario_kg"),
+        output_field=DecimalField(max_digits=30, decimal_places=2),
+    )).annotate(diferencia_kg=F("peso_neto_kg") - F("peso_teorico_kg"))
+
+
+def lotes_con_empaque():
+    decimal = DecimalField(max_digits=30, decimal_places=2)
+    cajas = Caja.objects.filter(lote_produccion_id=OuterRef("pk"))
+    return lotes_con_totales().annotate(
+        peso_real_documentado=Coalesce(Subquery(cajas.order_by().values("lote_produccion_id").annotate(
+            total=Sum("peso_neto_kg", output_field=decimal),
+        ).values("total"), output_field=decimal), Value(Decimal("0.00")), output_field=decimal),
+        numero_cajas=Coalesce(Subquery(cajas.order_by().values("lote_produccion_id").annotate(
+            n=Count("pk"),
+        ).values("n")), Value(0)),
+        historial_empaque_incompleto=Exists(cajas.filter(peso_neto_kg__isnull=True)),
+    ).annotate(total_empacado=Case(
+        When(historial_empaque_incompleto=True, then=Value(None)),
+        default=F("peso_real_documentado"), output_field=decimal,
+    )).annotate(disponible_empacar=F("total_asignado") - F("total_empacado"))
+
+
+def puede_crear_caja(lote):
+    return bool(lote.ruta_proceso_id and not lote.historial_empaque_incompleto and lote.disponible_empacar > 0)
 
 
 def resumen_pesajes_mermas(partida):

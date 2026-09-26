@@ -13,6 +13,9 @@ from .selectors import recepcion_con_actividad, partidas_con_situacion, SITUACIO
 from .rutas import validar_etapas_ruta
 from .models import LoteProduccion, ConsumoLote
 from .selectors import partidas_con_disponibilidad, puede_asignar_lote
+from .models import Caja, ComposicionCaja, PresentacionBolsa
+from .selectors import lotes_con_empaque, puede_crear_caja
+from .constantes import PESO_MAXIMO_CAJA_KG
 
 
 def _normalizar_texto(valor, campo):
@@ -573,3 +576,59 @@ def agregar_consumo_lote(*, lote, partida, cantidad_kg, usuario):
     if lote.especie_id != actual.detalle_recepcion.especie_id or lote.ruta_proceso_id != actual.ruta_proceso_id:
         raise ValidationError("El producto debe tener la misma especie y la misma ruta de procesamiento del lote.")
     return _crear_consumo(lote, partida, cantidad_kg)
+
+
+@transaction.atomic
+def crear_caja(*, lote, composiciones, peso_neto_kg, usuario):
+    if not tiene_rol(usuario, ROL_JEFE, ROL_ENCARGADA, ROL_OPERARIA):
+        raise PermissionDenied
+    # No tomar bloqueos de seguimientos desde aquí: lote -> presentaciones por PK.
+    # agregar_consumo_lote también bloquea el lote antes de escribir un aporte.
+    lote = LoteProduccion.objects.select_for_update().filter(pk=lote.pk).first()
+    if lote is None:
+        raise ValidationError("El lote no existe.")
+    actual = lotes_con_empaque().get(pk=lote.pk)
+    if not puede_crear_caja(actual):
+        raise ValidationError("El lote debe tener ruta documentada, historial de cajas completo y producto disponible para empacar.")
+    _validar_decimal_registro(Caja, "peso_neto_kg", peso_neto_kg)
+    if peso_neto_kg > PESO_MAXIMO_CAJA_KG:
+        raise ValidationError(f"El peso neto real no puede superar {PESO_MAXIMO_CAJA_KG} kg.")
+    if peso_neto_kg > actual.disponible_empacar:
+        raise ValidationError("El peso neto real debe no superar el disponible para empacar.")
+    composiciones = list(composiciones)
+    if not composiciones:
+        raise ValidationError("Agrega al menos una presentación a la caja.")
+    ids = []
+    for datos in composiciones:
+        presentacion = datos.get("presentacion")
+        if not isinstance(presentacion, PresentacionBolsa) or not presentacion.pk:
+            raise ValidationError("Selecciona una presentación válida.")
+        if presentacion.pk in ids:
+            raise ValidationError("No repitas una presentación en la misma caja; consolida la cantidad de bolsas.")
+        ids.append(presentacion.pk)
+        cantidad = datos.get("cantidad")
+        if type(cantidad) is not int:
+            raise ValidationError("La cantidad de bolsas debe ser un número entero mayor que cero.")
+        ComposicionCaja._meta.get_field("cantidad").clean(cantidad, None)
+    presentaciones = PresentacionBolsa.objects.select_for_update().filter(pk__in=ids).order_by("pk").in_bulk()
+    lineas = []
+    total = Decimal("0.00")
+    for datos, pk in zip(composiciones, ids):
+        presentacion = presentaciones.get(pk)
+        if presentacion is None or not presentacion.activo:
+            raise ValidationError("Selecciona solamente presentaciones activas.")
+        _validar_decimal_registro(PresentacionBolsa, "peso_nominal_kg", presentacion.peso_nominal_kg)
+        linea = ComposicionCaja(presentacion=presentacion, cantidad=datos["cantidad"],
+                               peso_unitario_kg=presentacion.peso_nominal_kg)
+        total += linea.subtotal_kg
+        lineas.append(linea)
+    if total <= 0 or total > PESO_MAXIMO_CAJA_KG:
+        raise ValidationError(f"El peso teórico de la composición debe ser mayor que cero y no superar {PESO_MAXIMO_CAJA_KG} kg.")
+    caja = Caja(lote_produccion=lote, peso_neto_kg=peso_neto_kg, registrado_por=usuario, fecha_armado=timezone.now())
+    caja.full_clean()
+    caja.save()
+    for linea in lineas:
+        linea.caja = caja
+        linea.full_clean()
+        linea.save()
+    return caja

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}Nueva caja | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Producto terminado / Nueva caja{% endblock %}
+{% block content %}{% language "es" %}
+<div class="w-full min-w-0 max-w-3xl space-y-6">
+    <header><a href="{% url 'producto_terminado:detalle_lote' lote.pk %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver al lote</a><h1 class="mt-4 text-2xl font-semibold sm:text-3xl">Nueva caja</h1><p class="mt-2 font-medium">Lote {{ lote.codigo_lote }}</p><p class="mt-1 text-sm text-slate-500">{{ lote.especie.nombre }} · {{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p></header>
+    <section class="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 sm:p-6">
+        <dl class="grid gap-5 text-sm sm:grid-cols-3">
+            <div><dt class="text-slate-500">Total asignado</dt><dd class="mt-1 font-semibold">{{ lote.total_asignado|floatformat:2 }} kg</dd></div>
+            <div><dt class="text-slate-500">Total empacado real</dt><dd class="mt-1 font-semibold">{% if lote.historial_empaque_incompleto %}Requiere revisión{% else %}{{ lote.total_empacado|floatformat:2 }} kg{% endif %}</dd></div>
+            <div><dt class="text-slate-500">Disponible para empacar</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{% if lote.historial_empaque_incompleto %}Requiere revisión{% else %}{{ lote.disponible_empacar|floatformat:2 }} kg{% endif %}</dd></div>
+            <div><dt class="text-slate-500">Fecha elaboración</dt><dd class="mt-1">{{ lote.fecha_elaboracion|date:"d/m/Y" }}</dd></div>
+            <div><dt class="text-slate-500">Fecha vencimiento</dt><dd class="mt-1">{{ lote.fecha_vencimiento|date:"d/m/Y"|default:"No informada" }}</dd></div>
+        </dl>
+    </section>
+    {% if errores %}<div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{% for error in errores %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
+    {% if compatible %}
+    <form method="post" id="form-caja" class="min-w-0 space-y-6 [&_input:not([type=checkbox])]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600">
+        {% csrf_token %}
+        <section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <h2 class="text-lg font-semibold">Composición</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-500">Elige las presentaciones y la cantidad de bolsas de esta caja. Cada presentación debe aparecer una sola vez.</p>
+            {{ composiciones.management_form }}
+            {% if composiciones.non_form_errors %}<div role="alert" class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ composiciones.non_form_errors }}</div>{% endif %}
+            <div id="composiciones-filas" class="mt-5 space-y-4">{% for fila in composiciones %}{% include "trazabilidad/cajas/_fila.html" %}{% endfor %}</div>
+            <template id="composicion-vacia">{% include "trazabilidad/cajas/_fila.html" with fila=composiciones.empty_form %}</template>
+            <button id="agregar-presentacion" type="button" class="mt-5 w-full rounded-lg border border-cyan-700 px-5 py-3 text-sm font-medium text-cyan-700 hover:bg-cyan-50 sm:w-auto">+ Agregar presentación</button>
+            <p class="mt-5 text-sm text-slate-600">Peso máximo por caja: {{ peso_maximo_caja_kg|floatformat:2 }} kg. Se permiten cajas parciales.</p><p class="mt-5 text-lg font-semibold">Peso teórico de la composición: <output id="peso-caja" aria-live="polite">—</output></p>
+            <noscript><p class="mt-3 text-sm">El peso se calculará y validará al registrar. Puedes completar las dos filas disponibles.</p></noscript>
+        </section>
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            {% include "trazabilidad/recepciones/_campo.html" with campo=form.peso_neto_kg %}
+            <p class="mt-2 text-sm text-slate-500">{{ form.peso_neto_kg.help_text }}</p>
+        </section>
+        <div class="flex flex-col gap-3 sm:flex-row"><button type="submit" class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Crear caja</button><a href="{% url 'producto_terminado:detalle_lote' lote.pk %}" class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm text-slate-700 hover:bg-slate-50">Cancelar</a></div>
+    </form>
+    {% else %}<p role="alert" class="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600">No se puede crear una caja: el lote requiere ruta documentada, historial de cajas completo y producto disponible para empacar.</p>{% endif %}
+</div>
+{{ pesos_presentaciones|json_script:"pesos-presentaciones" }}
+{% endlanguage %}{% endblock %}
+{% block extra_js %}
+<script>
+(() => {
+    const filas = document.getElementById('composiciones-filas');
+    if (!filas) return;
+    const pesos = JSON.parse(document.getElementById('pesos-presentaciones').textContent);
+    const totalForms = document.getElementById('id_composiciones-TOTAL_FORMS');
+    const agregar = document.getElementById('agregar-presentacion');
+    const formato = centesimas => `${centesimas / 100n},${String(centesimas % 100n).padStart(2, '0')} kg`;
+    function actualizar() {
+        let total = 0n;
+        filas.querySelectorAll('[data-composicion]').forEach(fila => {
+            const seleccion = fila.querySelector('select');
+            const cantidad = fila.querySelector('input[name$="-cantidad"]');
+            const quitar = fila.querySelector('input[name$="-DELETE"]').checked;
+            seleccion.disabled = quitar;
+            cantidad.disabled = quitar;
+            const peso = pesos[seleccion.value];
+            const valido = !quitar && peso && /^[1-9]\d*$/.test(cantidad.value);
+            const subtotal = valido ? BigInt(peso.replace('.', '')) * BigInt(cantidad.value) : 0n;
+            total += subtotal;
+            fila.querySelector('[data-subtotal]').textContent = quitar ? 'No incluida' : valido ? formato(subtotal) : '—';
+        });
+        document.getElementById('peso-caja').textContent = formato(total);
+    }
+    agregar.addEventListener('click', () => {
+        const indice = Number(totalForms.value);
+        if (indice >= 100) return;
+        filas.insertAdjacentHTML('beforeend', document.getElementById('composicion-vacia').innerHTML.replaceAll('__prefix__', String(indice)));
+        totalForms.value = indice + 1;
+        agregar.disabled = indice + 1 >= 100;
+        filas.lastElementChild.querySelector('select').focus();
+        actualizar();
+    });
+    filas.addEventListener('input', actualizar);
+    filas.addEventListener('change', actualizar);
+    actualizar();
+})();
+</script>
+{% endblock %}

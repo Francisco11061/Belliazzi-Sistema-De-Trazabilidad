@@ -457,6 +457,9 @@ class PresentacionBolsa(models.Model):
 
     class Meta:
         ordering = ["peso_nominal_kg", "nombre"]
+        constraints = [models.CheckConstraint(
+            condition=models.Q(peso_nominal_kg__gt=0), name="presentacion_peso_positivo",
+        )]
 
     def __str__(self):
         return self.nombre
@@ -468,10 +471,18 @@ class Caja(models.Model):
         on_delete=models.PROTECT,
         related_name="cajas",
     )
-    codigo_caja = models.CharField(max_length=100, unique=True)
+    # Campos históricos: no permiten acreditar que el peso fuera neto medido.
+    codigo_caja = models.CharField(max_length=100, unique=True, null=True, blank=True)
     peso_total_kg = models.DecimalField(
         max_digits=10,
         decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    # NULL significa peso físico no documentado; obligatorio en el flujo nuevo.
+    peso_neto_kg = models.DecimalField(
+        "peso neto real (kg)", max_digits=10, decimal_places=2, null=True, blank=True,
         validators=[MinValueValidator(Decimal("0.01"))],
     )
     fecha_armado = models.DateTimeField()
@@ -483,7 +494,7 @@ class Caja(models.Model):
     creado_en = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.codigo_caja
+        return f"Caja #{self.pk}"
 
 
 class ComposicionCaja(models.Model):
@@ -506,11 +517,18 @@ class ComposicionCaja(models.Model):
 
     class Meta:
         constraints = [
+            models.CheckConstraint(condition=models.Q(cantidad__gt=0), name="composicion_cantidad_positiva"),
+            models.CheckConstraint(condition=models.Q(peso_unitario_kg__gt=0), name="composicion_peso_positivo"),
             models.UniqueConstraint(
                 fields=["caja", "presentacion"],
                 name="composicion_caja_presentacion_unica",
             ),
         ]
+
+    @property
+    def subtotal_kg(self):
+        # Es el peso unitario registrado al armar la caja, no el catálogo mutable.
+        return self.cantidad * self.peso_unitario_kg
 
     def __str__(self):
         return f"{self.caja} - {self.cantidad} x {self.presentacion}"

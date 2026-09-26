@@ -1,0 +1,10 @@
+<div data-composicion class="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4">
+    <div class="grid min-w-0 gap-4 sm:grid-cols-2">
+        {% include "trazabilidad/recepciones/_campo.html" with campo=fila.presentacion %}
+        {% include "trazabilidad/recepciones/_campo.html" with campo=fila.cantidad %}
+    </div>
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+        <p>Subtotal nominal: <strong data-subtotal>—</strong></p>
+        <label class="flex items-center gap-2 text-slate-600">{{ fila.DELETE }} Quitar presentación</label>
+    </div>
+</div>

@@ -44,9 +44,13 @@
                     Seguimiento de proceso
                 </a>
                 <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Producto terminado</p>
-                <a href="{% url 'producto_terminado:lista_lotes' %}" {% if request.resolver_match.namespace == 'producto_terminado' %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.namespace == 'producto_terminado' %}bg-cyan-50 text-cyan-700{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                <a href="{% url 'producto_terminado:lista_lotes' %}" {% if request.resolver_match.namespace == 'producto_terminado' and 'caja' not in request.resolver_match.url_name %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.namespace == 'producto_terminado' and 'caja' not in request.resolver_match.url_name %}bg-cyan-50 text-cyan-700{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
                     <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h4" /></svg>
                     Lotes de producción
+                </a>
+                <a href="{% url 'producto_terminado:lista_cajas' %}" {% if request.resolver_match.namespace == 'producto_terminado' and 'caja' in request.resolver_match.url_name %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.namespace == 'producto_terminado' and 'caja' in request.resolver_match.url_name %}bg-cyan-50 text-cyan-700{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v14H3zM3 7l3-4h12l3 4M12 7v6" /></svg>
+                    Cajas
                 </a>
             {% endif %}
         </nav>
