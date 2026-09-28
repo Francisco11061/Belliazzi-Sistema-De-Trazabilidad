@@ -323,8 +323,6 @@ class CantidadLoteForm(forms.Form):
 
 
 class CrearLoteForm(CantidadLoteForm):
-    codigo = forms.CharField(max_length=LoteProduccion._meta.get_field("codigo_lote").max_length,
-                             strip=True, label="Código de lote")
     fecha_elaboracion = forms.DateField(label="Fecha de elaboración", widget=forms.DateInput(
         format="%Y-%m-%d", attrs={"type": "date"},
     ))
@@ -332,7 +330,7 @@ class CrearLoteForm(CantidadLoteForm):
         format="%Y-%m-%d", attrs={"type": "date"},
     ), help_text="Ingresa la fecha cuando esté definida. No se calcula automáticamente.")
     observaciones = forms.CharField(required=False, label="Observaciones", widget=forms.Textarea(attrs={"rows": 3}))
-    field_order = ["codigo", "fecha_elaboracion", "fecha_vencimiento", "cantidad_kg", "observaciones"]
+    field_order = ["fecha_elaboracion", "fecha_vencimiento", "cantidad_kg", "observaciones"]
 
     def clean(self):
         datos = super().clean()

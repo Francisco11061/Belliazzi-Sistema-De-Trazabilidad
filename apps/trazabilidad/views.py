@@ -34,6 +34,7 @@ from .constantes import PESO_MAXIMO_CAJA_KG
 from .models import PresentacionBolsa
 from .selectors import lotes_con_empaque, cajas_con_peso, puede_crear_caja
 from .selectors import cajas_con_trazabilidad
+from .selectors import origen_unico_lote
 from .models import Caja
 from .qr import generar_png_qr_caja
 from apps.usuarios.permisos import tiene_rol, ROL_JEFE, ROL_ENCARGADA
@@ -459,6 +460,7 @@ def detalle_lote(request, pk):
     return render(request, "trazabilidad/lotes/detalle.html", {
         "lote": lote,
         "puede_crear_caja": puede_crear_caja(lote),
+        "puede_agregar_producto": bool(lote.ruta_proceso_id and origen_unico_lote(lote) is not None),
         "cajas": cajas_con_peso().filter(lote_produccion=lote).order_by("pk"),
         "consumos": lote.consumos.select_related("partida__detalle_recepcion__especie").order_by("pk"),
     })
@@ -469,7 +471,7 @@ def detalle_lote(request, pk):
 def crear_lote(request, pk):
     partida = presentar_partida(get_object_or_404(partidas_con_disponibilidad(), pk=pk))
     form = CrearLoteForm(request.POST if request.method == "POST" else None,
-                         initial={"fecha_elaboracion": timezone.localdate()})
+                         initial={"fecha_elaboracion": timezone.localdate(), "cantidad_kg": partida.disponible_lote_kg})
     if request.method == "POST" and form.is_valid():
         try:
             lote = crear_lote_produccion(partida=partida, usuario=request.user, **form.cleaned_data)

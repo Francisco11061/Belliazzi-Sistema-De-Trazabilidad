@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from apps.usuarios.models import Rol, Usuario
 from .forms import CajaForm
-from .models import Caja, ComposicionCaja, EstanciaPartida, LoteProduccion, PresentacionBolsa, UnidadFrio
+from .models import Caja, ComposicionCaja, ConsumoLote, EstanciaPartida, LoteProduccion, PresentacionBolsa, UnidadFrio
 from .qr import construir_url_qr_caja, generar_png_qr_caja
 from .services import agregar_consumo_lote
 from .test_cajas import DatosCajas
@@ -29,8 +29,9 @@ class DatosQR(DatosCajas):
         self.especie.save()
         self.lote.codigo_lote = "TEST-QR-001"
         self.lote.save()
-        self.otra = self.otra_lista("40")
-        agregar_consumo_lote(lote=self.lote, partida=self.otra, cantidad_kg=Decimal("30"), usuario=self.usuario)
+        self.otra = self.otra_lista("40", mismo_origen=False)
+        # Fixture histórico mixto: las nuevas operaciones ya no admiten esta mezcla.
+        ConsumoLote.objects.create(lote_produccion=self.lote, partida=self.otra, cantidad_kg_utilizada=Decimal("30"))
         for partida, folio in ((self.partida, "ABC123"), (self.otra, "DEF456")):
             origen = partida.detalle_recepcion.origen_sernapesca
             origen.folio_origen = folio
@@ -220,7 +221,7 @@ class QRCajasTests(DatosQR, TestCase):
         with CaptureQueriesContext(connection) as antes:
             self.client.get(self.consulta())
         tercera = self.otra_lista("10")
-        agregar_consumo_lote(lote=self.lote, partida=tercera, cantidad_kg=Decimal("10"), usuario=self.usuario)
+        ConsumoLote.objects.create(lote_produccion=self.lote, partida=tercera, cantidad_kg_utilizada=Decimal("10"))
         with CaptureQueriesContext(connection) as despues:
             respuesta = self.client.get(self.consulta())
         self.assertEqual(len(antes), len(despues))
@@ -239,6 +240,7 @@ class MigracionQRCajasTests(DatosCajas, TransactionTestCase):
         composiciones_antes = list(ComposicionCaja.objects.order_by("pk").values())
         anterior = [("trazabilidad", "0010_caja_peso_neto_kg")]
         actual = [("trazabilidad", "0011_caja_identificador_qr")]
+        ultimas = MigrationExecutor(connection).loader.graph.leaf_nodes()
         try:
             MigrationExecutor(connection).migrate(anterior)
             MigrationExecutor(connection).migrate(actual)
@@ -253,4 +255,4 @@ class MigracionQRCajasTests(DatosCajas, TransactionTestCase):
                 import_module("apps.trazabilidad.migrations.0011_caja_identificador_qr").asignar_identificadores(estado, editor)
             self.assertEqual(ids, list(Caja.objects.values_list("identificador_qr", flat=True)))
         finally:
-            MigrationExecutor(connection).migrate(actual)
+            MigrationExecutor(connection).migrate(ultimas)

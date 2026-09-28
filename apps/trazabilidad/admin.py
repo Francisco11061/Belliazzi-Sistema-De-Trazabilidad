@@ -29,8 +29,8 @@ from .models import (
 
 @admin.register(Especie)
 class EspecieAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "activo")
-    search_fields = ("nombre",)
+    list_display = ("nombre", "codigo_lote", "activo")
+    search_fields = ("nombre", "codigo_lote")
     list_filter = ("activo",)
 
 

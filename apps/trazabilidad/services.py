@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from decimal import Decimal
 
@@ -16,6 +17,8 @@ from .selectors import partidas_con_disponibilidad, puede_asignar_lote
 from .models import Caja, ComposicionCaja, PresentacionBolsa
 from .selectors import lotes_con_empaque, puede_crear_caja
 from .constantes import PESO_MAXIMO_CAJA_KG
+from .lotes import segmento_folio
+from .selectors import origen_unico_lote
 
 
 def _normalizar_texto(valor, campo):
@@ -542,16 +545,28 @@ def _crear_consumo(lote, partida, cantidad_kg):
 
 
 @transaction.atomic
-def crear_lote_produccion(*, partida, codigo, cantidad_kg, fecha_elaboracion,
+def crear_lote_produccion(*, partida, cantidad_kg, fecha_elaboracion,
                          fecha_vencimiento, observaciones, usuario):
     partida = _bloquear_partida(partida, usuario)
     actual = _validar_asignacion_lote(partida, cantidad_kg)
+    # Orden global: detalle -> seguimiento -> especie; nunca volver a otra raíz.
+    especie = Especie.objects.select_for_update().get(pk=actual.detalle_recepcion.especie_id)
+    if not especie.codigo_lote or not re.fullmatch(r"[0-9]{2}", especie.codigo_lote):
+        raise ValidationError("La especie necesita un código de lote de dos dígitos configurado en Administración.")
     lote = LoteProduccion(
-        codigo_lote=_normalizar_texto(codigo, "codigo"),
         especie_id=actual.detalle_recepcion.especie_id, ruta_proceso_id=actual.ruta_proceso_id,
         fecha_elaboracion=fecha_elaboracion, fecha_vencimiento=fecha_vencimiento,
         observaciones=_normalizar_texto(observaciones, "observaciones"), registrado_por=usuario,
     )
+    lote.full_clean(exclude=["codigo_lote"])
+    prefijo = segmento_folio(actual.detalle_recepcion.origen_sernapesca.folio_origen) + especie.codigo_lote
+    fecha = f"{lote.fecha_elaboracion.day:02d}{lote.fecha_elaboracion.month:02d}{lote.fecha_elaboracion.year:04d}"
+    codigos = LoteProduccion.objects.filter(codigo_lote__startswith=prefijo, codigo_lote__endswith=fecha).values_list("codigo_lote", flat=True)
+    usados = {int(c[7:9]) for c in codigos if re.fullmatch(r"[0-9]{17}", c)}
+    siguiente = next((n for n in range(1, 100) if n not in usados), None)
+    if siguiente is None:
+        raise ValidationError("No hay más correlativos disponibles para esta especie, origen y fecha de elaboración.")
+    lote.codigo_lote = f"{prefijo}{siguiente:02d}{fecha}"
     lote.full_clean()
     try:
         # Savepoint para traducir una colisión de código entre seguimientos distintos.
@@ -575,6 +590,11 @@ def agregar_consumo_lote(*, lote, partida, cantidad_kg, usuario):
         raise ValidationError("El lote no existe o no tiene una ruta documentada para recibir producto.")
     if lote.especie_id != actual.detalle_recepcion.especie_id or lote.ruta_proceso_id != actual.ruta_proceso_id:
         raise ValidationError("El producto debe tener la misma especie y la misma ruta de procesamiento del lote.")
+    origen_id = origen_unico_lote(lote)
+    if origen_id is None:
+        raise ValidationError("El origen de este lote requiere revisión antes de agregar producto.")
+    if origen_id != actual.detalle_recepcion.origen_sernapesca_id:
+        raise ValidationError("No se puede agregar producto de un origen diferente a este lote.")
     return _crear_consumo(lote, partida, cantidad_kg)
 
 

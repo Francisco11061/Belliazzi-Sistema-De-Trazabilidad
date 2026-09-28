@@ -18,8 +18,8 @@
     <ul class="mt-5 space-y-3 text-sm">
         {% for consumo in consumos_lotes %}
         <li class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-4">
-            <div><p class="font-semibold">{{ consumo.lote_produccion.codigo_lote }}</p><p class="mt-1 text-slate-500">{{ consumo.cantidad_kg_utilizada|floatformat:2 }} kg</p></div>
-            <a class="font-medium text-cyan-700 underline" href="{% url 'producto_terminado:detalle_lote' consumo.lote_produccion_id %}">Ver lote<span class="sr-only"> {{ consumo.lote_produccion.codigo_lote }}</span></a>
+            <div><p class="font-semibold">{{ consumo.lote_produccion.codigo_visible }}</p><p class="mt-1 text-slate-500">{{ consumo.cantidad_kg_utilizada|floatformat:2 }} kg</p></div>
+            <a class="font-medium text-cyan-700 underline" href="{% url 'producto_terminado:detalle_lote' consumo.lote_produccion_id %}">Ver lote<span class="sr-only"> {{ consumo.lote_produccion.codigo_visible }}</span></a>
         </li>
         {% empty %}<li class="text-slate-500">Sin asignaciones a lotes.</li>{% endfor %}
     </ul>

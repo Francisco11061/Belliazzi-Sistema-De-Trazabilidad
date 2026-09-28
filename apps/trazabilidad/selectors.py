@@ -102,12 +102,21 @@ def partidas_para_lote(lote=None):
         disponible_lote_kg__gt=0, ruta_proceso__isnull=False,
     )
     if lote is not None:
-        if not lote.ruta_proceso_id:
+        origen_id = origen_unico_lote(lote)
+        if not lote.ruta_proceso_id or origen_id is None:
             return partidas.none()
         partidas = partidas.filter(
             detalle_recepcion__especie_id=lote.especie_id, ruta_proceso_id=lote.ruta_proceso_id,
+            detalle_recepcion__origen_sernapesca_id=origen_id,
         ).exclude(consumos_lote__lote_produccion=lote)
     return partidas.order_by("pk")
+
+
+def origen_unico_lote(lote):
+    origenes = list(lote.consumos.order_by().values_list(
+        "partida__detalle_recepcion__origen_sernapesca_id", flat=True,
+    ).distinct()[:2])
+    return origenes[0] if len(origenes) == 1 else None
 
 
 def puede_asignar_lote(partida):

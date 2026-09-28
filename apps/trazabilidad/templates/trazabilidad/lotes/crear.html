@@ -8,6 +8,7 @@
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-lg font-semibold">{{ partida.detalle_recepcion.especie.nombre }}</h2>
         <p class="mt-2 text-sm text-slate-500">{{ partida.ruta_proceso.nombre|default:"Sin ruta documentada" }} · Seguimiento #{{ partida.pk }}</p>
+        <p class="mt-3 text-sm"><span class="text-slate-500">Origen / Folio:</span> {{ partida.detalle_recepcion.origen_sernapesca.folio_origen }}</p>
         <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-3">
             <div><dt class="text-slate-500">Peso postproceso</dt><dd class="mt-1 font-semibold">{{ partida.peso_final_kg|floatformat:2|default:"—" }} kg</dd></div>
             <div><dt class="text-slate-500">Cantidad ya asignada</dt><dd class="mt-1 font-semibold">{{ partida.asignado_lotes_kg|floatformat:2 }} kg</dd></div>
@@ -18,8 +19,9 @@
         {% if form.non_field_errors %}<div role="alert" class="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
         {% if compatible %}
         <form method="post" class="space-y-5">
+            <div class="rounded-lg border border-cyan-100 bg-cyan-50 p-4 text-sm"><p class="font-semibold">Código del lote</p><p class="mt-2">Se generará automáticamente al crear el lote.</p><p class="mt-1">Formato: XXXXX XXXX DDMMAAAA</p></div>
             {% csrf_token %}{% include "trazabilidad/lotes/_formulario.html" %}
-            <p class="text-sm leading-6 text-slate-500">El código se ingresa manualmente. Revisa código, fechas y cantidad antes de registrar; esta versión conserva los datos del lote sin edición.</p>
+            <p class="text-sm leading-6 text-slate-500">Revisa las fechas y la cantidad antes de registrar; esta versión conserva los datos del lote sin edición.</p>
             <div class="flex flex-col gap-3 sm:flex-row">
                 <button class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800" type="submit">Crear lote y asignar</button>
                 <a class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm text-slate-700 hover:bg-slate-50" href="{% url 'trazabilidad:detalle_partida' partida.pk %}">Cancelar</a>

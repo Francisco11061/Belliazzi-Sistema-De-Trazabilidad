@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% load i18n %}
-{% block title %}Lote {{ lote.codigo_lote }} | Pesquera Belliazzi{% endblock %}
+{% block title %}Lote {{ lote.codigo_visible }} | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Producto terminado / Detalle del lote{% endblock %}
 {% block content %}{% language "es" %}
 <div class="w-full min-w-0 max-w-5xl space-y-6">
-    <header><a href="{% url 'producto_terminado:lista_lotes' %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver a lotes de producción</a><h1 class="mt-4 text-2xl font-semibold sm:text-3xl">Lote {{ lote.codigo_lote }}</h1><p class="mt-2 text-lg font-medium">{{ lote.especie.nombre }}</p><p class="mt-1 text-sm text-slate-500">{{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p></header>
+    <header><a href="{% url 'producto_terminado:lista_lotes' %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver a lotes de producción</a><h1 class="mt-4 text-2xl font-semibold sm:text-3xl">Lote {{ lote.codigo_visible }}</h1><p class="mt-2 text-lg font-medium">{{ lote.especie.nombre }}</p><p class="mt-1 text-sm text-slate-500">{{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p></header>
     <section class="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 sm:p-6">
         <dl class="grid gap-5 sm:grid-cols-2">
             <div><dt class="text-sm text-slate-500">Total asignado</dt><dd class="mt-1 text-2xl font-semibold text-cyan-800">{{ lote.total_asignado|floatformat:2 }} kg</dd></div>
@@ -15,8 +15,8 @@
         </dl>
         {% if puede_crear_caja %}<a href="{% url 'producto_terminado:crear_caja' lote.pk %}" class="mt-5 inline-flex rounded-lg bg-cyan-700 px-5 py-3 text-center text-sm font-semibold text-white hover:bg-cyan-800">Crear caja</a>{% endif %}
         {% if lote.historial_empaque_incompleto %}<p role="alert" class="mt-5 text-sm text-slate-600">Hay cajas históricas sin peso neto documentado. El saldo requiere revisión antes de crear nuevas cajas.</p>{% elif lote.disponible_empacar == 0 %}<p class="mt-5 text-sm text-cyan-800">Todo el producto asignado a este lote ya fue empacado.</p>{% endif %}
-        {% if lote.ruta_proceso_id %}<a href="{% url 'producto_terminado:agregar_producto_lote' lote.pk %}" class="mt-5 inline-flex rounded-lg bg-cyan-700 px-5 py-3 text-center text-sm font-semibold text-white hover:bg-cyan-800">Agregar producto</a>
-        {% else %}<p class="mt-5 text-sm text-slate-600">Lote histórico sin ruta documentada. Se conserva para consulta; requiere revisión antes de recibir nuevos aportes.</p>{% endif %}
+        {% if puede_agregar_producto %}<a href="{% url 'producto_terminado:agregar_producto_lote' lote.pk %}" class="mt-5 inline-flex rounded-lg bg-cyan-700 px-5 py-3 text-center text-sm font-semibold text-white hover:bg-cyan-800">Agregar producto</a>
+        {% else %}<p class="mt-5 text-sm text-slate-600">{% if not lote.ruta_proceso_id %}Lote histórico sin ruta documentada. {% endif %}Este lote requiere revisión de su ruta u origen antes de recibir nuevos aportes. Los datos históricos se conservan.</p>{% endif %}
     </section>
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-lg font-semibold">Cajas</h2>

@@ -4,7 +4,7 @@
 {% block page_title %}Producto terminado / Nueva caja{% endblock %}
 {% block content %}{% language "es" %}
 <div class="w-full min-w-0 max-w-3xl space-y-6">
-    <header><a href="{% url 'producto_terminado:detalle_lote' lote.pk %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver al lote</a><h1 class="mt-4 text-2xl font-semibold sm:text-3xl">Nueva caja</h1><p class="mt-2 font-medium">Lote {{ lote.codigo_lote }}</p><p class="mt-1 text-sm text-slate-500">{{ lote.especie.nombre }} · {{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p></header>
+    <header><a href="{% url 'producto_terminado:detalle_lote' lote.pk %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver al lote</a><h1 class="mt-4 text-2xl font-semibold sm:text-3xl">Nueva caja</h1><p class="mt-2 font-medium">Lote {{ lote.codigo_visible }}</p><p class="mt-1 text-sm text-slate-500">{{ lote.especie.nombre }} · {{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p></header>
     <section class="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 sm:p-6">
         <dl class="grid gap-5 text-sm sm:grid-cols-3">
             <div><dt class="text-slate-500">Total asignado</dt><dd class="mt-1 font-semibold">{{ lote.total_asignado|floatformat:2 }} kg</dd></div>

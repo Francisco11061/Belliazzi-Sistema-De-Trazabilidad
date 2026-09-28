@@ -3,16 +3,25 @@ import uuid
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models, transaction
 
 
 class Especie(models.Model):
+    codigo_lote = models.CharField(
+        max_length=2, unique=True, null=True, blank=True,
+        validators=[RegexValidator(r"\A[0-9]{2}\Z", "El código de especie debe tener exactamente dos dígitos.")],
+        help_text="Código estable de dos dígitos para generar lotes. Obligatorio antes de crear un lote.",
+    )
     nombre = models.CharField(max_length=80, unique=True)
     activo = models.BooleanField(default=True)
 
     class Meta:
         ordering = ["nombre"]
+        constraints = [models.CheckConstraint(
+            condition=models.Q(codigo_lote__isnull=True) | models.Q(codigo_lote__regex=r"^[0-9]{2}$"),
+            name="especie_codigo_lote_dos_digitos",
+        )]
 
     def __str__(self):
         return self.nombre
@@ -419,6 +428,11 @@ class LoteProduccion(models.Model):
 
     def __str__(self):
         return self.codigo_lote
+
+    @property
+    def codigo_visible(self):
+        from .lotes import presentar_codigo_lote
+        return presentar_codigo_lote(self.codigo_lote)
 
 
 class ConsumoLote(models.Model):

@@ -25,15 +25,30 @@ from .test_postproceso import DatosPostproceso
 
 
 class DatosLotes(DatosPostproceso):
+    def preparar(self):
+        super().preparar()
+        self.especie.codigo_lote = "01"
+        self.especie.save()
+
     def crear_lote(self, **cambios):
-        datos = dict(partida=self.partida, codigo="TEST-001", cantidad_kg=Decimal("100"),
+        codigo_historico = cambios.pop("codigo", None)
+        datos = dict(partida=self.partida, cantidad_kg=Decimal("100"),
                      fecha_elaboracion=date(2026, 9, 26), fecha_vencimiento=date(2026, 10, 26),
                      observaciones="Prueba de lote", usuario=self.usuario)
         datos.update(cambios)
-        return crear_lote_produccion(**datos)
+        lote = crear_lote_produccion(**datos)
+        # Solo fixtures: conservar cobertura de cajas y códigos históricos.
+        if codigo_historico is not None:
+            lote.codigo_lote = codigo_historico.strip()
+            lote.save(update_fields=["codigo_lote"])
+        return lote
 
-    def otra_lista(self, peso="40", ruta=None, especie=None):
+    def otra_lista(self, peso="40", ruta=None, especie=None, mismo_origen=True):
         partida = self.crear_partida()
+        if mismo_origen:
+            detalle = partida.detalle_recepcion
+            detalle.origen_sernapesca_id = self.partida.detalle_recepcion.origen_sernapesca_id
+            detalle.save(update_fields=["origen_sernapesca"])
         if especie:
             detalle = partida.detalle_recepcion
             detalle.especie = especie
@@ -70,8 +85,8 @@ class LotesTests(DatosLotes, TestCase):
         self.pesar()
 
     def test_crear_lote_desde_seguimiento_lista_empaque(self):
-        lote = self.crear_lote(codigo="  TEST-001  ", observaciones="  Observación  ")
-        self.assertEqual(lote.codigo_lote, "TEST-001")
+        lote = self.crear_lote(observaciones="  Observación  ")
+        self.assertRegex(lote.codigo_lote, r"^[0-9]{17}$")
         self.assertEqual(lote.observaciones, "Observación")
         self.assertEqual(lote.registrado_por, self.usuario)
         self.assertEqual(lote.consumos.get().cantidad_kg_utilizada, Decimal("100"))
@@ -84,20 +99,18 @@ class LotesTests(DatosLotes, TestCase):
         self.assertNotIn("especie", CrearLoteForm().fields)
         self.assertNotIn("ruta_proceso", CrearLoteForm().fields)
 
-    def test_codigo_lote_obligatorio_longitud_y_trim(self):
-        for codigo in ("", "   \t", "x" * 81, None):
-            with self.subTest(codigo=codigo), self.assertRaises(ValidationError):
-                self.crear_lote(codigo=codigo)
-        self.assertFalse(LoteProduccion.objects.exists())
-        self.assertFalse(ConsumoLote.objects.exists())
+    def test_codigo_lote_automatico_no_es_campo_del_formulario(self):
+        self.assertNotIn("codigo", CrearLoteForm().fields)
+        lote = self.crear_lote()
+        self.assertRegex(lote.codigo_lote, r"^[0-9]{17}$")
 
     def test_codigo_lote_unico(self):
-        self.crear_lote()
-        with self.assertRaises(ValidationError):
-            self.crear_lote(codigo="  TEST-001  ", cantidad_kg=Decimal("1"))
-        self.assertEqual(LoteProduccion.objects.count(), 1)
-        self.assertEqual(ConsumoLote.objects.count(), 1)
-        self.assertEqual(self.disponible(), Decimal("25"))
+        lote = self.crear_lote()
+        otro = self.crear_lote(cantidad_kg=Decimal("1"))
+        self.assertNotEqual(lote.codigo_lote, otro.codigo_lote)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            LoteProduccion.objects.filter(pk=otro.pk).update(codigo_lote=lote.codigo_lote)
+        self.assertEqual(LoteProduccion.objects.count(), 2)
 
     def test_fecha_vencimiento_no_anterior_elaboracion(self):
         with self.assertRaises(ValidationError):
@@ -292,7 +305,7 @@ class LotesTests(DatosLotes, TestCase):
         self.agregar(lote, otra)
         self.client.force_login(self.usuario)
         respuesta = self.client.get(self.url_lote("detalle_lote", lote.pk))
-        for texto in ("TEST-001", "Origen del producto", "125,00 kg", "2 seguimientos", "100,00 kg", "25,00 kg"):
+        for texto in (lote.codigo_visible, "Origen del producto", "125,00 kg", "2 seguimientos", "100,00 kg", "25,00 kg"):
             self.assertContains(respuesta, texto)
         for partida in (self.partida, otra):
             self.assertContains(respuesta, f"Seguimiento #{partida.pk}")
@@ -305,7 +318,7 @@ class LotesTests(DatosLotes, TestCase):
         self.assertContains(self.client.get(url), "Asignar a lote de producción")
         lote = self.crear_lote()
         respuesta = self.client.get(url)
-        for texto in ("125,00 kg", "100,00 kg", "25,00 kg", "TEST-001", self.url_lote("detalle_lote", lote.pk)):
+        for texto in ("125,00 kg", "100,00 kg", "25,00 kg", lote.codigo_visible, self.url_lote("detalle_lote", lote.pk)):
             self.assertContains(respuesta, texto)
         self.crear_lote(codigo="RESTO", cantidad_kg=Decimal("25"))
         respuesta = self.client.get(url)
@@ -326,7 +339,7 @@ class LotesTests(DatosLotes, TestCase):
                 "especie": self.otra_especie.pk, "ruta_proceso": "999999",
             })
             self.assertEqual(respuesta.status_code, 302)
-            lote = LoteProduccion.objects.get(codigo_lote=f"ROL-{i}")
+            lote = LoteProduccion.objects.latest("pk")
             self.assertEqual(lote.especie_id, self.especie.pk)
             self.assertEqual(lote.ruta_proceso_id, self.ruta.pk)
             self.assertEqual(lote.registrado_por, usuario)
@@ -360,7 +373,7 @@ class LotesTests(DatosLotes, TestCase):
         self.assertFalse(LoteProduccion.objects.exists())
         respuesta = self.client.post(url, self.datos_form(cantidad="126"))
         self.assertContains(respuesta, "no puede superar")
-        self.assertEqual(respuesta.context["form"]["codigo"].value(), "WEB-001")
+        self.assertEqual(respuesta.context["form"]["cantidad_kg"].value(), "126")
         self.assertFalse(LoteProduccion.objects.exists())
         for cantidad in ("0", "-1", "1.001"):
             self.assertFalse(CrearLoteForm(self.datos_form(cantidad=cantidad)).is_valid())
@@ -438,7 +451,7 @@ class ConcurrenciaLotesTests(DatosLotes, TransactionTestCase):
         self.pendiente()
         self.pesar("100")
 
-    def competir(self, operacion, partidas=None):
+    def competir(self, operacion, partidas=None, esperados=None):
         barrera = Barrier(2)
         partidas = partidas or [self.partida, self.partida]
 
@@ -458,7 +471,7 @@ class ConcurrenciaLotesTests(DatosLotes, TransactionTestCase):
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             resultados = list(pool.map(ejecutar, range(2)))
-        self.assertCountEqual(resultados, ["aceptada", "rechazada"])
+        self.assertCountEqual(resultados, esperados or ["aceptada", "rechazada"])
 
     @skipUnlessDBFeature("has_select_for_update")
     def test_dos_lotes_simultaneos_no_sobreconsumen_100_kg(self):
@@ -481,7 +494,8 @@ class ConcurrenciaLotesTests(DatosLotes, TransactionTestCase):
     def test_codigo_unico_entre_seguimientos_concurrentes(self):
         otra = self.otra_lista("100")
         self.competir(lambda i, partida, usuario: self.crear_lote(
-            partida=partida, usuario=usuario, codigo="MISMO-CODIGO", cantidad_kg=Decimal("60"),
-        ), partidas=[self.partida, otra])
-        self.assertEqual(LoteProduccion.objects.count(), 1)
-        self.assertEqual(ConsumoLote.objects.count(), 1)
+            partida=partida, usuario=usuario, cantidad_kg=Decimal("60"),
+        ), partidas=[self.partida, otra], esperados=["aceptada", "aceptada"])
+        self.assertEqual(LoteProduccion.objects.count(), 2)
+        self.assertEqual(ConsumoLote.objects.count(), 2)
+        self.assertEqual(len(set(LoteProduccion.objects.values_list("codigo_lote", flat=True))), 2)
