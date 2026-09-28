@@ -37,6 +37,7 @@ from .selectors import cajas_con_trazabilidad
 from .selectors import origen_unico_lote
 from .models import Caja
 from .qr import generar_png_qr_caja
+from apps.inventario.selectors import almacenamiento_caja, cajas_con_inventario
 from apps.usuarios.permisos import tiene_rol, ROL_JEFE, ROL_ENCARGADA
 from .services import crear_caja as crear_caja_service
 from .selectors import resumen_pesajes_mermas, ADVERTENCIA_PESO_SUPERIOR
@@ -559,10 +560,11 @@ def lista_cajas(request):
 
 @personal_operativo_requerido
 def detalle_caja(request, pk):
-    caja = get_object_or_404(cajas_con_peso(), pk=pk)
+    caja = get_object_or_404(cajas_con_inventario(cajas_con_peso()), pk=pk)
     return render(request, "trazabilidad/cajas/detalle.html", {
         "caja": caja,
         "composiciones": caja.composiciones.select_related("presentacion").order_by("pk"),
+        **almacenamiento_caja(caja),
     })
 
 
@@ -570,10 +572,11 @@ def detalle_caja(request, pk):
 @personal_operativo_requerido
 @require_http_methods(["GET"])
 def consulta_caja_qr(request, identificador):
-    caja = get_object_or_404(cajas_con_trazabilidad(), identificador_qr=identificador)
+    caja = get_object_or_404(cajas_con_inventario(cajas_con_trazabilidad()), identificador_qr=identificador)
     return render(request, "trazabilidad/cajas/consulta_qr.html", {
         "caja": caja, "composiciones": caja.composiciones_qr,
         "aportes": caja.lote_produccion.aportes_qr,
+        **almacenamiento_caja(caja),
         "puede_ver_recepcion": tiene_rol(request.user, ROL_JEFE, ROL_ENCARGADA),
     })
 

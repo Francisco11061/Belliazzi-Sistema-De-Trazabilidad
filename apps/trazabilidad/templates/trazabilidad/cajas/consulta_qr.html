@@ -13,6 +13,7 @@
         <a href="{% url 'producto_terminado:detalle_lote' caja.lote_produccion_id %}" class="mt-4 inline-flex rounded-lg border border-cyan-700 px-4 py-3 text-sm font-medium text-cyan-700 hover:bg-cyan-50">Ver lote {{ caja.lote_produccion.codigo_visible }}</a>
     </header>
     {% include "trazabilidad/cajas/_datos_caja.html" %}
+    {% include "inventario/_almacenamiento.html" %}
     <section aria-label="Origen del producto" class="space-y-5">
         <div><h2 class="text-xl font-semibold">Origen del producto</h2><p class="mt-2 text-sm text-slate-500">Aportes registrados al lote de esta caja.</p></div>
         {% for aporte in aportes %}{% with partida=aporte.partida detalle=aporte.partida.detalle_recepcion %}

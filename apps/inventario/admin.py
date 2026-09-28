@@ -5,6 +5,19 @@ from .models import BajaCaja, Despacho, DetalleDespacho, EstanciaCaja
 
 @admin.register(EstanciaCaja)
 class EstanciaCajaAdmin(admin.ModelAdmin):
+    # El historial es consultable; las operaciones usan services con bloqueo de Caja.
+    actions = None
+    list_select_related = ("caja", "unidad_frio", "ingresado_por")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
     list_display = (
         "id",
         "caja",

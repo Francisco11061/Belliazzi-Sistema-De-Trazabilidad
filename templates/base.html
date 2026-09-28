@@ -52,6 +52,10 @@
                     <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v14H3zM3 7l3-4h12l3 4M12 7v6" /></svg>
                     Cajas
                 </a>
+                <a href="{% url 'inventario:lista' %}" {% if request.resolver_match.namespace == 'inventario' %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.namespace == 'inventario' %}bg-cyan-50 text-cyan-700{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V8l9-5 9 5v13M7 21V11h10v10M7 15h10M7 19h10" /></svg>
+                    Inventario
+                </a>
             {% endif %}
         </nav>
         <form method="post" action="{% url 'usuarios:logout' %}" class="shrink-0 border-t border-slate-200 p-4">
