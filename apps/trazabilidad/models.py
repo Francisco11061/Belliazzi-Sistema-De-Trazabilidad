@@ -1,4 +1,5 @@
 from decimal import Decimal
+import uuid
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -466,6 +467,7 @@ class PresentacionBolsa(models.Model):
 
 
 class Caja(models.Model):
+    identificador_qr = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     lote_produccion = models.ForeignKey(
         LoteProduccion,
         on_delete=models.PROTECT,
@@ -495,6 +497,14 @@ class Caja(models.Model):
 
     def __str__(self):
         return f"Caja #{self.pk}"
+
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        if self.pk:
+            original = type(self).objects.select_for_update().filter(pk=self.pk).first()
+            if original is not None and original.identificador_qr != self.identificador_qr:
+                raise ValidationError("El identificador QR de una caja es permanente y no puede modificarse.")
+        super().save(*args, **kwargs)
 
 
 class ComposicionCaja(models.Model):

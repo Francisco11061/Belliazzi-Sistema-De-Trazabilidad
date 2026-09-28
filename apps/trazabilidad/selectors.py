@@ -1,7 +1,7 @@
 """Lecturas compartidas de situación y uso de las partidas, sin escribir datos."""
 from decimal import Decimal, ROUND_HALF_UP
 
-from django.db.models import Case, CharField, Count, DecimalField, Exists, F, OuterRef, Subquery, Sum, Value, When
+from django.db.models import Case, CharField, Count, DecimalField, Exists, F, OuterRef, Prefetch, Subquery, Sum, Value, When
 from django.db.models.functions import Coalesce
 
 from .models import (
@@ -146,6 +146,22 @@ def lotes_con_empaque():
         When(historial_empaque_incompleto=True, then=Value(None)),
         default=F("peso_real_documentado"), output_field=decimal,
     )).annotate(disponible_empacar=F("total_asignado") - F("total_empacado"))
+
+
+def cajas_con_trazabilidad():
+    """Una rama por aporte real; consultas constantes al aumentar los orígenes."""
+    aportes = ConsumoLote.objects.select_related(
+        "partida__ruta_proceso", "partida__detalle_recepcion__recepcion",
+        "partida__detalle_recepcion__origen_sernapesca",
+    ).prefetch_related(
+        Prefetch("partida__eventos", queryset=EventoProceso.objects.select_related("tipo_proceso").order_by("fecha_hora_inicio", "pk"), to_attr="eventos_qr"),
+        Prefetch("partida__estancias_frio", queryset=EstanciaPartida.objects.select_related("unidad_frio").order_by("fecha_hora_ingreso", "pk"), to_attr="estancias_qr"),
+        Prefetch("partida__pesajes", queryset=Pesaje.objects.filter(tipo=Pesaje.POSTPROCESO).order_by("fecha_hora_evento", "pk"), to_attr="postprocesos_qr"),
+    ).order_by("pk")
+    return cajas_con_peso().prefetch_related(
+        Prefetch("composiciones", queryset=ComposicionCaja.objects.select_related("presentacion").order_by("pk"), to_attr="composiciones_qr"),
+        Prefetch("lote_produccion__consumos", queryset=aportes, to_attr="aportes_qr"),
+    )
 
 
 def puede_crear_caja(lote):

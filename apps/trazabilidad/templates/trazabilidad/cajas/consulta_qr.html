@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}Trazabilidad de Caja #{{ caja.pk }} | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Producto terminado / Consulta QR{% endblock %}
+{% block content %}{% language "es" %}
+<div class="w-full min-w-0 max-w-4xl space-y-6">
+    <header>
+        <a href="{% url 'producto_terminado:detalle_caja' caja.pk %}" class="text-sm font-medium text-cyan-700 hover:underline">Ver caja</a>
+        <h1 class="mt-4 text-2xl font-semibold sm:text-3xl">Trazabilidad de Caja #{{ caja.pk }}</h1>
+        <p class="mt-3 text-2xl font-semibold text-cyan-800">{{ caja.lote_produccion.especie.nombre }}</p>
+        <p class="mt-2 text-sm text-slate-600">{{ caja.lote_produccion.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p>
+        <p class="mt-3 break-all text-sm text-slate-500">Identificador QR: {{ caja.identificador_qr }}</p>
+        <a href="{% url 'producto_terminado:detalle_lote' caja.lote_produccion_id %}" class="mt-4 inline-flex rounded-lg border border-cyan-700 px-4 py-3 text-sm font-medium text-cyan-700 hover:bg-cyan-50">Ver lote {{ caja.lote_produccion.codigo_lote }}</a>
+    </header>
+    {% include "trazabilidad/cajas/_datos_caja.html" %}
+    <section aria-label="Origen del producto" class="space-y-5">
+        <div><h2 class="text-xl font-semibold">Origen del producto</h2><p class="mt-2 text-sm text-slate-500">Aportes registrados al lote de esta caja.</p></div>
+        {% for aporte in aportes %}{% with partida=aporte.partida detalle=aporte.partida.detalle_recepcion %}
+        <article data-aporte="{{ aporte.pk }}" class="min-w-0 space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <header><h3 class="text-lg font-semibold">Seguimiento #{{ partida.pk }}</h3><p class="mt-2 font-medium text-cyan-800">{{ aporte.cantidad_kg_utilizada|floatformat:2 }} kg aportados al lote</p></header>
+            <dl class="grid gap-4 text-sm sm:grid-cols-2">
+                <div><dt class="text-slate-500">Recepción</dt><dd class="mt-1 font-medium">#{{ detalle.recepcion_id }} · {{ detalle.recepcion.fecha_hora_recepcion|date:"d/m/Y H:i" }}</dd></div>
+                <div><dt class="text-slate-500">Folio Sernapesca</dt><dd class="mt-1 font-medium">{{ detalle.origen_sernapesca.folio_origen|default:"No documentado" }}</dd></div>
+                <div><dt class="text-slate-500">Proveedor</dt><dd class="mt-1">{{ detalle.origen_sernapesca.proveedor|default:"No documentado" }}</dd></div>
+                <div><dt class="text-slate-500">Tipo de origen</dt><dd class="mt-1">{{ detalle.origen_sernapesca.tipo_origen|default:"No documentado" }}</dd></div>
+                <div><dt class="text-slate-500">Código de agente</dt><dd class="mt-1">{{ detalle.origen_sernapesca.codigo_agente|default:"No documentado" }}</dd></div>
+            </dl>
+            <div class="flex flex-wrap gap-3 text-sm">
+                <a href="{% url 'trazabilidad:detalle_partida' partida.pk %}" class="rounded-lg border border-cyan-700 px-4 py-3 font-medium text-cyan-700 hover:bg-cyan-50">Ver seguimiento</a>
+                {% if puede_ver_recepcion %}<a href="{% url 'trazabilidad:detalle_recepcion' detalle.recepcion_id %}" class="rounded-lg border border-slate-300 px-4 py-3 text-slate-700 hover:bg-slate-50">Ver recepción</a>{% endif %}
+            </div>
+            <div class="border-t border-slate-200 pt-5">
+                <h4 class="font-semibold">Procesamiento</h4><p class="mt-2 text-sm text-slate-600">Ruta: {{ partida.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p>
+                <ul class="mt-4 space-y-3 text-sm">
+                    {% for evento in partida.eventos_qr %}<li class="rounded-lg border border-cyan-100 bg-cyan-50 p-4"><p class="font-medium">{{ evento.tipo_proceso.nombre }}</p><p class="mt-2">Inicio: {{ evento.fecha_hora_inicio|date:"d/m/Y H:i" }}</p><p class="mt-1">{% if evento.fecha_hora_termino %}Término: {{ evento.fecha_hora_termino|date:"d/m/Y H:i" }}{% else %}En curso · sin término registrado{% endif %}</p></li>{% empty %}<li class="text-slate-500">Sin etapas documentadas.</li>{% endfor %}
+                </ul>
+            </div>
+            <div><h4 class="font-semibold">Frío del seguimiento</h4>
+                <ul class="mt-4 space-y-3 text-sm">
+                    {% for estancia in partida.estancias_qr %}<li class="rounded-lg border border-slate-200 bg-slate-50 p-4"><p class="font-medium">{{ estancia.unidad_frio.get_tipo_display }} · {{ estancia.unidad_frio.nombre }}</p><p class="mt-2">Ingreso: {{ estancia.fecha_hora_ingreso|date:"d/m/Y H:i" }}</p><p class="mt-1">{% if estancia.fecha_hora_salida %}Salida: {{ estancia.fecha_hora_salida|date:"d/m/Y H:i" }}{% else %}Estancia abierta{% endif %}</p></li>{% empty %}<li class="text-slate-500">Sin estancias documentadas.</li>{% endfor %}
+                </ul>
+            </div>
+            <div><h4 class="font-semibold">Peso postproceso del seguimiento</h4><ul class="mt-3 space-y-2 text-sm">{% for pesaje in partida.postprocesos_qr %}<li><strong>{{ pesaje.peso_kg|floatformat:2 }} kg</strong> · {{ pesaje.fecha_hora_evento|date:"d/m/Y H:i" }}</li>{% empty %}<li class="text-slate-500">Peso postproceso no documentado.</li>{% endfor %}</ul></div>
+        </article>
+        {% endwith %}{% empty %}<p class="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500">Este lote histórico no tiene aportes documentados.</p>{% endfor %}
+    </section>
+</div>
+{% endlanguage %}{% endblock %}

@@ -4,6 +4,8 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.http import HttpResponse
+from django.views.decorators.cache import never_cache
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -31,6 +33,10 @@ from .forms import ComposicionCajaFormSet, CajaFiltroForm, CajaForm
 from .constantes import PESO_MAXIMO_CAJA_KG
 from .models import PresentacionBolsa
 from .selectors import lotes_con_empaque, cajas_con_peso, puede_crear_caja
+from .selectors import cajas_con_trazabilidad
+from .models import Caja
+from .qr import generar_png_qr_caja
+from apps.usuarios.permisos import tiene_rol, ROL_JEFE, ROL_ENCARGADA
 from .services import crear_caja as crear_caja_service
 from .selectors import resumen_pesajes_mermas, ADVERTENCIA_PESO_SUPERIOR
 from .services import (
@@ -556,3 +562,23 @@ def detalle_caja(request, pk):
         "caja": caja,
         "composiciones": caja.composiciones.select_related("presentacion").order_by("pk"),
     })
+
+
+@never_cache
+@personal_operativo_requerido
+@require_http_methods(["GET"])
+def consulta_caja_qr(request, identificador):
+    caja = get_object_or_404(cajas_con_trazabilidad(), identificador_qr=identificador)
+    return render(request, "trazabilidad/cajas/consulta_qr.html", {
+        "caja": caja, "composiciones": caja.composiciones_qr,
+        "aportes": caja.lote_produccion.aportes_qr,
+        "puede_ver_recepcion": tiene_rol(request.user, ROL_JEFE, ROL_ENCARGADA),
+    })
+
+
+@never_cache
+@personal_operativo_requerido
+@require_http_methods(["GET"])
+def caja_qr_png(request, pk):
+    caja = get_object_or_404(Caja, pk=pk)
+    return HttpResponse(generar_png_qr_caja(request, caja), content_type="image/png")

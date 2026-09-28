@@ -319,9 +319,11 @@ class PresentacionBolsaAdmin(admin.ModelAdmin):
 
 @admin.register(Caja)
 class CajaAdmin(RegistroHistoricoAdmin):
+    readonly_fields = ("identificador_qr",)
     list_select_related = ("lote_produccion", "registrado_por")
     list_display = (
         "id",
+        "identificador_qr",
         "codigo_caja",
         "lote_produccion",
         "peso_derivado",
@@ -331,6 +333,7 @@ class CajaAdmin(RegistroHistoricoAdmin):
     )
     search_fields = (
         "codigo_caja",
+        "identificador_qr",
         "lote_produccion__codigo_lote",
     )
     list_filter = ("fecha_armado",)

@@ -5,27 +5,15 @@
 {% block content %}{% language "es" %}
 <div class="w-full min-w-0 max-w-4xl space-y-6">
     <header><a href="{% url 'producto_terminado:lista_cajas' %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver a cajas</a><h1 class="mt-4 text-2xl font-semibold sm:text-3xl">Caja #{{ caja.pk }}</h1><p class="mt-2 text-lg font-medium">{{ caja.lote_produccion.especie.nombre }}</p><p class="mt-1 text-sm text-slate-500">{{ caja.lote_produccion.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p></header>
-    <section class="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 sm:p-6">
-        <h2 class="text-sm text-slate-500">Peso neto real</h2>
-        <p class="mt-1 text-2xl font-semibold text-cyan-800">{% if caja.peso_neto_kg != None %}{{ caja.peso_neto_kg|floatformat:2 }} kg{% else %}Peso neto no documentado{% endif %}</p>
-        <p class="mt-3 text-sm">Diferencia respecto del teórico: {% if caja.diferencia_kg != None %}{{ caja.diferencia_kg|floatformat:2 }} kg{% else %}No calculable{% endif %}</p>
-    </section>
-    <section class="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 sm:p-6"><h2 class="text-sm text-slate-500">Peso teórico de composición</h2><p class="mt-1 text-2xl font-semibold text-cyan-800">{% if caja.peso_teorico_kg != None %}{{ caja.peso_teorico_kg|floatformat:2 }} kg{% else %}Sin composición documentada{% endif %}</p></section>
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <dl class="grid gap-5 text-sm sm:grid-cols-2">
-            <div><dt class="text-slate-500">Lote</dt><dd class="mt-1 font-medium">{{ caja.lote_produccion.codigo_lote }}</dd></div>
-            <div><dt class="text-slate-500">Registrado por</dt><dd class="mt-1 font-medium">{{ caja.registrado_por.get_full_name|default:caja.registrado_por.username }}</dd></div>
-            <div><dt class="text-slate-500">Fecha elaboración</dt><dd class="mt-1">{{ caja.lote_produccion.fecha_elaboracion|date:"d/m/Y" }}</dd></div>
-            <div><dt class="text-slate-500">Fecha vencimiento</dt><dd class="mt-1">{{ caja.lote_produccion.fecha_vencimiento|date:"d/m/Y"|default:"No informada" }}</dd></div>
-            <div><dt class="text-slate-500">Fecha/hora de registro</dt><dd class="mt-1">{{ caja.fecha_armado|date:"d/m/Y H:i" }}</dd></div>
-            {% if caja.codigo_caja %}<div><dt class="text-slate-500">Código histórico</dt><dd class="mt-1">{{ caja.codigo_caja }}</dd></div>{% endif %}
-            {% if caja.peso_total_kg != None %}<div><dt class="text-slate-500">Peso informado históricamente</dt><dd class="mt-1">{{ caja.peso_total_kg|floatformat:2 }} kg</dd></div>{% endif %}
-        </dl>
-    </section>
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <h2 class="text-lg font-semibold">Composición</h2>
-        <ul class="mt-5 space-y-4">{% for composicion in composiciones %}<li class="rounded-lg border border-slate-200 bg-slate-50 p-4"><h3 class="font-semibold">{{ composicion.presentacion.nombre }}</h3><p class="mt-2 text-sm text-slate-600">{{ composicion.cantidad }} bolsas × {{ composicion.peso_unitario_kg|floatformat:2 }} kg</p><p class="mt-2 font-medium">Subtotal nominal: {{ composicion.subtotal_kg|floatformat:2 }} kg</p></li>{% empty %}<li class="text-sm text-slate-500">Esta caja histórica no tiene composición documentada.</li>{% endfor %}</ul>
-    </section>
+    {% include "trazabilidad/cajas/_datos_caja.html" %}
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 class="text-lg font-semibold">Origen</h2><p class="mt-3">Lote {{ caja.lote_produccion.codigo_lote }}</p><a href="{% url 'producto_terminado:detalle_lote' caja.lote_produccion_id %}" class="mt-4 inline-flex rounded-lg border border-cyan-700 px-5 py-3 text-sm font-medium text-cyan-700 hover:bg-cyan-50">Ver lote</a></section>
+    <section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 class="text-lg font-semibold">Identificación</h2>
+        <p class="mt-3 text-sm">Caja #{{ caja.pk }} · Identificador QR</p>
+        <p class="mt-2 break-all text-sm text-slate-600">{{ caja.identificador_qr }}</p>
+        <img src="{% url 'producto_terminado:caja_qr_png' caja.pk %}" alt="QR de Caja #{{ caja.pk }} para consulta interna" width="240" height="240" class="mt-5 h-auto max-w-full rounded-lg border border-slate-200 bg-white">
+        <p class="mt-3 text-sm text-slate-500">La consulta requiere iniciar sesión.</p>
+        <a href="{% url 'producto_terminado:consulta_caja_qr' caja.identificador_qr %}" class="mt-5 inline-flex rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Ver trazabilidad</a>
+    </section>
 </div>
 {% endlanguage %}{% endblock %}
