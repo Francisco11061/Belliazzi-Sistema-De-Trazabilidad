@@ -46,6 +46,17 @@ class EstanciaCaja(models.Model):
 
 
 class Despacho(models.Model):
+    class TipoDestino(models.TextChoices):
+        NACIONAL = "NACIONAL", "Nacional"
+        EXPORTACION = "EXPORTACION", "Exportación"
+
+    # Vacíos permitidos para conservar despachos históricos sin inventar datos.
+    tipo_destino = models.CharField(max_length=20, choices=TipoDestino.choices, blank=True)
+    rut_destinatario = models.CharField(max_length=30, blank=True)
+    pais_destino = models.CharField(max_length=100, blank=True)
+    tipo_documento = models.CharField(max_length=100, blank=True)
+    numero_documento = models.CharField(max_length=100, blank=True)
+    fecha_documento = models.DateField(null=True, blank=True)
     fecha_hora_despacho = models.DateTimeField()
     destino = models.CharField(max_length=200, blank=True)
     registrado_por = models.ForeignKey(

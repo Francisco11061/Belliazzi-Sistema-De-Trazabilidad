@@ -1,0 +1,12 @@
+<dl class="grid gap-4 text-sm sm:grid-cols-2">
+<div><dt class="text-slate-500">Estado</dt><dd class="mt-1 font-semibold">Registrado</dd></div>
+<div><dt class="text-slate-500">Fecha/hora</dt><dd class="mt-1">{{ despacho.fecha_hora_despacho|date:"d/m/Y H:i" }}</dd></div>
+<div><dt class="text-slate-500">Tipo de destino</dt><dd class="mt-1">{{ despacho.get_tipo_destino_display|default:"No documentado" }}</dd></div>
+<div><dt class="text-slate-500">Destinatario</dt><dd class="mt-1 break-words">{{ despacho.destino|default:"No documentado" }}</dd></div>
+<div><dt class="text-slate-500">RUT del destinatario</dt><dd class="mt-1 break-words">{{ despacho.rut_destinatario|default:"No documentado" }}</dd></div>
+<div><dt class="text-slate-500">País de destino</dt><dd class="mt-1 break-words">{{ despacho.pais_destino|default:"No documentado" }}</dd></div>
+<div><dt class="text-slate-500">Tipo de documento</dt><dd class="mt-1 break-words">{{ despacho.tipo_documento|default:"No documentado" }}</dd></div>
+<div><dt class="text-slate-500">Número de documento</dt><dd class="mt-1 break-words">{{ despacho.numero_documento|default:"No documentado" }}</dd></div>
+<div><dt class="text-slate-500">Fecha del documento</dt><dd class="mt-1">{{ despacho.fecha_documento|date:"d/m/Y"|default:"No documentado" }}</dd></div>
+<div><dt class="text-slate-500">Registrado por</dt><dd class="mt-1 break-words">{{ despacho.registrado_por }}</dd></div>
+</dl>

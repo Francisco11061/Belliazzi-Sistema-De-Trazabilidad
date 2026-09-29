@@ -37,7 +37,8 @@ class EstanciaCajaAdmin(admin.ModelAdmin):
 
 
 @admin.register(Despacho)
-class DespachoAdmin(admin.ModelAdmin):
+class DespachoAdmin(EstanciaCajaAdmin):
+    list_select_related = ("registrado_por",)
     list_display = (
         "id",
         "fecha_hora_despacho",
@@ -52,7 +53,9 @@ class DespachoAdmin(admin.ModelAdmin):
 
 
 @admin.register(DetalleDespacho)
-class DetalleDespachoAdmin(admin.ModelAdmin):
+class DetalleDespachoAdmin(EstanciaCajaAdmin):
+    list_select_related = ("despacho", "caja")
+    list_filter = ("despacho",)
     list_display = (
         "id",
         "despacho",

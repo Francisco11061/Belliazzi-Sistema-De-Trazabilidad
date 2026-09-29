@@ -1,10 +1,12 @@
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.trazabilidad.models import Caja, UnidadFrio
 from apps.usuarios.permisos import ROL_ENCARGADA, ROL_JEFE, ROL_OPERARIA, tiene_rol
-from .models import EstanciaCaja
+from .models import Despacho, DetalleDespacho, EstanciaCaja
+from .despachos import validar_datos_despacho
+from .selectors import cajas_con_inventario
 
 
 @transaction.atomic
@@ -44,3 +46,44 @@ def ingresar_caja(*, caja, unidad, usuario):
 
 def mover_caja(*, caja, unidad, usuario):
     return _registrar_almacenamiento(caja=caja, unidad=unidad, usuario=usuario, mover=True)
+
+
+@transaction.atomic
+def registrar_despacho(*, cajas, usuario, tipo_destino, destino="", rut_destinatario="", pais_destino="",
+                       tipo_documento="", numero_documento="", fecha_documento=None, observaciones=""):
+    if not tiene_rol(usuario, ROL_JEFE, ROL_ENCARGADA, ROL_OPERARIA):
+        raise PermissionDenied
+    ids = [c.pk if isinstance(c, Caja) else c for c in cajas]
+    if not ids:
+        raise ValidationError("Seleccione al menos una caja.")
+    if any(type(pk) is not int or pk <= 0 for pk in ids):
+        raise ValidationError("Una o más cajas ya no están disponibles para despacho.")
+    if len(ids) != len(set(ids)):
+        raise ValidationError("No puede seleccionar una caja más de una vez.")
+    # Mismo bloqueo que almacenamiento. Orden estable para selecciones superpuestas.
+    bloqueadas = list(Caja.objects.select_for_update().filter(pk__in=ids).order_by("pk"))
+    actuales = list(cajas_con_inventario().filter(pk__in=ids))
+    if len(bloqueadas) != len(ids) or any(c.estado_inventario != "ALMACENADA" for c in actuales):
+        raise ValidationError("Una o más cajas ya no están disponibles para despacho.")
+    if any(c.peso_neto_kg is None for c in bloqueadas):
+        raise ValidationError("La caja no puede despacharse porque no posee un peso neto real documentado.")
+    ahora = timezone.now()
+    estancias = list(EstanciaCaja.objects.filter(caja_id__in=ids, fecha_hora_salida__isnull=True))
+    if any(e.fecha_hora_ingreso > ahora for e in estancias):
+        raise ValidationError("Una fecha de ingreso de almacenamiento requiere revisión antes de despachar.")
+    datos = validar_datos_despacho(dict(tipo_destino=tipo_destino, destino=destino, rut_destinatario=rut_destinatario,
+        pais_destino=pais_destino, tipo_documento=tipo_documento, numero_documento=numero_documento,
+        fecha_documento=fecha_documento, observaciones=observaciones))
+    despacho = Despacho(fecha_hora_despacho=ahora, registrado_por=usuario, **datos)
+    despacho.full_clean()
+    try:
+        with transaction.atomic():
+            despacho.save()
+            for estancia in estancias:
+                estancia.fecha_hora_salida = ahora
+                estancia.retirado_por = usuario
+            EstanciaCaja.objects.bulk_update(estancias, ["fecha_hora_salida", "retirado_por"])
+            DetalleDespacho.objects.bulk_create([DetalleDespacho(despacho=despacho, caja=c) for c in bloqueadas])
+    except IntegrityError as error:
+        raise ValidationError("Una o más cajas ya no están disponibles para despacho.") from error
+    return despacho
