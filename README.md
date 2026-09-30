@@ -52,3 +52,61 @@ usar `/usuarios/`. El técnico puede crear allí el primer JEFE sin cambiar su c
 Validación del módulo: `uv run python manage.py test apps.usuarios`. La suite
 incluye permisos, contraseña temporal, sesiones, auditoría, conservación de
 recepciones históricas y concurrencia sobre MySQL.
+
+## Dashboard operacional y alertas de frío
+
+`/dashboard/` está disponible para JEFE y superusuario, con acceso desde Inicio
+y el sidebar. `apps.reportes` concentra las lecturas en `selectors.py`; no guarda
+métricas ni alertas. Reutiliza `cajas_con_inventario`, `resumen_inventario`,
+`totales_stock` y `despachos_con_totales`. El antiguo `resumen_stock` de reportes
+también usa ahora el estado oficial y el peso neto real, conservando sus claves
+de respuesta para compatibilidad.
+
+- Stock y cajas almacenadas: exclusivamente estado ALMACENADA de Inventario.
+- Pendientes: estado PENDIENTE del mismo selector, sin despachos ni bajas.
+- Despachos de hoy: fecha/hora de despacho dentro del día actual de Chile;
+  los kg se suman desde `DetalleDespacho.caja.peso_neto_kg`.
+- Stock por especie: agregación de Inventario, sin pesos nominales ni teóricos.
+- Semana: lunes a domingo de la semana actual. Mes y año: calendario actual.
+  `?periodo=semana|mes|ano`; cualquier otro valor usa semana. El período afecta
+  la serie de despachos, las mermas y las bajas, no el stock ni las alertas actuales.
+- Series: agrupaciones SQL por intervalos aware, con límites calculados en
+  `America/Santiago`. Respetan cambios de horario sin requerir tablas de zonas
+  horarias cargadas en MySQL. Los intervalos son inicio incluido/fin excluido.
+- Mermas: suma por tipo de `MermaProceso`, según fecha/hora del evento.
+  Bajas: cantidad y peso real conocido de `BajaCaja`, por fecha/hora del evento,
+  siempre separadas de las mermas. NULL no aporta kg; se informa como desconocido.
+- Actividad: hasta ocho registros combinados de recepción, lote, despacho y baja,
+  ordenados por `creado_en`, con enlace al recurso. No reconstruye fechas faltantes.
+
+La migración `trazabilidad.0013` agrega `UnidadFrio.umbral_alerta_horas`, Decimal
+nullable de dos decimales, con validación y constraint positivo. No asigna valores
+a las unidades históricas. `/dashboard/umbrales/` permite establecer, modificar o
+quitar cada umbral; campo vacío significa NULL. Solo JEFE y superusuario pueden
+guardar. El Admin técnico también puede editarlo; para otros usuarios es readonly.
+
+Las alertas evalúan estancias abiertas de seguimiento y caja: duración real
+transcurrida > umbral. Exactamente en el umbral no alertan. Se calcula en UTC con
+timestamps aware, y se muestra en horas/minutos; excesos inferiores a un minuto
+se indican expresamente. Unidades inactivas con estancias aún abiertas siguen
+evaluándose. Cerradas o sin umbral no alertan. Se filtran en SQL y se muestran las
+diez permanencias con ingreso más antiguo, junto al total. Una estancia abierta
+histórica se evalúa como tal, sin modificarla ni inferir una salida. Los avisos
+de cajas pendientes y peso desconocido derivan directamente de Inventario.
+
+Chart.js 4.5.1 está fijado en npm y se sirve localmente; no hay CDN. Para regenerar
+los recursos después de `npm ci`:
+
+```sh
+npm run build:charts
+npm run build:css
+```
+
+`build:charts` copia el bundle UMD y su licencia a
+`apps/reportes/static/reportes/vendor/`, incluidos en el repositorio para servir
+la aplicación sin Node en producción. Los gráficos reciben `json_script` seguro;
+su lógica vive en `static/reportes/dashboard.js`. Los datos textuales permanecen
+accesibles si Chart.js o JavaScript no cargan; el filtro funciona en el servidor.
+No hay polling, notificaciones externas ni modificaciones de stock.
+
+Pruebas específicas: `uv run python manage.py test apps.reportes`.

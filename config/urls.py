@@ -23,4 +23,5 @@ urlpatterns = [
     path("trazabilidad/", include("apps.trazabilidad.urls")),
     path("producto-terminado/", include("apps.trazabilidad.urls_lotes")),
     path("inventario/", include("apps.inventario.urls")),
+    path("dashboard/", include("apps.reportes.urls")),
 ]

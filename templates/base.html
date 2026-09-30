@@ -28,6 +28,9 @@
             </button>
         </div>
         <nav class="min-h-0 flex-1 space-y-2 overflow-y-auto p-4" aria-label="Navegación principal">
+            {% if user.is_superuser or user.rol.codigo == "JEFE" %}
+            <a href="{% url 'reportes:dashboard' %}" {% if request.resolver_match.namespace == 'reportes' %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium {% if request.resolver_match.namespace == 'reportes' %}bg-cyan-50 text-cyan-700{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>Dashboard</a>
+            {% endif %}
             <a href="{% url 'usuarios:inicio' %}" {% if request.resolver_match.view_name == 'usuarios:inicio' %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.view_name == 'usuarios:inicio' %}bg-cyan-50 text-cyan-700{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
                 <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9" /></svg>
                 Inicio

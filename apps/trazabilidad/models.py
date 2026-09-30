@@ -268,9 +268,18 @@ class UnidadFrio(models.Model):
     nombre = models.CharField(max_length=80, unique=True)
     tipo = models.CharField(max_length=30, choices=TipoUnidad.choices)
     activo = models.BooleanField(default=True)
+    umbral_alerta_horas = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+        help_text="Horas de permanencia antes de alertar. Vacío significa sin alerta configurada.",
+    )
 
     class Meta:
         ordering = ["nombre"]
+        constraints = [models.CheckConstraint(
+            condition=models.Q(umbral_alerta_horas__isnull=True) | models.Q(umbral_alerta_horas__gt=0),
+            name="unidad_frio_umbral_positivo",
+        )]
 
     def __str__(self):
         return self.nombre

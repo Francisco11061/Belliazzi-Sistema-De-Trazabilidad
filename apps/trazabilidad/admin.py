@@ -206,6 +206,10 @@ class UnidadFrioAdmin(admin.ModelAdmin):
     list_filter = ("tipo", "activo")
     search_fields = ("nombre",)
 
+    def get_readonly_fields(self, request, obj=None):
+        # Configuración operativa en Dashboard; el Admin técnico sigue disponible.
+        return () if request.user.is_superuser else ("umbral_alerta_horas",)
+
 
 @admin.register(EstanciaPartida)
 class EstanciaPartidaAdmin(admin.ModelAdmin):

@@ -28,6 +28,7 @@ class ResumenStockTests(TestCase):
             lote_produccion=lote,
             codigo_caja="CAJA-PRUEBA",
             peso_total_kg=Decimal("25.00"),
+            peso_neto_kg=Decimal("24.50"),
             fecha_armado=timezone.now(),
             registrado_por=usuario,
         )
@@ -45,7 +46,7 @@ class ResumenStockTests(TestCase):
 
         resumen = resumen_stock()
         self.assertEqual(resumen["total_cajas"], 1)
-        self.assertEqual(resumen["peso_total_kg"], Decimal("25.00"))
+        self.assertEqual(resumen["peso_total_kg"], Decimal("24.50"))
 
         despacho = Despacho.objects.create(
             fecha_hora_despacho=timezone.now(),
