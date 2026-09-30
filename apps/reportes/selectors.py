@@ -2,13 +2,16 @@
 from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 from decimal import Decimal
 
-from django.db.models import Case, Count, IntegerField, Q, Sum, Value, When
+from django.db.models import Case, Count, IntegerField, OuterRef, Prefetch, Q, Subquery, Sum, Value, When
+from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils import timezone
 
 from apps.inventario.models import BajaCaja, Despacho, DetalleDespacho, EstanciaCaja
 from apps.inventario.selectors import cajas_con_inventario, despachos_con_totales, resumen_inventario, totales_stock
-from apps.trazabilidad.models import EstanciaPartida, LoteProduccion, MermaProceso, Recepcion, UnidadFrio
+from apps.trazabilidad.models import (Caja, ConsumoLote, DetalleRecepcion, EstanciaPartida,
+                                     LoteProduccion, MermaProceso, Pesaje, Recepcion, UnidadFrio)
+from apps.trazabilidad.selectors import lotes_con_empaque
 
 PERIODOS = (("semana", "Semana"), ("mes", "Mes"), ("ano", "Año"))
 
@@ -171,3 +174,129 @@ def dashboard_operacional(valor="semana", ahora=None):
                     "especies": {"labels": [f["lote_produccion__especie__nombre"] for f in especies],
                                  "valores": [f["peso_conocido"] for f in especies]},
                 })
+
+
+def _rango_reporte(queryset, campo, inicio, fin, fecha_sin_hora=False):
+    if fecha_sin_hora:
+        queryset = queryset.filter(**{campo + "__lte": fin})
+        return queryset.filter(**{campo + "__gte": inicio}) if inicio else queryset
+    queryset = queryset.filter(**{campo + "__lt": _medianoche(fin + timedelta(days=1))})
+    return queryset.filter(**{campo + "__gte": _medianoche(inicio)}) if inicio else queryset
+
+
+def _abastecimiento_reporte(inicio, fin):
+    return _rango_reporte(DetalleRecepcion.objects.select_related(
+        "recepcion__registrado_por", "origen_sernapesca", "especie"
+    ), "recepcion__fecha_hora_recepcion", inicio, fin).order_by("recepcion__fecha_hora_recepcion", "recepcion_id", "pk")
+
+
+def _produccion_reporte(inicio, fin):
+    return _rango_reporte(lotes_con_empaque(), "fecha_elaboracion", inicio, fin, True).order_by("fecha_elaboracion", "pk")
+
+
+def _destino_reporte(inicio, fin):
+    return _rango_reporte(DetalleDespacho.objects.select_related(
+        "despacho__registrado_por", "caja__lote_produccion__especie"
+    ), "despacho__fecha_hora_despacho", inicio, fin).order_by("despacho__fecha_hora_despacho", "despacho_id", "caja_id")
+
+
+def resumen_reporte_sernapesca(inicio, fin):
+    return dict(abastecimiento=_abastecimiento_reporte(inicio, fin).count(),
+                produccion=_produccion_reporte(inicio, fin).count(),
+                destino=_destino_reporte(inicio, fin).count())
+
+
+def _usuario_reporte(usuario):
+    nombre = usuario.get_full_name()
+    return f"{usuario.username} ({nombre})" if nombre else usuario.username
+
+
+def _aportes_reporte(referencias=False):
+    aportes = ConsumoLote.objects.select_related("partida__detalle_recepcion__origen_sernapesca").order_by("partida_id")
+    if referencias:
+        aportes = aportes.prefetch_related(
+            Prefetch("partida__pesajes", queryset=Pesaje.objects.filter(tipo=Pesaje.POSTPROCESO), to_attr="pesajes_reporte"),
+            Prefetch("partida__mermas", queryset=MermaProceso.objects.all(), to_attr="mermas_reporte"),
+        )
+    return aportes
+
+
+def _folios_reporte(aportes):
+    origenes = {a.partida.detalle_recepcion.origen_sernapesca_id:
+                a.partida.detalle_recepcion.origen_sernapesca.folio_origen for a in aportes}
+    if not origenes:
+        return ""
+    if len(origenes) == 1:
+        return next(iter(origenes.values()))
+    return "Múltiples orígenes históricos: " + "; ".join(
+        f"Origen #{pk}: {folio}" for pk, folio in sorted(origenes.items())
+    )
+
+
+def obtener_abastecimiento_reporte(inicio, fin):
+    filas = []
+    for detalle in _abastecimiento_reporte(inicio, fin):
+        recepcion, origen = detalle.recepcion, detalle.origen_sernapesca
+        filas.append(dict(recepcion=recepcion.pk, fecha=recepcion.fecha_hora_recepcion, folio=origen.folio_origen,
+                          tipo_origen=origen.tipo_origen, agente=origen.codigo_agente, proveedor=origen.proveedor,
+                          especie=detalle.especie.nombre, peso_origen=detalle.peso_origen_kg,
+                          peso_recibido=detalle.peso_recepcion_kg,
+                          diferencia=detalle.peso_recepcion_kg - detalle.peso_origen_kg,
+                          usuario=_usuario_reporte(recepcion.registrado_por), observaciones=recepcion.observaciones))
+    return filas
+
+
+def obtener_produccion_reporte(inicio, fin):
+    sin_peso = Caja.objects.filter(lote_produccion_id=OuterRef("pk"), peso_neto_kg__isnull=True).order_by().values(
+        "lote_produccion_id").annotate(n=Count("pk")).values("n")
+    lotes = _produccion_reporte(inicio, fin).annotate(cajas_sin_peso=Coalesce(Subquery(sin_peso), Value(0))).prefetch_related(
+        Prefetch("consumos", queryset=_aportes_reporte(referencias=True), to_attr="aportes_reporte")
+    )
+    filas = []
+    for lote in lotes:
+        aportes = lote.aportes_reporte
+        partidas = {a.partida_id: a.partida for a in aportes}
+        pesos = [p.pesajes_reporte[0].peso_kg for p in partidas.values() if len(p.pesajes_reporte) == 1]
+        sin_pesaje = [str(pk) for pk, p in partidas.items() if not p.pesajes_reporte]
+        ambiguos = [str(pk) for pk, p in partidas.items() if len(p.pesajes_reporte) > 1]
+        mermas = {tipo: Decimal("0.00") for tipo in MermaProceso.Tipo.values}
+        for partida in partidas.values():
+            for merma in partida.mermas_reporte:
+                if merma.tipo in mermas:
+                    mermas[merma.tipo] += merma.cantidad_kg
+        notas = []
+        if not partidas:
+            notas.append("Sin seguimientos documentados.")
+        if sin_pesaje:
+            notas.append("Sin peso postproceso: seguimientos " + ", ".join(sin_pesaje) + ".")
+        if ambiguos:
+            notas.append("Pesajes postproceso ambiguos excluidos: seguimientos " + ", ".join(ambiguos) + ".")
+        filas.append(dict(fecha=lote.fecha_elaboracion, lote=lote.codigo_lote, folio=_folios_reporte(aportes),
+                          especie=lote.especie.nombre, ruta=lote.ruta_proceso.nombre if lote.ruta_proceso else "",
+                          seguimientos=", ".join(str(pk) for pk in partidas),
+                          postproceso=sum(pesos, Decimal("0.00")) if pesos else None,
+                          asignado=lote.total_asignado, merma=mermas["MERMA"] if partidas else None,
+                          descarte=mermas["DESCARTE"] if partidas else None, perdida=mermas["PERDIDA"] if partidas else None,
+                          cajas=lote.numero_cajas, empacado=lote.peso_real_documentado, sin_peso=lote.cajas_sin_peso,
+                          vencimiento=lote.fecha_vencimiento, usuario=_usuario_reporte(lote.registrado_por),
+                          observaciones=lote.observaciones, notas=" ".join(notas)))
+    return filas
+
+
+def obtener_destino_reporte(inicio, fin):
+    detalles = _destino_reporte(inicio, fin).prefetch_related(
+        Prefetch("caja__lote_produccion__consumos", queryset=_aportes_reporte(), to_attr="aportes_reporte")
+    )
+    filas = []
+    for detalle in detalles:
+        despacho, caja = detalle.despacho, detalle.caja
+        lote = caja.lote_produccion
+        filas.append(dict(despacho=despacho.pk, fecha=despacho.fecha_hora_despacho,
+                          tipo_destino=despacho.get_tipo_destino_display(), destinatario=despacho.destino,
+                          rut=despacho.rut_destinatario, pais=despacho.pais_destino,
+                          tipo_documento=despacho.tipo_documento, numero_documento=despacho.numero_documento,
+                          fecha_documento=despacho.fecha_documento, caja=caja.pk, lote=lote.codigo_lote,
+                          especie=lote.especie.nombre, peso=caja.peso_neto_kg,
+                          folio=_folios_reporte(lote.aportes_reporte), usuario=_usuario_reporte(despacho.registrado_por),
+                          observaciones=despacho.observaciones))
+    return filas

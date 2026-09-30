@@ -110,3 +110,46 @@ accesibles si Chart.js o JavaScript no cargan; el filtro funciona en el servidor
 No hay polling, notificaciones externas ni modificaciones de stock.
 
 Pruebas específicas: `uv run python manage.py test apps.reportes`.
+
+## Reporte de apoyo a Sernapesca (HU12)
+
+Disponible en **Reportes** (`/reportes/`) para JEFE y superusuario técnico.
+Permite revisar cantidades de filas por período y descargar un único XLSX con
+openpyxl, generado en memoria. No envía información a Sernapesca ni sustituye
+sus declaraciones oficiales. El endpoint de descarga también exige permisos.
+
+Las fechas son opcionales: desde el primer registro y hasta hoy en
+`America/Santiago`. Cada hoja filtra su evento correspondiente; el día final
+se incluye completo. Fechas inválidas o invertidas devuelven errores de formulario.
+
+| Hoja | Unidad y origen de los datos | Columnas |
+| --- | --- | --- |
+| Resumen | Metadatos y criterios de lectura | Autor, generación, rango, zona horaria, cantidades de filas y explicación de pesos e históricos. |
+| Abastecimiento | Una fila por DetalleRecepcion, con Recepcion, OrigenSernapesca y Especie. Fecha de recepción. | ID recepción, fecha/hora Chile, folio, tipo origen, agente, proveedor, especie, peso origen, peso recibido, diferencia recibido menos origen, usuario, observaciones. |
+| Producción | Una fila por LoteProduccion. Fecha de elaboración. | Fecha elaboración, código original, folio, especie, ruta, IDs seguimientos, postproceso conocido de referencia, kg asignados, merma/descarte/pérdida de referencia, cantidad cajas, neto real conocido, cajas sin peso, vencimiento, usuario, observaciones, notas de información incompleta. |
+| Destino | Una fila por DetalleDespacho/caja. Fecha del despacho. | ID despacho, fecha/hora Chile, tipo destino, destinatario, RUT, país, tipo/número/fecha documento, ID caja, código lote, especie, neto real, folio, usuario, observaciones. |
+
+La asignación suma `ConsumoLote.cantidad_kg_utilizada`; el empacado suma solo
+`Caja.peso_neto_kg`. Las cajas NULL se cuentan aparte sin utilizar peso nominal.
+Postproceso y mermas son referencias de los seguimientos completos: **no son
+cantidades atribuibles al lote ni sumables entre lotes**. No se prorratean.
+Si un seguimiento carece de pesaje postproceso o tiene varios, se excluye su peso
+y se explica en las notas. Sin ningún peso postproceso conocido queda vacío.
+Los aportes y cajas del lote son los documentados al generar el reporte, incluso
+si fueron registrados después del período de elaboración seleccionado.
+
+El folio siempre procede de las relaciones de ConsumoLote → PartidaProceso →
+DetalleRecepcion → OrigenSernapesca; nunca se deduce del código. Los orígenes
+históricos múltiples muestran identificadores y folios. Códigos antiguos, ceros
+iniciales y campos opcionales se conservan; valores ausentes quedan vacíos.
+Los textos se guardan como texto literal, incluso si comienzan con `=`.
+Los caracteres de control incompatibles con XLSX se representan como `\uXXXX`.
+
+`forms.py` valida fechas; `selectors.py` reúne datos usando joins, prefeteo y
+las agregaciones existentes de lotes; `services.py` comprueba autorización y
+coordina la descarga; `excel_sernapesca.py` concentra columnas y formato. La
+vista solo valida y responde. Se mantienen las URLs existentes del dashboard.
+No requiere modelos ni migraciones y no modifica registros operativos.
+
+Instalación de dependencias: `uv sync`. Pruebas del bloque:
+`uv run python manage.py test apps.reportes.test_sernapesca`.

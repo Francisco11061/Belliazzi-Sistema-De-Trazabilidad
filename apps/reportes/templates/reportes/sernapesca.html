@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}Reportes | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Reportes{% endblock %}
+{% block content %}{% language "es" %}
+<div class="min-w-0 max-w-5xl space-y-6">
+    <header><h1 class="text-2xl font-semibold sm:text-3xl">Reporte de apoyo a Sernapesca</h1><p class="mt-3 text-sm leading-6 text-slate-500">Consolide abastecimiento, producción y destino en un archivo Excel para revisión.</p></header>
+    <p class="rounded-xl border border-cyan-100 bg-cyan-50 p-4 text-sm leading-6 text-cyan-900">{{ nota_alcance }}</p>
+    <form method="get" class="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+        <h2 class="font-semibold">Período del reporte</h2>
+        <div class="grid min-w-0 gap-4 sm:grid-cols-2">{% for field in form %}<div class="min-w-0"><label for="{{ field.id_for_label }}" class="mb-2 block text-sm font-medium">{{ field.label }}</label><div class="[&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:rounded-lg [&_input]:border [&_input]:border-slate-300 [&_input]:px-3 [&_input]:py-2.5">{{ field }}</div>{% if field.errors %}<div id="{{ field.auto_id }}_error" role="alert" class="mt-2 text-sm text-red-700">{{ field.errors }}</div>{% endif %}</div>{% endfor %}</div>
+        <p class="text-sm leading-6 text-slate-500">Sin fecha inicial se incluye todo el historial. Sin fecha final se utiliza hoy en Chile. Ambos días se incluyen completos.</p>
+        <button class="w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-800 sm:w-auto" type="submit">Revisar período</button>
+    </form>
+    {% if descarga %}
+    <section class="space-y-4" aria-labelledby="contenido-reporte">
+        <div><h2 id="contenido-reporte" class="text-lg font-semibold">Contenido del Excel</h2><p class="mt-1 text-sm text-slate-500">{% if inicio %}{{ inicio|date:"d/m/Y" }}{% else %}Desde el primer registro{% endif %} — {{ fin|date:"d/m/Y" }} (inclusive)</p></div>
+        {% if sin_datos %}<p class="rounded-xl border border-slate-200 bg-white p-4 text-sm">No hay registros para el período seleccionado. Puede descargar el archivo con sus encabezados y criterios de lectura.</p>{% endif %}
+        <div class="grid min-w-0 gap-4 lg:grid-cols-3">
+            <article class="min-w-0 rounded-xl border border-slate-200 bg-white p-5"><h3 class="font-semibold">Abastecimiento</h3><p class="mt-3 text-2xl font-semibold text-cyan-700">{{ resumen.abastecimiento }} <span class="text-sm font-normal text-slate-500">filas</span></p><p class="mt-2 text-sm leading-6 text-slate-500">Una fila por detalle de recepción: origen, especie, pesos y responsable. Filtrado por fecha de recepción.</p></article>
+            <article class="min-w-0 rounded-xl border border-slate-200 bg-white p-5"><h3 class="font-semibold">Producción</h3><p class="mt-3 text-2xl font-semibold text-cyan-700">{{ resumen.produccion }} <span class="text-sm font-normal text-slate-500">filas</span></p><p class="mt-2 text-sm leading-6 text-slate-500">Una fila por lote: seguimientos, kg asignados, cajas y peso neto real. Filtrado por fecha de elaboración.</p></article>
+            <article class="min-w-0 rounded-xl border border-slate-200 bg-white p-5"><h3 class="font-semibold">Destino</h3><p class="mt-3 text-2xl font-semibold text-cyan-700">{{ resumen.destino }} <span class="text-sm font-normal text-slate-500">filas</span></p><p class="mt-2 text-sm leading-6 text-slate-500">Una fila por caja despachada: destinatario, documento, lote y origen. Filtrado por fecha del despacho.</p></article>
+        </div>
+        <details class="rounded-xl border border-slate-200 bg-white p-5 text-sm leading-6"><summary class="cursor-pointer font-medium">Cómo interpretar los pesos y datos históricos</summary><p class="mt-3">{{ nota_referencias }}</p><p class="mt-3">Los campos faltantes quedan vacíos y las cajas sin peso neto documentado se cuentan por separado. Los orígenes múltiples se identifican expresamente. El Excel incluye una hoja Resumen con el autor, las fechas y los criterios de lectura.</p><p class="mt-3">Producción incluye los aportes y cajas documentados al generar el reporte, aunque se registraran después del período. Los datos pueden cambiar entre la revisión y la descarga.</p></details>
+        <a href="{{ descarga }}" class="inline-flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800 sm:w-auto">Descargar Excel</a>
+    </section>
+    {% endif %}
+</div>
+{% endlanguage %}{% endblock %}
