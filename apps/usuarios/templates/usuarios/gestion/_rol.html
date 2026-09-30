@@ -1,0 +1,1 @@
+{% if cuenta.is_superuser %}Administrador técnico{% elif cuenta.rol %}{{ cuenta.rol.nombre }}{% if not cuenta.rol.activo %} (rol inactivo){% endif %}{% else %}Sin rol registrado{% endif %}

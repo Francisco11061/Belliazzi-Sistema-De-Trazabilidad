@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}Usuarios | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Usuarios{% endblock %}
+{% block content %}{% language "es" %}
+<div class="min-w-0 space-y-6">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h1 class="text-2xl font-semibold sm:text-3xl">Usuarios</h1><p class="mt-2 text-sm text-slate-500">Cuentas internas y su historial de gestión.</p></div><a href="{% url 'usuarios:crear_usuario' %}" class="rounded-lg bg-cyan-700 px-5 py-3 text-center text-sm font-semibold text-white hover:bg-cyan-800">Crear usuario</a></header>
+    <form method="get" class="grid min-w-0 gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="min-w-0"><label for="q" class="mb-2 block text-sm font-medium">Usuario o nombre</label><input id="q" name="q" value="{{ texto }}" class="w-full min-w-0 rounded-lg border border-slate-300 px-3 py-2.5 text-sm"></div>
+        <div class="min-w-0"><label for="rol" class="mb-2 block text-sm font-medium">Rol</label><select id="rol" name="rol" class="w-full min-w-0 rounded-lg border border-slate-300 px-3 py-2.5 text-sm"><option value="">Todos</option>{% for rol in roles %}<option value="{{ rol.codigo }}" {% if rol_filtro == rol.codigo %}selected{% endif %}>{{ rol.nombre }}{% if not rol.activo %} (inactivo){% endif %}</option>{% endfor %}</select></div>
+        <div class="min-w-0"><label for="estado" class="mb-2 block text-sm font-medium">Estado</label><select id="estado" name="estado" class="w-full min-w-0 rounded-lg border border-slate-300 px-3 py-2.5 text-sm"><option value="">Todos</option><option value="activo" {% if estado == 'activo' %}selected{% endif %}>Activo</option><option value="inactivo" {% if estado == 'inactivo' %}selected{% endif %}>Inactivo</option></select></div>
+        <div class="flex items-end gap-3"><button class="rounded-lg bg-cyan-700 px-4 py-2.5 text-sm font-semibold text-white" type="submit">Filtrar</button><a class="py-2.5 text-sm text-cyan-700 hover:underline" href="{% url 'usuarios:lista_usuarios' %}">Limpiar</a></div>
+    </form>
+    <p class="text-sm text-slate-500">{{ pagina.paginator.count }} usuario{{ pagina.paginator.count|pluralize }}</p>
+    <div class="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
+    {% for cuenta in pagina %}<article class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="break-words font-semibold">{{ cuenta.username }}</h2><p class="mt-1 text-sm text-slate-500">{{ cuenta.get_full_name|default:'Nombre no registrado' }}</p>
+        <dl class="mt-4 space-y-3 text-sm"><div><dt class="text-slate-500">Rol</dt><dd>{% include 'usuarios/gestion/_rol.html' %}</dd></div><div><dt class="text-slate-500">Estado</dt><dd class="font-medium {% if cuenta.is_active %}text-green-700{% else %}text-slate-600{% endif %}">{{ cuenta.is_active|yesno:'Activo,Inactivo' }}</dd></div><div><dt class="text-slate-500">Cambio de contraseña pendiente</dt><dd>{{ cuenta.cambio_contrasena_pendiente|yesno:'Sí,No' }}</dd></div><div><dt class="text-slate-500">Incorporación</dt><dd>{{ cuenta.date_joined|date:'d/m/Y H:i' }}</dd></div></dl>
+        <a href="{% url 'usuarios:detalle_usuario' cuenta.pk %}" class="mt-5 inline-flex rounded-lg border border-cyan-200 px-4 py-2 text-sm font-semibold text-cyan-700 hover:bg-cyan-50" aria-label="Ver usuario {{ cuenta.username }}">Ver</a>
+    </article>{% empty %}<p class="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">No hay usuarios que coincidan con los filtros.</p>{% endfor %}
+    </div>
+    {% if pagina.has_other_pages %}<nav aria-label="Paginación" class="flex flex-wrap items-center gap-4 text-sm">{% if pagina.has_previous %}<a class="text-cyan-700 hover:underline" href="?{{ filtros }}&amp;page={{ pagina.previous_page_number }}">Anterior</a>{% endif %}<span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>{% if pagina.has_next %}<a class="text-cyan-700 hover:underline" href="?{{ filtros }}&amp;page={{ pagina.next_page_number }}">Siguiente</a>{% endif %}</nav>{% endif %}
+</div>
+{% endlanguage %}{% endblock %}

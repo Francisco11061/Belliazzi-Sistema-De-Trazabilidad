@@ -61,6 +61,12 @@
                     Despachos
                 </a>
             {% endif %}
+            {% if user.is_superuser or user.rol.codigo == "JEFE" %}
+                <a href="{% url 'usuarios:lista_usuarios' %}" {% if request.resolver_match.namespace == 'usuarios' and request.resolver_match.url_name != 'inicio' and request.resolver_match.url_name != 'cambiar_contrasena' %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.namespace == 'usuarios' and request.resolver_match.url_name != 'inicio' and request.resolver_match.url_name != 'cambiar_contrasena' %}bg-cyan-50 text-cyan-700{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M17 4a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4v3"/></svg>
+                    Usuarios
+                </a>
+            {% endif %}
         </nav>
         <form method="post" action="{% url 'usuarios:logout' %}" class="shrink-0 border-t border-slate-200 p-4">
             {% csrf_token %}
@@ -86,7 +92,7 @@
                     <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-sm font-semibold text-cyan-700 sm:h-10 sm:w-10" aria-hidden="true">{{ display_name|first|upper }}</span>
                     <div class="sr-only sm:not-sr-only sm:min-w-0 sm:text-left">
                         <p class="max-w-28 truncate text-sm font-medium sm:max-w-64">
-                            {% if user.is_superuser %}Administrador técnico{% elif user.rol.codigo == "JEFE" %}Administrador{% elif user.rol.codigo == "ENCARGADA" %}Encargada{% elif user.rol.codigo == "OPERARIA" %}Operaria{% elif user.rol %}{{ user.rol.nombre }}{% endif %}
+                            {% if user.is_superuser %}Administrador técnico{% elif user.rol %}{{ user.rol.nombre }}{% endif %}
                         </p>
                         <p class="max-w-48 truncate text-xs text-slate-500 lg:max-w-64" title="{{ display_name }}">{{ display_name }}</p>
                     </div>
