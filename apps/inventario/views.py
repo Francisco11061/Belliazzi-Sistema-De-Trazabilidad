@@ -10,9 +10,9 @@ from django.utils import timezone
 
 from apps.trazabilidad.lotes import presentar_codigo_lote
 from apps.usuarios.permisos import personal_operativo_requerido
-from .forms import DespachoFiltroForm, DespachoForm, DestinoForm, InventarioFiltroForm
-from .selectors import cajas_con_inventario, resumen_inventario, despachos_con_totales
-from .services import ingresar_caja, mover_caja, registrar_despacho
+from .forms import BajaCajaForm, BajaFiltroForm, DespachoFiltroForm, DespachoForm, DestinoForm, InventarioFiltroForm
+from .selectors import bajas_con_trazabilidad, cajas_con_inventario, resumen_inventario, despachos_con_totales
+from .services import ingresar_caja, mover_caja, registrar_baja, registrar_despacho
 
 
 @personal_operativo_requerido
@@ -129,3 +129,49 @@ def detalle_despacho(request, pk):
     despacho = get_object_or_404(despachos_con_totales(), pk=pk)
     detalles = despacho.detalles.select_related("caja__lote_produccion__especie").order_by("caja_id")
     return render(request, "inventario/despachos/detalle.html", {"despacho":despacho, "detalles":detalles})
+
+
+@personal_operativo_requerido
+@require_http_methods(["GET", "POST"])
+def crear_baja(request, pk):
+    caja = get_object_or_404(cajas_con_inventario(), pk=pk)
+    form = BajaCajaForm(request.POST if request.method == "POST" else None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            registrar_baja(caja=caja, usuario=request.user, **form.cleaned_data)
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Baja registrada correctamente.")
+            return redirect("producto_terminado:detalle_caja", pk=caja.pk)
+    return render(request, "inventario/bajas/crear.html", {"caja":caja, "form":form})
+
+
+@personal_operativo_requerido
+@require_http_methods(["GET"])
+def lista_bajas(request):
+    bajas = bajas_con_trazabilidad()
+    filtro = BajaFiltroForm(request.GET)
+    if filtro.is_valid():
+        datos = filtro.cleaned_data
+        if datos["especie"]:
+            bajas = bajas.filter(caja__lote_produccion__especie=datos["especie"])
+        if datos["tipo"]:
+            bajas = bajas.filter(tipo=datos["tipo"])
+        if datos["fecha"]:
+            from datetime import date, datetime, time, timedelta
+            inicio = timezone.make_aware(datetime.combine(datos["fecha"], time.min))
+            bajas = bajas.filter(fecha_hora_evento__gte=inicio)
+            if datos["fecha"] < date.max:
+                fin = timezone.make_aware(datetime.combine(datos["fecha"] + timedelta(days=1), time.min))
+                bajas = bajas.filter(fecha_hora_evento__lt=fin)
+    else:
+        bajas = bajas.none()
+    pagina = Paginator(bajas, 10).get_page(request.GET.get("page"))
+    def enlace(numero):
+        parametros = request.GET.copy()
+        parametros["page"] = numero
+        return "?" + parametros.urlencode()
+    return render(request, "inventario/bajas/lista.html", {"filtro":filtro, "page_obj":pagina,
+        "pagina_anterior":enlace(pagina.previous_page_number()) if pagina.has_previous() else None,
+        "pagina_siguiente":enlace(pagina.next_page_number()) if pagina.has_next() else None})

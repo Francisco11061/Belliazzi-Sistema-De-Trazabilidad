@@ -4,7 +4,7 @@ from django.utils import timezone
 
 from apps.trazabilidad.models import Caja, UnidadFrio
 from apps.usuarios.permisos import ROL_ENCARGADA, ROL_JEFE, ROL_OPERARIA, tiene_rol
-from .models import Despacho, DetalleDespacho, EstanciaCaja
+from .models import BajaCaja, Despacho, DetalleDespacho, EstanciaCaja
 from .despachos import validar_datos_despacho
 from .selectors import cajas_con_inventario
 
@@ -87,3 +87,36 @@ def registrar_despacho(*, cajas, usuario, tipo_destino, destino="", rut_destinat
     except IntegrityError as error:
         raise ValidationError("Una o más cajas ya no están disponibles para despacho.") from error
     return despacho
+
+
+@transaction.atomic
+def registrar_baja(*, caja, tipo, motivo, usuario):
+    if not tiene_rol(usuario, ROL_JEFE, ROL_ENCARGADA, ROL_OPERARIA):
+        raise PermissionDenied
+    actual = Caja.objects.select_for_update().filter(pk=caja.pk).first()
+    if actual is None:
+        raise ValidationError("La caja ya no está disponible para esta operación.")
+    if hasattr(actual, "baja"):
+        raise ValidationError("La caja ya posee una baja registrada.")
+    if hasattr(actual, "detalle_despacho"):
+        raise ValidationError("La caja ya fue despachada y no puede darse de baja.")
+    situacion = cajas_con_inventario().get(pk=actual.pk)
+    if not situacion.puede_registrar_baja:
+        raise ValidationError("La caja ya no está disponible para esta operación. Su historial requiere revisión.")
+    if tipo not in BajaCaja.Tipo.values:
+        raise ValidationError({"tipo": "Seleccione un tipo de baja válido."})
+    if not isinstance(motivo, str) or not motivo.strip():
+        raise ValidationError({"motivo": "Debe indicar el motivo de la baja."})
+    ahora = timezone.now()
+    baja = BajaCaja(caja=actual, tipo=tipo, motivo=motivo.strip(), fecha_hora_evento=ahora, registrado_por=usuario)
+    baja.full_clean()
+    try:
+        with transaction.atomic():
+            # Sin estancia abierta, este update no crea ni altera historial.
+            actual.estancias_inventario.filter(fecha_hora_salida__isnull=True).update(
+                fecha_hora_salida=ahora, retirado_por=usuario,
+            )
+            baja.save()
+    except IntegrityError as error:
+        raise ValidationError("La caja ya no está disponible para esta operación.") from error
+    return baja

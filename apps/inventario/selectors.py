@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.db.models import Case, CharField, Count, Exists, F, OuterRef, Q, Subquery, Sum, Value, When
+from django.db.models import BooleanField, Case, CharField, Count, Exists, F, OuterRef, Q, Subquery, Sum, Value, When
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -12,7 +12,7 @@ ESTADOS = (
     ("ALMACENADA", "Almacenada"),
     ("PENDIENTE", "Pendiente de almacenar"),
     ("DESPACHADA", "Despachada"),
-    ("BAJA", "Baja (registro histórico)"),
+    ("BAJA", "Baja"),
     ("REVISION", "Ubicación por revisar"),
 )
 
@@ -24,22 +24,28 @@ def unidades_disponibles():
 def cajas_con_inventario(queryset=None):
     cajas = Caja.objects.all() if queryset is None else queryset
     abiertas = EstanciaCaja.objects.filter(caja_id=OuterRef("pk"), fecha_hora_salida__isnull=True).order_by()
-    return cajas.select_related("lote_produccion__especie", "detalle_despacho__despacho").annotate(
+    return cajas.select_related("lote_produccion__especie", "detalle_despacho__despacho", "baja__registrado_por").annotate(
         numero_abiertas=Coalesce(Subquery(abiertas.values("caja_id").annotate(n=Count("pk")).values("n")), Value(0)),
         unidad_abierta_id=Subquery(abiertas.values("unidad_frio_id")[:1]),
         tipo_unidad_abierta=Subquery(abiertas.values("unidad_frio__tipo")[:1]),
         nombre_unidad_abierta=Subquery(abiertas.values("unidad_frio__nombre")[:1]),
+        ingreso_abierto=Subquery(abiertas.values("fecha_hora_ingreso")[:1]),
         tiene_despacho=Exists(DetalleDespacho.objects.filter(caja_id=OuterRef("pk"))),
         tiene_baja=Exists(BajaCaja.objects.filter(caja_id=OuterRef("pk"))),
     ).annotate(estado_inventario=Case(
-        When(tiene_despacho=True, then=Value("DESPACHADA")),
         When(tiene_baja=True, then=Value("BAJA")),
+        When(tiene_despacho=True, then=Value("DESPACHADA")),
         When(numero_abiertas=0, then=Value("PENDIENTE")),
         When(numero_abiertas=1, tipo_unidad_abierta=UnidadFrio.TipoUnidad.ALMACENAMIENTO, then=Value("ALMACENADA")),
         default=Value("REVISION"), output_field=CharField(),
     )).annotate(
         estado_visible=Case(*[When(estado_inventario=k, then=Value(v)) for k, v in ESTADOS], output_field=CharField()),
         ubicacion_actual=Case(When(estado_inventario="ALMACENADA", then=F("nombre_unidad_abierta")), default=Value("—"), output_field=CharField()),
+        puede_registrar_baja=Case(
+            When(estado_inventario="PENDIENTE", then=Value(True)),
+            When(estado_inventario="ALMACENADA", ingreso_abierto__lte=timezone.now(), then=Value(True)),
+            default=Value(False), output_field=BooleanField(),
+        ),
     )
 
 
@@ -65,6 +71,10 @@ def almacenamiento_caja(caja):
     historial = list(caja.estancias_inventario.select_related("unidad_frio", "ingresado_por", "retirado_por").order_by("fecha_hora_ingreso", "pk"))
     detalle = getattr(caja, "detalle_despacho", None)
     despacho = detalle.despacho if detalle else None
+    baja = getattr(caja, "baja", None)
+    salidas_baja = [e for e in historial if baja and e.fecha_hora_salida and e.fecha_hora_salida <= baja.fecha_hora_evento]
+    fecha_ultima_baja = max((e.fecha_hora_salida for e in salidas_baja), default=None)
+    anteriores_baja = [e for e in salidas_baja if e.fecha_hora_salida == fecha_ultima_baja]
     anteriores = [e for e in historial if despacho and e.fecha_hora_salida
                   and e.fecha_hora_salida <= despacho.fecha_hora_despacho]
     ultima_salida = max((e.fecha_hora_salida for e in anteriores), default=None)
@@ -74,6 +84,7 @@ def almacenamiento_caja(caja):
         "inventario": caja,
         "historial_almacenamiento": historial,
         "despacho_caja": despacho, "estancia_anterior": anterior,
+        "baja_caja": baja, "estancia_anterior_baja": anteriores_baja[0] if len(anteriores_baja) == 1 else None,
     }
 
 
@@ -91,3 +102,7 @@ def despachos_con_totales():
         peso_conocido=Coalesce(Sum("detalles__caja__peso_neto_kg"), Value(Decimal("0.00"))),
         cajas_sin_peso=Count("detalles", filter=Q(detalles__caja__peso_neto_kg__isnull=True)),
     ).order_by("-fecha_hora_despacho", "-pk")
+
+
+def bajas_con_trazabilidad():
+    return BajaCaja.objects.select_related("caja__lote_produccion__especie", "registrado_por").order_by("-fecha_hora_evento", "-pk")

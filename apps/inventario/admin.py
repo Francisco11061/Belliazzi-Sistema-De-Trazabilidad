@@ -68,10 +68,12 @@ class DetalleDespachoAdmin(EstanciaCajaAdmin):
 
 
 @admin.register(BajaCaja)
-class BajaCajaAdmin(admin.ModelAdmin):
+class BajaCajaAdmin(EstanciaCajaAdmin):
+    list_select_related = ("caja", "registrado_por")
     list_display = (
         "id",
         "caja",
+        "tipo",
         "motivo",
         "fecha_hora_evento",
         "registrado_por",
@@ -80,4 +82,4 @@ class BajaCajaAdmin(admin.ModelAdmin):
         "caja__codigo_caja",
         "motivo",
     )
-    list_filter = ("fecha_hora_evento",)
+    list_filter = ("tipo", "fecha_hora_evento", "caja__lote_produccion__especie")

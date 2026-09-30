@@ -2,7 +2,7 @@ from django import forms
 
 from apps.trazabilidad.models import Caja, Especie, LoteProduccion, UnidadFrio
 from .selectors import ESTADOS, cajas_para_despacho, unidades_disponibles
-from .models import Despacho
+from .models import BajaCaja, Despacho
 from .despachos import validar_datos_despacho
 
 
@@ -60,3 +60,15 @@ class DespachoFiltroForm(forms.Form):
     destinatario = forms.CharField(required=False, max_length=200, label="Destinatario o país")
     tipo_destino = forms.ChoiceField(required=False, choices=[("", "Todos los destinos"), *Despacho.TipoDestino.choices])
     fecha = forms.DateField(required=False, widget=forms.DateInput(attrs={"type":"date"}))
+
+
+class BajaCajaForm(forms.Form):
+    tipo = forms.ChoiceField(choices=[("", "Seleccione un tipo"), *BajaCaja.Tipo.choices], label="Tipo de baja")
+    motivo = forms.CharField(max_length=200, strip=True, label="Motivo", widget=forms.Textarea(attrs={"rows":4}),
+                             error_messages={"required":"Debe indicar el motivo de la baja."})
+
+
+class BajaFiltroForm(forms.Form):
+    fecha = forms.DateField(required=False, widget=forms.DateInput(attrs={"type":"date"}))
+    especie = forms.ModelChoiceField(queryset=Especie.objects.all(), required=False, empty_label="Todas las especies")
+    tipo = forms.ChoiceField(required=False, choices=[("", "Todos los tipos"), *BajaCaja.Tipo.choices])

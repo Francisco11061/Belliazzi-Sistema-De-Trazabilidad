@@ -1,0 +1,6 @@
+<div class="mt-6 border-t border-slate-200 pt-5">
+<h3 class="text-lg font-semibold">Baja de producto terminado</h3>
+<dl class="mt-4 grid gap-4 text-sm sm:grid-cols-2"><div><dt class="text-slate-500">Tipo</dt><dd class="mt-1 font-semibold">{{ baja_caja.get_tipo_display|default:"No documentado" }}</dd></div><div><dt class="text-slate-500">Fecha de baja</dt><dd class="mt-1">{{ baja_caja.fecha_hora_evento|date:"d/m/Y H:i" }}</dd></div><div><dt class="text-slate-500">Registrado por</dt><dd class="mt-1 break-words">{{ baja_caja.registrado_por }}</dd></div><div><dt class="text-slate-500">Peso retirado</dt><dd class="mt-1 font-semibold">{% if caja.peso_neto_kg != None %}{{ caja.peso_neto_kg|floatformat:2 }} kg{% else %}Peso no documentado{% endif %}</dd></div><div><dt class="text-slate-500">Última ubicación</dt><dd class="mt-1 break-words">{{ estancia_anterior_baja.unidad_frio.nombre|default:"No documentada" }}</dd></div></dl>
+<h4 class="mt-4 text-sm font-semibold">Motivo</h4><p class="mt-2 whitespace-pre-wrap break-words text-sm">{{ baja_caja.motivo }}</p>
+{% if despacho_caja %}<p class="mt-4 text-sm text-slate-600">Esta caja también tiene un despacho histórico registrado. Se conservan ambos registros para revisión; la caja no está disponible.</p>{% endif %}
+</div>

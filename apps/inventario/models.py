@@ -91,6 +91,14 @@ class DetalleDespacho(models.Model):
 
 
 class BajaCaja(models.Model):
+    class Tipo(models.TextChoices):
+        PERDIDA = "PERDIDA", "Pérdida"
+        DANO = "DANO", "Daño"
+        DESCARTE = "DESCARTE", "Descarte"
+        OTRO = "OTRO", "Otro"
+
+    # Vacío en históricos cuya clasificación no estaba documentada.
+    tipo = models.CharField(max_length=20, choices=Tipo.choices, blank=True)
     caja = models.OneToOneField(
         Caja,
         on_delete=models.PROTECT,

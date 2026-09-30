@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}Registrar baja | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Inventario / Registrar baja{% endblock %}
+{% block content %}{% language "es" %}
+<div class="w-full min-w-0 max-w-2xl space-y-6">
+<header><a href="{% url 'producto_terminado:detalle_caja' caja.pk %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver a caja #{{ caja.pk }}</a><h1 class="mt-4 text-2xl font-semibold sm:text-3xl">Registrar baja de Caja #{{ caja.pk }}</h1><p class="mt-2 text-sm text-slate-500">La baja retira la caja completa de forma definitiva. Se conserva su trazabilidad.</p></header>
+<section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><dl class="grid gap-4 text-sm sm:grid-cols-2"><div><dt class="text-slate-500">Especie</dt><dd class="mt-1 break-words font-semibold">{{ caja.lote_produccion.especie.nombre }}</dd></div><div><dt class="text-slate-500">Lote</dt><dd class="mt-1 break-words">{{ caja.lote_produccion.codigo_visible }}</dd></div><div><dt class="text-slate-500">Peso real</dt><dd class="mt-1 font-semibold">{% if caja.peso_neto_kg != None %}{{ caja.peso_neto_kg|floatformat:2 }} kg{% else %}Peso no documentado{% endif %}</dd></div><div><dt class="text-slate-500">Situación actual</dt><dd class="mt-1">{{ caja.estado_visible }}</dd></div><div><dt class="text-slate-500">Ubicación actual</dt><dd class="mt-1 break-words">{{ caja.ubicacion_actual }}</dd></div></dl></section>
+<section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">{% if form.non_field_errors %}<div role="alert" class="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
+{% if caja.puede_registrar_baja %}<form method="post" class="space-y-5">{% csrf_token %}{% include "trazabilidad/lotes/_formulario.html" %}<p class="text-sm text-slate-500">La fecha, hora y usuario se registran al confirmar.</p><div class="flex flex-col gap-3 sm:flex-row"><button type="submit" class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Registrar baja</button><a href="{% url 'producto_terminado:detalle_caja' caja.pk %}" class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm">Cancelar</a></div></form>{% else %}<p role="alert" class="text-sm text-slate-600">La caja no está disponible para registrar una baja. Consulta su estado e historial.</p>{% endif %}</section>
+</div>
+{% endlanguage %}{% endblock %}
