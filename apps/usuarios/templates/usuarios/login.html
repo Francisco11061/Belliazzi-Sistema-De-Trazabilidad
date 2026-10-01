@@ -6,32 +6,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Iniciar sesión | Pesquera Belliazzi</title>
     <link rel="stylesheet" href="{% static 'usuarios/css/output.css' %}">
+    <link rel="stylesheet" href="{% static 'usuarios/css/login.css' %}">
 </head>
 <body class="bg-slate-50 font-sans text-slate-900 antialiased">
-    <main class="flex min-h-dvh items-center justify-center px-4 py-10 sm:px-6">
-        <div class="w-full max-w-md">
-            <header class="mb-8 text-center">
-                <div class="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-100 bg-cyan-50 text-cyan-700">
-                    <svg class="h-8 w-8" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-                        <path d="M4 12c4-4 8 4 12 0s8 4 12 0M4 18c4-4 8 4 12 0s8 4 12 0M4 24c4-4 8 4 12 0s8 4 12 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                        <path d="M22 5h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="text-sky-500" />
-                    </svg>
-                </div>
-                <p class="text-lg font-semibold tracking-widest text-slate-900">PESQUERA BELLIAZZI</p>
-                <p class="mt-2 text-sm leading-6 text-slate-500">Sistema de Trazabilidad e Inventario</p>
-            </header>
+    <main class="lg-page">
 
-            <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" aria-labelledby="login-title">
+        <div class="lg-band">
+            <div class="lg-logo">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                    <path d="M4 12c4-4 8 4 12 0s8 4 12 0M4 18c4-4 8 4 12 0s8 4 12 0M4 24c4-4 8 4 12 0s8 4 12 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    <path d="M22 5h6" stroke="#67e8f9" stroke-width="2" stroke-linecap="round" />
+                </svg>
+            </div>
+            <p class="lg-name">PESQUERA BELLIAZZI</p>
+            <p class="lg-sub">Sistema de Trazabilidad e Inventario</p>
+        </div>
+
+        <div class="lg-wrap">
+            <section class="lg-card" aria-labelledby="login-title">
                 <h1 id="login-title" class="text-2xl font-semibold tracking-tight">Iniciar sesión</h1>
                 <p class="mt-2 text-sm leading-6 text-slate-500">Ingresa tus credenciales para acceder al sistema.</p>
 
-                <form method="post" class="mt-7 space-y-5">
+                <form method="post" class="lg-form">
                     {% csrf_token %}
                     {% if form.non_field_errors %}
                         <div class="login-errors rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800" role="alert">
                             {{ form.non_field_errors }}
                         </div>
                     {% endif %}
+
                     <div class="login-field">
                         <label for="{{ form.username.id_for_label }}" class="mb-2 block text-sm font-medium text-slate-900">Usuario</label>
                         {{ form.username }}
@@ -39,22 +42,51 @@
                             <div id="{{ form.username.auto_id }}_error" class="login-errors mt-2 text-sm text-red-700" role="alert">{{ form.username.errors }}</div>
                         {% endif %}
                     </div>
+
                     <div class="login-field">
                         <label for="{{ form.password.id_for_label }}" class="mb-2 block text-sm font-medium text-slate-900">Contraseña</label>
-                        {{ form.password }}
+                        <div class="lg-pw">
+                            {{ form.password }}
+                            <button type="button" id="toggle-password" class="lg-eye" aria-label="Mostrar contraseña" aria-pressed="false">
+                                <svg id="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                                <svg id="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M17.94 17.94A10.4 10.4 0 0 1 12 19c-6.5 0-10-7-10-7a18.5 18.5 0 0 1 5.06-5.94M9.9 5.24A9.7 9.7 0 0 1 12 5c6.5 0 10 7 10 7a18.6 18.6 0 0 1-2.16 3.19M1 1l22 22" />
+                                    <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+                                </svg>
+                            </button>
+                        </div>
                         {% if form.password.errors %}
                             <div id="{{ form.password.auto_id }}_error" class="login-errors mt-2 text-sm text-red-700" role="alert">{{ form.password.errors }}</div>
                         {% endif %}
                     </div>
+
                     {% if next %}
                         <input type="hidden" name="next" value="{{ next }}">
                     {% endif %}
+
                     <button type="submit" class="w-full cursor-pointer rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600">Iniciar sesión</button>
                 </form>
-
-                <p class="mt-7 border-t border-slate-100 pt-5 text-center text-xs text-slate-500">Pesquera Belliazzi</p>
             </section>
         </div>
     </main>
+
+    <script>
+        (function () {
+            var btn = document.getElementById("toggle-password");
+            var input = document.getElementById("{{ form.password.id_for_label }}");
+            if (!btn || !input) return;
+            btn.addEventListener("click", function () {
+                var show = input.type === "password";
+                input.type = show ? "text" : "password";
+                btn.setAttribute("aria-pressed", show);
+                btn.setAttribute("aria-label", show ? "Ocultar contraseña" : "Mostrar contraseña");
+                document.getElementById("icon-eye").style.display = show ? "none" : "";
+                document.getElementById("icon-eye-off").style.display = show ? "" : "none";
+            });
+        })();
+    </script>
 </body>
 </html>
