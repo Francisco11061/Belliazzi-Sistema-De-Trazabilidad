@@ -277,10 +277,16 @@ def _destino_reporte(inicio, fin):
     ), "despacho__fecha_hora_despacho", inicio, fin).order_by("despacho__fecha_hora_despacho", "despacho_id", "caja_id")
 
 
-def resumen_reporte_sernapesca(inicio, fin):
-    return dict(abastecimiento=_abastecimiento_reporte(inicio, fin).count(),
-                produccion=_produccion_reporte(inicio, fin).count(),
-                destino=_destino_reporte(inicio, fin).count())
+def resumen_reporte_sernapesca(inicio, fin, operacion=""):
+    fuentes = dict(abastecimiento=_abastecimiento_reporte, produccion=_produccion_reporte, destino=_destino_reporte)
+    return {clave: selector(inicio, fin).count() for clave, selector in fuentes.items() if not operacion or clave == operacion}
+
+
+def datos_operacion_reporte(inicio, fin, operacion):
+    fuentes = dict(abastecimiento=("Abastecimiento", obtener_abastecimiento_reporte),
+                   produccion=("Producción", obtener_produccion_reporte), destino=("Destino", obtener_destino_reporte))
+    nombre, selector = fuentes[operacion]
+    return {nombre: selector(inicio, fin)}
 
 
 def _usuario_reporte(usuario):

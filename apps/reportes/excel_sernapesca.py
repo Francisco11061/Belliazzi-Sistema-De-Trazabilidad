@@ -120,9 +120,8 @@ def construir_excel_sernapesca(*, datos, inicio, fin, usuario, generado):
         ("Desde", inicio if inicio else "Desde el primer registro disponible"),
         ("Hasta (inclusive)", fin),
         ("Zona horaria", str(timezone.get_default_timezone())),
-        ("Filas Abastecimiento", len(datos["Abastecimiento"])),
-        ("Filas Producción", len(datos["Producción"])),
-        ("Filas Destino", len(datos["Destino"])),
+        *[("Filas " + nombre, len(filas)) for nombre, filas in datos.items()],
+        ("Tipo de operación", ", ".join(datos)),
         ("Estado", "No hay registros para el período seleccionado." if not any(datos.values()) else "Contiene registros del período seleccionado."),
         ("Abastecimiento", "Una fila por detalle de recepción. Filtrado por fecha/hora de recepción. Diferencia = recibido en planta menos origen."),
         ("Producción", "Una fila por lote, filtrado por fecha de elaboración. Incluye todos sus aportes y cajas documentados al generar el reporte, aunque se registraran después del período."),
@@ -136,8 +135,32 @@ def construir_excel_sernapesca(*, datos, inicio, fin, usuario, generado):
     ]
     _hoja(wb, "Resumen", (("dato", "Dato", 30), ("valor", "Valor", 110)),
           [dict(dato=k, valor=v) for k, v in resumen])
-    for nombre_hoja, columnas in COLUMNAS.items():
-        _hoja(wb, nombre_hoja, columnas, datos[nombre_hoja])
+    for nombre_hoja, filas in datos.items():
+        _hoja(wb, nombre_hoja, COLUMNAS[nombre_hoja], filas)
     salida = BytesIO()
     wb.save(salida)
     return salida.getvalue()
+
+
+def construir_csv_sernapesca(datos):
+    """Una operación por CSV, mismas columnas y textos literales del Excel."""
+    import csv
+    from io import StringIO
+    nombre, filas = next(iter(datos.items()))
+    salida = StringIO(newline="")
+    writer = csv.writer(salida, delimiter=";")
+    columnas = COLUMNAS[nombre]
+    writer.writerow([titulo for _, titulo, _ in columnas])
+    for fila in filas:
+        valores = []
+        for clave, _, _ in columnas:
+            valor = fila.get(clave)
+            if isinstance(valor, datetime):
+                valor = timezone.localtime(valor, timezone.get_default_timezone()).isoformat()
+            elif isinstance(valor, date):
+                valor = valor.isoformat()
+            if isinstance(valor, str) and valor.lstrip().startswith(("=", "+", "-", "@")):
+                valor = "'" + valor
+            valores.append(valor)
+        writer.writerow(valores)
+    return salida.getvalue().encode("utf-8-sig")

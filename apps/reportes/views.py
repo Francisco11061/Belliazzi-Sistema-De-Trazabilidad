@@ -12,9 +12,9 @@ from django.views.decorators.http import require_http_methods
 from apps.trazabilidad.models import UnidadFrio
 from apps.usuarios.permisos import jefe_requerido
 from .forms import DashboardFiltroForm, ReporteSernapescaForm, UmbralFrioForm
-from .selectors import PERIODOS, dashboard_operacional, periodo_actual, resumen_reporte_sernapesca
+from .selectors import PERIODOS, dashboard_operacional, datos_operacion_reporte, periodo_actual, resumen_reporte_sernapesca
 from .services import configurar_umbral, generar_reporte_apoyo_sernapesca
-from .excel_sernapesca import NOTA_ALCANCE, NOTA_REFERENCIAS
+from .excel_sernapesca import NOTA_ALCANCE, NOTA_REFERENCIAS, construir_csv_sernapesca, construir_excel_sernapesca
 
 
 @never_cache
@@ -79,18 +79,30 @@ def sernapesca(request, descargar=False):
         valido = form.is_valid()
         if valido:
             inicio, fin = form.cleaned_data["fecha_inicio"], form.cleaned_data["fecha_fin"]
+            operacion = form.cleaned_data["operacion"]
             if descargar:
-                contenido, nombre = generar_reporte_apoyo_sernapesca(
-                    usuario=request.user, fecha_inicio=inicio, fecha_fin=fin,
-                )
-                response = HttpResponse(contenido, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                csv = request.GET.get("formato") == "csv"
+                if csv and not operacion:
+                    form.add_error("operacion", "Selecciona una operación para descargar CSV.")
+                    return render(request, "reportes/sernapesca.html", contexto, status=400)
+                if operacion:
+                    datos = datos_operacion_reporte(inicio, fin, operacion)
+                    contenido = construir_csv_sernapesca(datos) if csv else construir_excel_sernapesca(
+                        datos=datos, inicio=inicio, fin=fin, usuario=request.user, generado=timezone.now())
+                    nombre = f'reporte_apoyo_sernapesca_{operacion}_{inicio or "desde_inicio"}_{fin}.{ "csv" if csv else "xlsx"}'
+                else:
+                    contenido, nombre = generar_reporte_apoyo_sernapesca(
+                        usuario=request.user, fecha_inicio=inicio, fecha_fin=fin,
+                    )
+                response = HttpResponse(contenido, content_type="text/csv; charset=utf-8" if csv else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 response["Content-Disposition"] = f'attachment; filename="{nombre}"'
                 response["X-Content-Type-Options"] = "nosniff"
                 return response
-            parametros = {"fecha_fin": fin.isoformat()}
+            parametros = {"fecha_fin": fin.isoformat(), "operacion": operacion}
             if inicio:
                 parametros["fecha_inicio"] = inicio.isoformat()
-            resumen = resumen_reporte_sernapesca(inicio, fin)
+            resumen = resumen_reporte_sernapesca(inicio, fin, operacion)
             contexto.update(resumen=resumen, sin_datos=not any(resumen.values()), inicio=inicio, fin=fin,
+                            operacion=operacion, operacion_visible=dict(form.OPERACIONES)[operacion],
                             descarga=reverse("reportes:descargar_sernapesca") + "?" + urlencode(parametros))
         return render(request, "reportes/sernapesca.html", contexto, status=200 if valido else 400)

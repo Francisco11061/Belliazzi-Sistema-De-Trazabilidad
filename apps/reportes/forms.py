@@ -28,6 +28,9 @@ class UmbralFrioForm(forms.ModelForm):
 
 
 class ReporteSernapescaForm(forms.Form):
+    OPERACIONES = (("", "Todas"), ("abastecimiento", "Abastecimiento"),
+                   ("produccion", "Producción"), ("destino", "Destino"))
+    operacion = forms.ChoiceField(label="Tipo de operación", choices=OPERACIONES, required=False)
     fecha_inicio = forms.DateField(label="Desde", required=False, input_formats=["%Y-%m-%d"],
                                   widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}))
     fecha_fin = forms.DateField(label="Hasta", required=False, input_formats=["%Y-%m-%d"],
