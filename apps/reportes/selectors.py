@@ -1,8 +1,8 @@
 """Lecturas del dashboard. Inventario continúa siendo la fuente del stock."""
 from datetime import date, datetime, time, timedelta, timezone as dt_timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
-from django.db.models import Case, Count, IntegerField, OuterRef, Prefetch, Q, Subquery, Sum, Value, When
+from django.db.models import Avg, Case, Count, F, IntegerField, OuterRef, Prefetch, Q, Subquery, Sum, Value, When
 from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils import timezone
@@ -10,7 +10,7 @@ from django.utils import timezone
 from apps.inventario.models import BajaCaja, Despacho, DetalleDespacho, EstanciaCaja
 from apps.inventario.selectors import cajas_con_inventario, despachos_con_totales, resumen_inventario, totales_stock
 from apps.trazabilidad.models import (Caja, ConsumoLote, DetalleRecepcion, EstanciaPartida,
-                                     LoteProduccion, MermaProceso, Pesaje, Recepcion, UnidadFrio)
+                                     EventoProceso, LoteProduccion, MermaProceso, PartidaProceso, Pesaje, Recepcion, UnidadFrio)
 from apps.trazabilidad.selectors import lotes_con_empaque
 
 PERIODOS = (("semana", "Semana"), ("mes", "Mes"), ("ano", "Año"))
@@ -68,26 +68,41 @@ def despachos_del_dia(ahora):
                 **detalles.aggregate(**_totales_cajas_relacionadas()))
 
 
-def serie_despachos(periodo):
+def _especie(queryset, relacion, especie):
+    return queryset.filter(**{relacion: especie}) if especie else queryset
+
+
+def periodo_libre(desde, hasta):
+    # Máximo 31 segmentos; incluso un rango amplio evita un CASE por día.
+    paso = max(1, ((hasta - desde).days + 31) // 31)
+    limites = [desde + timedelta(days=n) for n in range(0, (hasta - desde).days + 1, paso)]
+    limites.append(hasta + timedelta(days=1))
+    segmentos = [dict(inicio=_medianoche(a), fin=_medianoche(b), etiqueta=a.strftime("%d/%m/%Y"))
+                 for a, b in zip(limites, limites[1:])]
+    return dict(valor="libre", nombre="Rango seleccionado", desde=desde, hasta=hasta,
+                inicio=_medianoche(desde), fin=_medianoche(hasta + timedelta(days=1)), segmentos=segmentos)
+
+
+def serie_despachos(periodo, especie=None):
     # Rangos aware: agrupa en SQL sin exigir tablas de zonas horarias a MySQL.
     # Los límites de cada día chileno se convierten por separado, respetando DST.
     campo = "despacho__fecha_hora_despacho"
     grupo = Case(*[When(**{campo + "__gte": s["inicio"], campo + "__lt": s["fin"]}, then=Value(i))
                    for i, s in enumerate(periodo["segmentos"])], output_field=IntegerField())
-    filas = _en_periodo(DetalleDespacho.objects.all(), campo, periodo).order_by().annotate(
+    filas = _en_periodo(_especie(DetalleDespacho.objects.all(), "caja__lote_produccion__especie", especie), campo, periodo).order_by().annotate(
         grupo=grupo).values("grupo").annotate(**_totales_cajas_relacionadas())
     por_grupo = {fila["grupo"]: fila for fila in filas}
     return [dict(etiqueta=s["etiqueta"], **por_grupo.get(i, dict(cajas=0, peso_conocido=Decimal("0.00"), sin_peso=0)))
             for i, s in enumerate(periodo["segmentos"])]
 
 
-def mermas_y_bajas(periodo):
-    filas = _en_periodo(MermaProceso.objects.all(), "fecha_hora_evento", periodo).order_by().values(
+def mermas_y_bajas(periodo, especie=None):
+    filas = _en_periodo(_especie(MermaProceso.objects.all(), "partida__detalle_recepcion__especie", especie), "fecha_hora_evento", periodo).order_by().values(
         "tipo").annotate(kg=Sum("cantidad_kg"))
     por_tipo = {fila["tipo"]: fila["kg"] for fila in filas}
     mermas = [dict(tipo=tipo, nombre=nombre, kg=por_tipo.get(tipo, Decimal("0.00")))
               for tipo, nombre in MermaProceso.Tipo.choices]
-    bajas = _en_periodo(BajaCaja.objects.all(), "fecha_hora_evento", periodo).aggregate(**_totales_cajas_relacionadas())
+    bajas = _en_periodo(_especie(BajaCaja.objects.all(), "caja__lote_produccion__especie", especie), "fecha_hora_evento", periodo).aggregate(**_totales_cajas_relacionadas())
     return mermas, bajas
 
 
@@ -99,7 +114,7 @@ def _duracion_texto(duracion):
     return f"{horas} h {minutos:02d} min"
 
 
-def alertas_frio(ahora, limite=10):
+def alertas_frio(ahora, limite=10, especie=None):
     ahora = ahora.astimezone(dt_timezone.utc)
     unidades = list(UnidadFrio.objects.filter(umbral_alerta_horas__isnull=False))
     if not unidades:
@@ -116,59 +131,121 @@ def alertas_frio(ahora, limite=10):
     )
     elementos, total = [], 0
     for modelo, relacion, tipo in fuentes:
-        abiertas = modelo.objects.filter(condicion, fecha_hora_salida__isnull=True)
+        abiertas = _especie(modelo.objects.filter(condicion, fecha_hora_salida__isnull=True), relacion, especie)
         total += abiertas.count()
         for estancia in abiertas.select_related("unidad_frio", relacion).order_by("fecha_hora_ingreso", "pk")[:limite]:
             unidad = estancia.unidad_frio
             duracion = ahora - estancia.fecha_hora_ingreso.astimezone(dt_timezone.utc)
             exceso = duracion - timedelta(seconds=int(unidad.umbral_alerta_horas * 3600))
             if tipo == "seguimiento":
-                especie = estancia.partida.detalle_recepcion.especie.nombre
+                nombre_especie = estancia.partida.detalle_recepcion.especie.nombre
                 titulo = f"Seguimiento #{estancia.partida_id}"
                 url = reverse("trazabilidad:detalle_partida", args=[estancia.partida_id])
             else:
-                especie = estancia.caja.lote_produccion.especie.nombre
+                nombre_especie = estancia.caja.lote_produccion.especie.nombre
                 titulo = f"Caja #{estancia.caja_id}"
                 url = reverse("producto_terminado:detalle_caja", args=[estancia.caja_id])
-            elementos.append(dict(titulo=titulo, especie=especie, unidad=unidad, url=url,
+            elementos.append(dict(titulo=titulo, especie=nombre_especie, unidad=unidad, url=url,
                                   ingreso=estancia.fecha_hora_ingreso, duracion=duracion, exceso=exceso,
                                   tiempo=_duracion_texto(duracion), exceso_texto=_duracion_texto(exceso)))
     elementos.sort(key=lambda e: (e["ingreso"], e["titulo"]))
     return dict(total=total, elementos=elementos[:limite], configuradas=len(unidades))
 
 
-def actividad_reciente(limite=8):
+def actividad_reciente(limite=8, especie=None):
     actividades = []
-    for recepcion in Recepcion.objects.order_by("-creado_en", "-pk")[:limite]:
+    for recepcion in _especie(Recepcion.objects.all(), "detalles__especie", especie).distinct().order_by("-creado_en", "-pk")[:limite]:
         actividades.append(dict(fecha=recepcion.creado_en, titulo=f"Recepción #{recepcion.pk} registrada",
                                 url=reverse("trazabilidad:detalle_recepcion", args=[recepcion.pk])))
-    for lote in LoteProduccion.objects.order_by("-creado_en", "-pk")[:limite]:
+    for lote in _especie(LoteProduccion.objects.all(), "especie", especie).order_by("-creado_en", "-pk")[:limite]:
         actividades.append(dict(fecha=lote.creado_en, titulo=f"Lote {lote.codigo_visible} creado",
                                 url=reverse("producto_terminado:detalle_lote", args=[lote.pk])))
-    for despacho in despachos_con_totales().order_by("-creado_en", "-pk")[:limite]:
+    despachos = despachos_con_totales()
+    if especie:
+        despachos = despachos.filter(pk__in=DetalleDespacho.objects.filter(caja__lote_produccion__especie=especie).values("despacho_id"))
+    for despacho in despachos.order_by("-creado_en", "-pk")[:limite]:
         actividades.append(dict(fecha=despacho.creado_en, titulo=f"Despacho #{despacho.pk} registrado",
-                                cajas=despacho.cantidad_cajas, kg=despacho.peso_conocido, sin_peso=despacho.cajas_sin_peso,
+                                cajas=despacho.cantidad_cajas if not especie else None, kg=despacho.peso_conocido, sin_peso=despacho.cajas_sin_peso,
                                 url=reverse("inventario:detalle_despacho", args=[despacho.pk])))
-    for baja in BajaCaja.objects.select_related("caja").order_by("-creado_en", "-pk")[:limite]:
+    for baja in _especie(BajaCaja.objects.select_related("caja"), "caja__lote_produccion__especie", especie).order_by("-creado_en", "-pk")[:limite]:
         actividades.append(dict(fecha=baja.creado_en, titulo=f"Baja de Caja #{baja.caja_id} registrada",
                                 url=reverse("producto_terminado:detalle_caja", args=[baja.caja_id])))
     return sorted(actividades, key=lambda a: (a["fecha"], a["titulo"]), reverse=True)[:limite]
 
 
-def dashboard_operacional(valor="semana", ahora=None):
+def indicadores_periodo(periodo, especie=None):
+    detalles = _en_periodo(_especie(DetalleRecepcion.objects.all(), "especie", especie),
+                           "recepcion__fecha_hora_recepcion", periodo)
+    recibido = detalles.aggregate(recepciones=Count("recepcion_id", distinct=True),
+                                  kg=Sum("peso_recepcion_kg", default=Decimal("0.00")))
+    primero = Pesaje.objects.filter(partida_id=OuterRef("pk"), tipo=Pesaje.POSTPROCESO).order_by("fecha_hora_evento", "pk")
+    partidas = _especie(PartidaProceso.objects.all(), "detalle_recepcion__especie", especie).annotate(
+        peso_final=Subquery(primero.values("peso_kg")[:1]), fecha_pesaje=Subquery(primero.values("fecha_hora_evento")[:1]))
+    post = _en_periodo(partidas, "fecha_pesaje", periodo).aggregate(
+        registros=Count("pk"), inicial=Sum("cantidad_inicial_kg", default=Decimal("0.00")),
+        final=Sum("peso_final", default=Decimal("0.00")),
+        superiores=Count("pk", filter=Q(peso_final__gt=F("cantidad_inicial_kg"))))
+    post["rendimiento"] = (post["final"] / post["inicial"] * 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if post["inicial"] > 0 else None
+    producidas = _especie(Caja.objects.all(), "lote_produccion__especie", especie).filter(
+        lote_produccion__fecha_elaboracion__range=(periodo["desde"], periodo["hasta"])).aggregate(**totales_stock())
+    estancias = _en_periodo(_especie(EstanciaPartida.objects.filter(fecha_hora_salida__isnull=False),
+                                    "partida__detalle_recepcion__especie", especie), "fecha_hora_salida", periodo)
+    frios = {f["unidad_frio__tipo"]: f for f in estancias.order_by().values("unidad_frio__tipo").annotate(
+        registros=Count("pk"), promedio=Avg(F("fecha_hora_salida") - F("fecha_hora_ingreso")))}
+    eventos = _en_periodo(_especie(EventoProceso.objects.filter(fecha_hora_termino__isnull=False),
+                                  "partida__detalle_recepcion__especie", especie), "fecha_hora_termino", periodo)
+    # Excluir evento general evita sumar el proceso y sus etapas dos veces.
+    procesos = list(eventos.exclude(tipo_proceso__codigo="PROCESAMIENTO").order_by().values("tipo_proceso__nombre").annotate(
+        registros=Count("pk"), promedio=Avg(F("fecha_hora_termino") - F("fecha_hora_inicio"))))
+    tiempos = [dict(nombre=nombre, **frios.get(tipo, dict(registros=0, promedio=None)))
+               for tipo, nombre in (("MANTENCION", "Cámara de mantención"), ("TUNEL_CONGELADO", "Túnel de congelado"))]
+    tiempos[1:1] = [dict(nombre=f["tipo_proceso__nombre"], registros=f["registros"], promedio=f["promedio"]) for f in procesos]
+    for fila in tiempos:
+        fila["tiempo"] = _duracion_texto(fila["promedio"]) if fila["promedio"] is not None else "Sin registros completos"
+    return recibido, post, producidas, tiempos
+
+
+def senal(cantidad, vacio, presente):
+    return dict(estado="REVISION" if cantidad else "COMPLETADA", texto=presente if cantidad else vacio,
+                borde="border-l-amber-400" if cantidad else "border-l-emerald-500")
+
+
+def semaforo_operacion(pendientes, sin_peso, frio, mermas, bajas, post):
+    asuntos = pendientes + sin_peso + (0 if frio["configuradas"] else 1)
+    # La franja describe asuntos actuales; mermas/postproceso pertenecen al período.
+    estado = (dict(estado="BAJA", texto=f'{frio["total"]} alertas críticas', borde="border-l-red-500")
+              if frio["total"] else senal(asuntos, "Sin alertas activas", f"{asuntos} asuntos por revisar"))
+    return dict(operacion=estado, pendientes=senal(pendientes, "Al día", "Por ingresar"),
+                sin_peso=senal(sin_peso, "Al día", "Sin peso"),
+                mermas=senal(sum(m["kg"] for m in mermas), "Sin merma", "Con registros"),
+                bajas=senal(bajas["cajas"], "Sin bajas", "Con bajas"),
+                post=senal(post["superiores"], "Sin advertencias", "Peso superior al inicial"))
+
+
+def dashboard_operacional(valor="semana", ahora=None, desde=None, hasta=None, especie=None):
     ahora = ahora or timezone.now()
-    periodo = periodo_actual(valor, ahora)
-    inventario = resumen_inventario(cajas_con_inventario())
+    periodo = periodo_libre(desde, hasta) if desde and hasta else periodo_actual(valor, ahora)
+    if desde and hasta:
+        for codigo, _ in PERIODOS:
+            candidato = periodo_actual(codigo, ahora)
+            if (desde, hasta) == (candidato["desde"], candidato["hasta"]):
+                periodo = candidato
+                break
+    inventario = resumen_inventario(_especie(cajas_con_inventario(), "lote_produccion__especie", especie))
     especies = list(inventario["por_especie"].order_by("-peso_conocido", "lote_produccion__especie__nombre"))
-    serie = serie_despachos(periodo)
-    mermas, bajas = mermas_y_bajas(periodo)
+    serie = serie_despachos(periodo, especie)
+    mermas, bajas = mermas_y_bajas(periodo, especie)
+    recibido, post, producidas, tiempos = indicadores_periodo(periodo, especie)
+    frio = alertas_frio(ahora, especie=especie)
     return dict(actualizado=ahora, periodo=periodo, periodos=PERIODOS,
                 stock=inventario["stock"], pendientes=inventario["pendientes"], especies=especies,
                 despachos_hoy=despachos_del_dia(ahora), serie=serie,
                 cajas_periodo=sum(f["cajas"] for f in serie),
                 sin_peso_periodo=sum(f["sin_peso"] for f in serie),
                 kg_periodo=sum((f["peso_conocido"] for f in serie), Decimal("0.00")),
-                mermas=mermas, bajas=bajas, frio=alertas_frio(ahora), actividad=actividad_reciente(),
+                recibido=recibido, postproceso=post, producidas=producidas, tiempos=tiempos,
+                colores=semaforo_operacion(inventario["pendientes"], inventario["stock"]["sin_peso"], frio, mermas, bajas, post),
+                mermas=mermas, bajas=bajas, frio=frio, actividad=actividad_reciente(especie=especie),
                 graficos={
                     "despachos": {"labels": [f["etiqueta"] for f in serie], "valores": [f["peso_conocido"] for f in serie]},
                     "especies": {"labels": [f["lote_produccion__especie__nombre"] for f in especies],

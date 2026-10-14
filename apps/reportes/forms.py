@@ -1,7 +1,22 @@
 from django import forms
 from datetime import date
 from django.utils import timezone
-from apps.trazabilidad.models import UnidadFrio
+from apps.trazabilidad.models import Especie, UnidadFrio
+
+
+class DashboardFiltroForm(forms.Form):
+    desde = forms.DateField(label="Desde", widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}))
+    hasta = forms.DateField(label="Hasta", widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}))
+    especie = forms.ModelChoiceField(label="Especie", queryset=Especie.objects.all().order_by("nombre"),
+                                     required=False, empty_label="Todas")
+
+    def clean(self):
+        datos = super().clean()
+        if datos.get("hasta") == date.max:
+            self.add_error("hasta", "La fecha final está fuera del rango admitido.")
+        elif datos.get("desde") and datos.get("hasta") and datos["desde"] > datos["hasta"]:
+            self.add_error("hasta", "Hasta debe ser igual o posterior a Desde. Se muestra la semana actual.")
+        return datos
 
 
 class UmbralFrioForm(forms.ModelForm):

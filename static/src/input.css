@@ -2,6 +2,7 @@
 @plugin "flowbite/plugin";
 @source "../../apps/**/templates/**/*.html";
 @source "../../apps/usuarios/forms.py";
+@source "../../apps/reportes/selectors.py";
 @source "../../templates/**/*.html";
 @source "../../node_modules/flowbite";
 

@@ -6,20 +6,43 @@ from django.urls import reverse
 from django.views.decorators.cache import never_cache
 from urllib.parse import urlencode
 from django.utils.translation import override
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from apps.trazabilidad.models import UnidadFrio
 from apps.usuarios.permisos import jefe_requerido
-from .forms import ReporteSernapescaForm, UmbralFrioForm
-from .selectors import dashboard_operacional, resumen_reporte_sernapesca
+from .forms import DashboardFiltroForm, ReporteSernapescaForm, UmbralFrioForm
+from .selectors import PERIODOS, dashboard_operacional, periodo_actual, resumen_reporte_sernapesca
 from .services import configurar_umbral, generar_reporte_apoyo_sernapesca
 from .excel_sernapesca import NOTA_ALCANCE, NOTA_REFERENCIAS
 
 
+@never_cache
 @jefe_requerido
 @require_http_methods(["GET"])
 def dashboard(request):
-    return render(request, "reportes/dashboard.html", dashboard_operacional(request.GET.get("periodo", "semana")))
+    ahora = timezone.now()
+    defecto = periodo_actual(request.GET.get("periodo", "semana"), ahora)
+    datos = request.GET.copy()
+    datos.setdefault("desde", defecto["desde"].isoformat())
+    datos.setdefault("hasta", defecto["hasta"].isoformat())
+    with override("es"):
+        form = DashboardFiltroForm(datos)
+        valido = form.is_valid()
+        especie = form.cleaned_data.get("especie")
+        contexto = dashboard_operacional(ahora=ahora, especie=especie,
+            desde=form.cleaned_data["desde"] if valido else None,
+            hasta=form.cleaned_data["hasta"] if valido else None)
+        enlaces = []
+        for codigo, nombre in PERIODOS:
+            rango = periodo_actual(codigo, ahora)
+            parametros = dict(periodo=codigo, desde=rango["desde"].isoformat(), hasta=rango["hasta"].isoformat())
+            if especie:
+                parametros["especie"] = especie.pk
+            enlaces.append(dict(nombre=nombre, url="?" + urlencode(parametros), activo=(
+                contexto["periodo"]["desde"], contexto["periodo"]["hasta"]) == (rango["desde"], rango["hasta"])))
+        contexto.update(form=form, atajos=enlaces, filtros_activos=bool(request.GET), especie_id=especie.pk if especie else "")
+        return render(request, "reportes/dashboard.html", contexto)
 
 
 @jefe_requerido

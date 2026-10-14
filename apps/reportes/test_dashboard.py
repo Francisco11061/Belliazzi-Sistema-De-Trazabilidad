@@ -437,15 +437,15 @@ class ActividadDashboardTests(DatosDashboard, TestCase):
         self.assertTrue(datos["frio"]["total"])
         self.assertTrue(all(q["sql"].lstrip().upper().startswith("SELECT") for q in consultas))
         self.assertEqual(antes, {m._meta.label: list(m.objects.order_by("pk").values()) for m in modelos})
-        self.assertLessEqual(len(consultas), 20)
+        self.assertLessEqual(len(consultas), 23)  # Cinco agregaciones nuevas; sin consultas por fila.
 
     def test_avisos_pendiente_y_peso_no_documentado(self):
         self.caja()
         self.caja(None, almacenada=True)
         self.client.force_login(self.jefe)
         response = self.client.get(self.url())
-        self.assertContains(response, "Aviso · Cajas pendientes de almacenar")
-        self.assertContains(response, "Sin peso documentado")
+        self.assertContains(response, "Por ingresar")
+        self.assertContains(response, "sin peso documentado")
 
     def test_umbral_inicial_null_sin_alertas_persistentes(self):
         self.assertTrue(all(u.umbral_alerta_horas is None for u in UnidadFrio.objects.all()))
