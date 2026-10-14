@@ -1,0 +1,3 @@
+<select name="{{ field.html_name }}" id="{{ field.id_for_label }}" {% if field.field.required %}required{% endif %} {% if field.errors %}aria-invalid="true" aria-describedby="{{ field.auto_id }}_error"{% endif %} class="min-h-11 w-full min-w-0 rounded-lg border border-slate-300 px-3 py-2.5">
+{% for option in field %}<option value="{{ option.data.value }}" {% if option.data.selected %}selected{% endif %}>{% include 'components/_nombre_rol.html' with codigo=option.data.value.instance.codigo nombre=option.choice_label only %}</option>{% endfor %}
+</select>

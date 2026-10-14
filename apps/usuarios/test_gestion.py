@@ -334,7 +334,7 @@ class GestionUsuariosTests(TestCase):
         self.tecnico.cambio_contrasena_pendiente = True
         self.tecnico.save()
         self.client.force_login(self.tecnico)
-        self.assertContains(self.client.get(self.url("lista_usuarios")), "Administrador técnico")
+        self.assertContains(self.client.get(self.url("lista_usuarios")), "Jefe / Administrador")
         usuario = self.crear(actor=self.tecnico, rol=self.jefe_rol)
         self.assertEqual(usuario.rol, self.jefe_rol)
         self.tecnico.refresh_from_db()

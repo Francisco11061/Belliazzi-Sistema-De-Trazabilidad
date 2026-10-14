@@ -16,7 +16,7 @@
         {% if form.non_field_errors %}<div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
         {% for field in form %}<div class="min-w-0">
             <label for="{{ field.id_for_label }}" class="mb-2 block text-sm font-medium">{{ field.label }}</label>
-            {{ field }}
+            {% if field.name == 'rol' %}{% include 'usuarios/gestion/_campo_rol.html' %}{% else %}{{ field }}{% endif %}
             {% if field.help_text %}<div id="{{ field.auto_id }}_helptext" class="mt-2 text-xs leading-5 text-slate-600">{{ field.help_text|safe }}</div>{% endif %}
             {% if field.errors %}<div id="{{ field.auto_id }}_error" role="alert" class="mt-2 text-sm text-red-700">{{ field.errors }}</div>{% endif %}
         </div>{% endfor %}

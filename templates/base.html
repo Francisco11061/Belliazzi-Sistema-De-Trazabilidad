@@ -98,7 +98,7 @@
                     <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-sm font-semibold text-cyan-700 sm:h-10 sm:w-10" aria-hidden="true">{{ display_name|first|upper }}</span>
                     <div class="sr-only sm:not-sr-only sm:min-w-0 sm:text-left">
                         <p class="max-w-28 truncate text-sm font-medium sm:max-w-64">
-                            {% if user.is_superuser %}Administrador técnico{% elif user.rol %}{{ user.rol.nombre_visible }}{% endif %}
+                            {% if user.is_superuser %}Jefe / Administrador{% elif user.rol %}{% include 'components/_nombre_rol.html' with codigo=user.rol.codigo nombre=user.rol.nombre only %}{% endif %}
                         </p>
                         <p class="max-w-48 truncate text-xs text-slate-600 lg:max-w-64" title="{{ display_name }}">{{ display_name }}</p>
                     </div>
