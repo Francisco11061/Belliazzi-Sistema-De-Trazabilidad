@@ -75,6 +75,54 @@ class PartidasTests(TestCase):
     def situacion(self, partida):
         return partidas_con_situacion().get(pk=partida.pk).situacion
 
+    def test_vista_inicial_responsive_y_seleccion_explicita(self):
+        url = reverse("trazabilidad:lista_partidas")
+        for usuario, inicial in ((self.operaria, "tarjetas"), (self.jefe, "tabla"),
+                                 (self.encargada, "tabla"), (self.superusuario, "tabla")):
+            self.client.force_login(usuario)
+            for valor, esperado in ((None, inicial), ("invalida", inicial), ("tabla", "tabla"), ("tarjetas", "tarjetas")):
+                response = self.client.get(url, {"vista": valor} if valor else {})
+                self.assertContains(response, 'class="md:hidden"', count=1 if valor not in ("tabla", "tarjetas") else 0)
+                self.assertContains(response, '<table', count=0 if valor == "tarjetas" else 1)
+                self.assertEqual(response.context["page_obj"].paginator.count, 1)
+
+    def test_vista_conserva_filtros_y_paginacion(self):
+        self.client.force_login(self.operaria)
+        for _ in range(11):
+            self.registrar()
+        url = reverse("trazabilidad:lista_partidas")
+        filtros = {"especie": self.merluza.pk, "situacion": "DISPONIBLE", "page": "2"}
+        anteriores = None
+        for vista in ("tarjetas", "tabla"):
+            response = self.client.get(url, {**filtros, "vista": vista})
+            ids = [p.pk for p in response.context["page_obj"]]
+            if anteriores is not None:
+                self.assertEqual(ids, anteriores)
+            anteriores = ids
+            self.assertIn(f"vista={vista}", response.context["pagina_anterior"])
+            for enlace in (response.context["vista_tabla"], response.context["vista_tarjetas"]):
+                self.assertIn(f"especie={self.merluza.pk}", enlace)
+                self.assertIn("situacion=DISPONIBLE", enlace)
+                self.assertIn("page=2", enlace)
+            self.assertContains(response, f'name="vista" value="{vista}"')
+
+    def test_ubicacion_solo_si_hay_datos_y_tarjeta_en_proceso(self):
+        self.client.force_login(self.operaria)
+        url = reverse("trazabilidad:lista_partidas")
+        response = self.client.get(url, {"vista": "tabla"})
+        self.assertFalse(response.context["mostrar_ubicacion"])
+        self.assertNotContains(response, '>Ubicación<')
+        self.enviar()
+        for vista in ("tarjetas", "tabla"):
+            response = self.client.get(url, {"vista": vista})
+            self.assertContains(response, self.camara.nombre)
+            self.assertTrue(response.context["mostrar_ubicacion"])
+        self.retirar()
+        self.procesar()
+        response = self.client.get(url, {"vista": "tarjetas"})
+        self.assertContains(response, 'Gestionar procesamiento')
+        self.assertContains(response, f'href="{reverse("trazabilidad:gestionar_procesamiento", args=[self.partida.pk])}"')
+
     def corregir(self, **cambios):
         detalle = self.partida.detalle_recepcion
         datos = {

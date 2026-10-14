@@ -4,8 +4,8 @@
             <thead class="border-b border-slate-200 bg-slate-50 text-xs text-slate-500"><tr>
                 <th scope="col" class="px-4 py-3 font-medium">Seguimiento</th><th scope="col" class="px-4 py-3 font-medium">Especie</th><th scope="col" class="px-4 py-3 font-medium">Recepción</th><th scope="col" class="px-4 py-3 text-right font-medium">Cantidad</th><th scope="col" class="px-4 py-3 font-medium">Situación</th>{% if mostrar_ubicacion %}<th scope="col" class="px-4 py-3 font-medium">Ubicación</th>{% endif %}<th scope="col" class="px-4 py-3 font-medium">Creación</th><th scope="col" class="px-4 py-3 font-medium">Acciones</th>
             </tr></thead>
-            <tbody class="divide-y divide-slate-100">{% for partida in page_obj %}<tr class="hover:bg-slate-50">
-                <th scope="row" class="px-4 py-2 font-semibold">#{{ partida.pk }}</th>
+            <tbody class="divide-y divide-slate-100">{% for partida in page_obj %}<tr data-row-link class="cursor-pointer hover:bg-slate-50">
+                <th scope="row" class="px-4 py-2 font-semibold"><a data-detail-link class="inline-flex min-h-11 items-center text-cyan-700" href="{% url 'trazabilidad:detalle_partida' partida.pk %}">Seguimiento #{{ partida.pk }}</a></th>
                 <td class="max-w-64 break-words px-4 py-2 font-medium">{{ partida.detalle_recepcion.especie.nombre }}</td>
                 <td class="px-4 py-2 text-slate-600">#{{ partida.detalle_recepcion.recepcion_id }}</td>
                 <td class="px-4 py-2 text-right whitespace-nowrap tabular-nums">{{ partida.cantidad_inicial_kg|floatformat:2 }} kg</td>
