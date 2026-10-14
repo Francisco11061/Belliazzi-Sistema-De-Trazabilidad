@@ -315,7 +315,7 @@ class LotesTests(DatosLotes, TestCase):
     def test_detalle_seguimiento_muestra_lotes_y_oculta_accion_sin_saldo(self):
         self.client.force_login(self.jefe)
         url = reverse("trazabilidad:detalle_partida", args=[self.partida.pk])
-        self.assertContains(self.client.get(url), "Asignar a lote de producción")
+        self.assertContains(self.client.get(url), "Asignar a lote")
         lote = self.crear_lote()
         respuesta = self.client.get(url)
         for texto in ("125,00 kg", "100,00 kg", "25,00 kg", lote.codigo_visible, self.url_lote("detalle_lote", lote.pk)):
@@ -323,7 +323,7 @@ class LotesTests(DatosLotes, TestCase):
         self.crear_lote(codigo="RESTO", cantidad_kg=Decimal("25"))
         respuesta = self.client.get(url)
         self.assertContains(respuesta, "Todo el producto postproceso ya fue asignado a lotes de producción.")
-        self.assertNotContains(respuesta, "Asignar a lote de producción")
+        self.assertNotContains(respuesta, "Asignar a lote")
         self.assertContains(respuesta, "Lista para empaque")
 
     def test_permisos_operativos_y_especie_ruta_post_no_confiables(self):

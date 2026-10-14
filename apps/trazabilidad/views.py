@@ -250,7 +250,7 @@ def corregir_recepcion(request, pk):
 
 @personal_operativo_requerido
 def lista_partidas(request):
-    partidas = partidas_con_situacion().filter(estado=PartidaProceso.Estado.ACTIVA, tiene_hijas=False)
+    partidas = partidas_con_disponibilidad().filter(estado=PartidaProceso.Estado.ACTIVA, tiene_hijas=False)
     filtro = PartidaFiltroForm(request.GET)
     if filtro.is_valid():
         for campo, lookup in (
@@ -267,6 +267,8 @@ def lista_partidas(request):
     def enlace(numero):
         parametros = request.GET.copy()
         parametros["page"] = numero
+    for partida in pagina.object_list:
+        partida.puede_asignar_lote = puede_asignar_lote(partida)
         return "?" + parametros.urlencode()
 
     return render(request, "trazabilidad/partidas/lista.html", {

@@ -1,0 +1,22 @@
+<div class="flex w-full min-w-0 flex-col gap-2 {% if not compacto %}sm:flex-row sm:flex-wrap{% endif %}">
+{% if partida.situacion == 'DISPONIBLE' %}
+    {% url 'trazabilidad:procesar_partida' partida.pk as destino %}{% include 'components/_accion.html' with texto='Enviar a proceso' seguimiento=partida.pk %}
+    {% url 'trazabilidad:enviar_partida_mantencion' partida.pk as destino %}{% include 'components/_accion.html' with texto='Enviar a cámara' secundaria=True seguimiento=partida.pk %}
+{% elif partida.situacion == 'EN_MANTENCION' %}
+    {% url 'trazabilidad:retirar_partida_mantencion' partida.pk as destino %}{% include 'components/_accion.html' with texto='Retirar de cámara' seguimiento=partida.pk %}
+{% elif partida.situacion == 'EN_PROCESO' %}
+    {% url 'trazabilidad:gestionar_procesamiento' partida.pk as destino %}{% include 'components/_accion.html' with texto='Gestionar procesamiento' seguimiento=partida.pk %}
+{% elif partida.situacion == 'EN_CONGELACION' and detalle %}
+    <form method="post" action="{% url 'trazabilidad:retirar_partida_tunel' partida.pk %}">{% csrf_token %}<button type="submit" class="min-h-11 w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Retirar del túnel</button></form>
+{% elif partida.situacion == 'PENDIENTE_PESAJE' %}
+    {% url 'trazabilidad:registrar_peso_postproceso' partida.pk as destino %}{% include 'components/_accion.html' with texto='Registrar peso postproceso' seguimiento=partida.pk %}
+{% elif partida.situacion == 'LISTA_PARA_EMPAQUE' %}
+    {% if puede_asignar_lote or partida.puede_asignar_lote %}
+        {% if user.is_superuser or user.rol.codigo == 'JEFE' or user.rol.codigo == 'ENCARGADA' %}
+            {% url 'producto_terminado:crear_lote' partida.pk as destino %}{% include 'components/_accion.html' with texto='Asignar a lote' seguimiento=partida.pk %}
+        {% else %}{% url 'trazabilidad:detalle_partida' partida.pk as destino %}{% include 'components/_accion.html' with texto='Ver seguimiento' seguimiento=partida.pk %}{% endif %}
+    {% else %}{% url 'trazabilidad:detalle_partida' partida.pk as destino %}{% include 'components/_accion.html' with texto='Ver seguimiento' seguimiento=partida.pk %}{% endif %}
+{% else %}
+    {% url 'trazabilidad:detalle_partida' partida.pk as destino %}{% include 'components/_accion.html' with texto='Ver seguimiento' seguimiento=partida.pk %}
+{% endif %}
+</div>
