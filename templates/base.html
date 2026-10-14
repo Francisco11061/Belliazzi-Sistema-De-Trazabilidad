@@ -106,6 +106,7 @@
         <main id="main-content" class="min-w-0 px-4 py-8 [overflow-wrap:anywhere] sm:px-6 lg:p-8">
             {% if messages %}
                 <div class="mb-6 space-y-3" aria-label="Mensajes del sistema">
+            {% block breadcrumbs %}{% endblock %}
                     {% for message in messages %}
                         <div role="{% if message.level >= 30 %}alert{% else %}status{% endif %}" class="rounded-lg border px-4 py-3 text-sm {% if message.level == 25 %}border-green-200 bg-green-50 text-green-800{% elif message.level >= 40 %}border-red-200 bg-red-50 text-red-800{% elif message.level == 30 %}border-yellow-200 bg-yellow-50 text-yellow-800{% else %}border-sky-200 bg-sky-50 text-sky-800{% endif %}">{{ message }}</div>
                     {% endfor %}

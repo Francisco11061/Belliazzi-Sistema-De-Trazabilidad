@@ -5,9 +5,9 @@
 </section>
 {% endif %}
 {% if peso_postproceso %}
-<section class="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 sm:p-6">
+<section class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
     <h2 class="text-lg font-semibold text-cyan-800">Resultado postproceso</h2>
-    <dl class="mt-5 grid gap-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
+    <dl class="mt-5 grid gap-5 text-sm grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         <div><dt class="text-slate-500">Cantidad procesada</dt><dd class="mt-1 text-lg font-semibold">{{ partida.cantidad_inicial_kg|floatformat:2 }} kg</dd></div>
         <div><dt class="text-slate-500">Peso postproceso</dt><dd class="mt-1 text-lg font-semibold">{{ peso_postproceso.peso_kg|floatformat:2 }} kg</dd></div>
         <div><dt class="text-slate-500">Diferencia</dt><dd class="mt-1 text-lg font-semibold">{{ diferencia|floatformat:2 }} kg</dd></div>
