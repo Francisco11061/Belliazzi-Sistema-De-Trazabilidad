@@ -1,0 +1,5 @@
+{% if messages %}<div class="mb-6 space-y-3" aria-label="Mensajes del sistema">
+{% for message in messages %}
+<div data-message {% if message.level == 25 %}data-auto-dismiss{% endif %} role="{% if message.level >= 30 %}alert{% else %}status{% endif %}" class="flex min-w-0 items-start gap-3 rounded-lg border px-4 py-3 text-sm {% if message.level == 25 %}border-green-200 bg-green-50 text-green-800{% elif message.level >= 40 %}border-red-200 bg-red-50 text-red-800{% elif message.level == 30 %}border-yellow-200 bg-yellow-50 text-yellow-800{% else %}border-sky-200 bg-sky-50 text-sky-800{% endif %}">
+<div class="min-w-0 flex-1 break-words pt-3">{{ message }}</div><button data-dismiss-message type="button" aria-label="Cerrar mensaje" class="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+</div>{% endfor %}</div>{% endif %}

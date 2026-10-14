@@ -1,5 +1,6 @@
 <nav aria-label="Ruta de navegación" class="mb-6 text-sm text-slate-600"><ol class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
 {% if grupo %}<li>{{ grupo }}</li><li aria-hidden="true">/</li>{% endif %}
 <li>{% if destino %}<a href="{{ destino }}" class="inline-flex min-h-11 items-center text-cyan-700 hover:underline">{{ pagina }}</a>{% else %}<span>{{ pagina }}</span>{% endif %}</li>
+{% if registro_destino %}<li aria-hidden="true">/</li><li><a href="{{ registro_destino }}" class="inline-flex min-h-11 items-center text-cyan-700 hover:underline">Detalle</a></li>{% endif %}
 {% if actual %}<li aria-hidden="true">/</li><li aria-current="location">{{ actual }}</li>{% endif %}
 </ol></nav>

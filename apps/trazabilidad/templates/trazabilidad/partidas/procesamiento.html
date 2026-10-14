@@ -2,27 +2,27 @@
 {% block title %}Procesamiento de {{ partida.detalle_recepcion.especie.nombre }} | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Seguimiento de proceso / Procesamiento{% endblock %}
 {% block content %}
-<div class="w-full min-w-0 max-w-4xl space-y-6">
+<div class="w-full min-w-0 w-full space-y-6">
     <header>
-        <a href="{% url 'trazabilidad:detalle_partida' partida.pk %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver al seguimiento</a>
-        <h1 class="mt-4 text-2xl font-semibold sm:text-3xl">Procesamiento de {{ partida.detalle_recepcion.especie.nombre }}</h1>
-        <p class="mt-2 text-sm text-slate-500">Seguimiento #{{ partida.pk }} · {{ partida.cantidad_inicial_kg|floatformat:2 }} kg</p>
+
+        <h1 class="mt-4 text-2xl font-semibold md:text-3xl">Procesamiento de {{ partida.detalle_recepcion.especie.nombre }}</h1>
+        <p class="mt-2 text-sm text-slate-600">Seguimiento #{{ partida.pk }} · {{ partida.cantidad_inicial_kg|floatformat:2 }} kg</p>
     </header>
     <section aria-label="Resumen de procesamiento" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <dl class="grid gap-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
-            <div><dt class="text-slate-500">Especie</dt><dd class="mt-1 font-medium">{{ partida.detalle_recepcion.especie.nombre }}</dd></div>
-            <div><dt class="text-slate-500">Cantidad</dt><dd class="mt-1 font-medium">{{ partida.cantidad_inicial_kg|floatformat:2 }} kg</dd></div>
-            <div><dt class="text-slate-500">Recepción de origen</dt><dd class="mt-1 font-medium">#{{ partida.detalle_recepcion.recepcion_id }}</dd></div>
-            <div><dt class="text-slate-500">Ruta seleccionada</dt><dd class="mt-1 font-medium">{{ partida.ruta_proceso.nombre|default:"Sin ruta asignada" }}</dd></div>
-            <div><dt class="text-slate-500">Situación</dt><dd class="mt-1 font-medium text-cyan-800">{% include "components/_badge.html" with estado=partida.situacion etiqueta=partida.situacion_visible only %}</dd></div>
-            <div><dt class="text-slate-500">Inicio del procesamiento</dt><dd class="mt-1 font-medium">{{ general.fecha_hora_inicio|date:"d/m/Y H:i"|default:"—" }}</dd></div>
+            <div><dt class="text-slate-600">Especie</dt><dd class="mt-1 font-medium">{{ partida.detalle_recepcion.especie.nombre }}</dd></div>
+            <div><dt class="text-slate-600">Cantidad</dt><dd class="mt-1 font-medium">{{ partida.cantidad_inicial_kg|floatformat:2 }} kg</dd></div>
+            <div><dt class="text-slate-600">Recepción de origen</dt><dd class="mt-1 font-medium">#{{ partida.detalle_recepcion.recepcion_id }}</dd></div>
+            <div><dt class="text-slate-600">Ruta seleccionada</dt><dd class="mt-1 font-medium">{{ partida.ruta_proceso.nombre|default:"Sin ruta asignada" }}</dd></div>
+            <div><dt class="text-slate-600">Situación</dt><dd class="mt-1 font-medium text-cyan-800">{% include "components/_badge.html" with estado=partida.situacion etiqueta=partida.situacion_visible only %}</dd></div>
+            <div><dt class="text-slate-600">Inicio del procesamiento</dt><dd class="mt-1 font-medium">{{ general.fecha_hora_inicio|date:"d/m/Y H:i"|default:"—" }}</dd></div>
         </dl>
         <div class="mt-5">{% include "trazabilidad/partidas/_accion_merma.html" %}</div>
     </section>
     {% if puede_asignar_ruta %}
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-lg font-semibold">Seleccionar ruta</h2>
-        <p class="mt-2 text-sm leading-6 text-slate-500">El procesamiento comenzó antes de configurar las rutas. Selecciona la ruta que seguirá el producto antes de comenzar las etapas.</p>
+        <p class="mt-2 text-sm leading-6 text-slate-600">El procesamiento comenzó antes de configurar las rutas. Selecciona la ruta que seguirá el producto antes de comenzar las etapas.</p>
         <form method="post" class="mt-5 space-y-5 [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600">
             {% csrf_token %}
             {% if form.non_field_errors %}<div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}

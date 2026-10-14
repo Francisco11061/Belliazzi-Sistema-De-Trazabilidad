@@ -1,0 +1,7 @@
+{% if page.has_other_pages %}
+<nav aria-label="Paginación" class="mt-6 flex min-w-0 flex-wrap items-center justify-between gap-3 text-sm">
+    {% if page.has_previous %}<a href="{% querystring page=page.previous_page_number %}" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 py-3 text-cyan-700">Anterior</a>{% else %}<span aria-disabled="true" class="inline-flex min-h-11 items-center rounded-lg border border-slate-200 px-4 py-3 text-slate-400">Anterior</span>{% endif %}
+    <span class="text-slate-600">Página {{ page.number }} de {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a href="{% querystring page=page.next_page_number %}" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 py-3 text-cyan-700">Siguiente</a>{% else %}<span aria-disabled="true" class="inline-flex min-h-11 items-center rounded-lg border border-slate-200 px-4 py-3 text-slate-400">Siguiente</span>{% endif %}
+</nav>
+{% endif %}

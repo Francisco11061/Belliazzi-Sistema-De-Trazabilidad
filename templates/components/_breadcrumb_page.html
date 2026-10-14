@@ -1,0 +1,8 @@
+{% with nombre=request.resolver_match.url_name %}
+{% if 'lista' in nombre or nombre == 'dashboard' or nombre == 'sernapesca' or nombre == 'inicio' %}{% include 'components/_breadcrumbs.html' with destino='' %}
+{% elif 'detalle' in nombre %}{% include 'components/_breadcrumbs.html' with actual='Detalle' %}
+{% elif 'crear' in nombre or 'nueva' in nombre or 'registrar' in nombre or 'seleccionar' in nombre %}{% include 'components/_breadcrumbs.html' with actual='Registro' %}
+{% elif 'editar' in nombre or 'corregir' in nombre %}{% include 'components/_breadcrumbs.html' with actual='Edición' %}
+{% elif 'qr' in nombre %}{% include 'components/_breadcrumbs.html' with actual='Consulta QR' %}
+{% else %}{% include 'components/_breadcrumbs.html' with actual='Operación' %}{% endif %}
+{% endwith %}

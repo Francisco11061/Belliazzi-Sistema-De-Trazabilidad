@@ -3,9 +3,9 @@
 {% block title %}Seguimiento de proceso | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Seguimiento de proceso{% endblock %}
 {% block content %}{% language "es" %}
-<div class="w-full min-w-0 max-w-6xl space-y-5 [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-offset-2 [&_a:focus-visible]:outline-cyan-700 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-cyan-700">
+<div class="w-full min-w-0 w-full space-y-5 [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-offset-2 [&_a:focus-visible]:outline-cyan-700 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-cyan-700">
     <header class="flex flex-wrap items-end justify-between gap-4">
-        <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">Seguimiento de proceso</h1><p class="mt-2 text-sm text-slate-500">{{ page_obj.paginator.count }} seguimiento{{ page_obj.paginator.count|pluralize }}{% if request.GET.partida or request.GET.recepcion or request.GET.especie or request.GET.situacion %} en esta búsqueda{% else %} activo{{ page_obj.paginator.count|pluralize }}{% endif %}</p></div>
+        <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-tight md:text-3xl">Seguimiento de proceso</h1><p class="mt-2 text-sm text-slate-600">{{ page_obj.paginator.count }} seguimiento{{ page_obj.paginator.count|pluralize }}{% if request.GET.partida or request.GET.recepcion or request.GET.especie or request.GET.situacion %} en esta búsqueda{% else %} activo{{ page_obj.paginator.count|pluralize }}{% endif %}</p></div>
         <nav aria-label="Vista de seguimientos" class="inline-flex shrink-0 gap-1 rounded-lg border border-slate-200 bg-white p-1 text-sm font-medium">
             <a href="{% querystring vista='tarjetas' %}" {% if request.GET.vista == 'tarjetas' %}aria-current="true"{% endif %} class="rounded-md px-3 py-2 {% if request.GET.vista == 'tarjetas' %}bg-cyan-50 text-cyan-800{% else %}text-slate-600 hover:bg-slate-50{% endif %}">Tarjetas</a>
             <a href="{% querystring vista='tabla' %}" {% if request.GET.vista == 'tabla' %}aria-current="true"{% endif %} class="rounded-md px-3 py-2 {% if request.GET.vista == 'tabla' %}bg-cyan-50 text-cyan-800{% else %}text-slate-600 hover:bg-slate-50{% endif %}">Tabla</a>
@@ -29,14 +29,8 @@
     {% if page_obj %}
         {% if request.GET.vista == 'tarjetas' %}{% include "trazabilidad/partidas/_tarjetas.html" %}{% elif request.GET.vista == 'tabla' %}{% include "trazabilidad/partidas/_tabla.html" %}{% else %}<div class="md:hidden">{% include "trazabilidad/partidas/_tarjetas.html" %}</div><div class="hidden md:block">{% include "trazabilidad/partidas/_tabla.html" %}</div>{% endif %}
     {% else %}
-        <p role="status" class="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">{% if filtro.errors %}Revisa los filtros indicados.{% else %}No hay seguimientos activos que coincidan con la búsqueda.{% endif %}</p>
+        <p role="status" class="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">{% if filtro.errors %}Revisa los filtros indicados.{% else %}No hay seguimientos activos que coincidan con la búsqueda.{% endif %}</p>
     {% endif %}
-    {% if page_obj.paginator.num_pages > 1 %}
-    <nav aria-label="Paginación del seguimiento de proceso" class="flex flex-wrap items-center justify-between gap-3 text-sm">
-        {% if pagina_anterior %}<a href="{% querystring page=page_obj.previous_page_number %}" class="rounded-lg border border-slate-300 bg-white px-4 py-3 text-cyan-700">Anterior</a>{% endif %}
-        <span class="text-slate-500">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-        {% if pagina_siguiente %}<a href="{% querystring page=page_obj.next_page_number %}" class="rounded-lg border border-slate-300 bg-white px-4 py-3 text-cyan-700">Siguiente</a>{% endif %}
-    </nav>
-    {% endif %}
+    {% include "components/_paginacion.html" with page=page_obj %}
 </div>
 {% endlanguage %}{% endblock %}

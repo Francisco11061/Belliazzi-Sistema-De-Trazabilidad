@@ -3,23 +3,23 @@
     <h2 class="text-lg font-semibold">Lotes de producción</h2>
     {% if partida.tiene_postproceso %}
     <dl class="mt-5 grid gap-5 text-sm sm:grid-cols-3">
-        <div><dt class="text-slate-500">Peso postproceso</dt><dd class="mt-1 text-lg font-semibold">{{ partida.peso_final_kg|floatformat:2 }} kg</dd></div>
-        <div><dt class="text-slate-500">Asignado a lotes</dt><dd class="mt-1 text-lg font-semibold">{{ partida.asignado_lotes_kg|floatformat:2 }} kg</dd></div>
-        <div><dt class="text-slate-500">Disponible para lote</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{{ partida.disponible_lote_kg|floatformat:2 }} kg</dd></div>
+        <div><dt class="text-slate-600">Peso postproceso</dt><dd class="mt-1 text-lg font-semibold">{{ partida.peso_final_kg|floatformat:2 }} kg</dd></div>
+        <div><dt class="text-slate-600">Asignado a lotes</dt><dd class="mt-1 text-lg font-semibold">{{ partida.asignado_lotes_kg|floatformat:2 }} kg</dd></div>
+        <div><dt class="text-slate-600">Disponible para lote</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{{ partida.disponible_lote_kg|floatformat:2 }} kg</dd></div>
     </dl>
     {% endif %}
     {% if partida.disponible_lote_kg == 0 %}
     <p class="mt-5 rounded-lg border border-cyan-100 bg-cyan-50 p-4 text-sm text-cyan-800">Todo el producto postproceso ya fue asignado a lotes de producción.</p>
     {% elif partida.situacion == 'LISTA_PARA_EMPAQUE' and not partida.ruta_proceso_id %}
-    <p class="mt-5 text-sm text-slate-500">Este seguimiento histórico no tiene una ruta documentada. Requiere revisión antes de asignar producto a un lote.</p>
+    <p class="mt-5 text-sm text-slate-600">Este seguimiento histórico no tiene una ruta documentada. Requiere revisión antes de asignar producto a un lote.</p>
     {% endif %}
     <ul class="mt-5 space-y-3 text-sm">
         {% for consumo in consumos_lotes %}
         <li class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-4">
-            <div><p class="font-semibold">{{ consumo.lote_produccion.codigo_visible }}</p><p class="mt-1 text-slate-500">{{ consumo.cantidad_kg_utilizada|floatformat:2 }} kg</p></div>
-            {% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}<a class="font-medium text-cyan-700 underline" href="{% url 'producto_terminado:detalle_lote' consumo.lote_produccion_id %}">Ver lote<span class="sr-only"> {{ consumo.lote_produccion.codigo_visible }}</span></a>{% endif %}
+            <div><p class="font-semibold">{{ consumo.lote_produccion.codigo_visible }}</p><p class="mt-1 text-slate-600">{{ consumo.cantidad_kg_utilizada|floatformat:2 }} kg</p></div>
+            {% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}<a class="font-medium text-cyan-700 underline" href="{% url 'producto_terminado:detalle_lote' consumo.lote_produccion_id %}">Ver detalle<span class="sr-only"> {{ consumo.lote_produccion.codigo_visible }}</span></a>{% endif %}
         </li>
-        {% empty %}<li class="text-slate-500">Sin asignaciones a lotes.</li>{% endfor %}
+        {% empty %}<li class="text-slate-600">Sin asignaciones a lotes.</li>{% endfor %}
     </ul>
 </section>
 {% endif %}

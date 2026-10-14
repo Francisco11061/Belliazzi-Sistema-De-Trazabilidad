@@ -3,15 +3,15 @@
 {% block title %}Nueva caja | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Producto terminado / Nueva caja{% endblock %}
 {% block content %}{% language "es" %}
-<div class="w-full min-w-0 max-w-3xl space-y-6">
-    <header><a href="{% url 'producto_terminado:lista_cajas' %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver a cajas</a><h1 class="mt-4 text-2xl font-semibold sm:text-3xl">Nueva caja</h1><p class="mt-2 font-medium">Lote {{ lote.codigo_visible }}</p><p class="mt-1 text-sm text-slate-500">{{ lote.especie.nombre }} · {{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p></header>
+<div class="w-full min-w-0 w-full space-y-6">
+    <header><h1 class="mt-4 text-2xl font-semibold md:text-3xl">Nueva caja</h1><p class="mt-2 font-medium">Lote {{ lote.codigo_visible }}</p><p class="mt-1 text-sm text-slate-600">{{ lote.especie.nombre }} · {{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p></header>
     <section class="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 sm:p-6">
         <dl class="grid gap-5 text-sm sm:grid-cols-3">
-            <div><dt class="text-slate-500">Total asignado</dt><dd class="mt-1 font-semibold">{{ lote.total_asignado|floatformat:2 }} kg</dd></div>
-            <div><dt class="text-slate-500">Total empacado real</dt><dd class="mt-1 font-semibold">{% if lote.historial_empaque_incompleto %}{% include "components/_badge.html" with estado="FALTAN_PESOS" etiqueta="Faltan pesos de caja" only %}<span class="block mt-1 text-xs whitespace-normal text-slate-600">Alguna caja del lote no tiene peso neto registrado.</span>{% else %}{{ lote.total_empacado|floatformat:2 }} kg{% endif %}</dd></div>
-            <div><dt class="text-slate-500">Disponible para empacar</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{% if lote.historial_empaque_incompleto %}{% include "components/_badge.html" with estado="FALTAN_PESOS" etiqueta="Faltan pesos de caja" only %}<span class="block mt-1 text-xs whitespace-normal text-slate-600">Alguna caja del lote no tiene peso neto registrado.</span>{% else %}{{ lote.disponible_empacar|floatformat:2 }} kg{% endif %}</dd></div>
-            <div><dt class="text-slate-500">Fecha elaboración</dt><dd class="mt-1">{{ lote.fecha_elaboracion|date:"d/m/Y" }}</dd></div>
-            <div><dt class="text-slate-500">Fecha vencimiento</dt><dd class="mt-1">{{ lote.fecha_vencimiento|date:"d/m/Y"|default:"No informada" }}</dd></div>
+            <div><dt class="text-slate-600">Total asignado</dt><dd class="mt-1 font-semibold">{{ lote.total_asignado|floatformat:2 }} kg</dd></div>
+            <div><dt class="text-slate-600">Total empacado real</dt><dd class="mt-1 font-semibold">{% if lote.historial_empaque_incompleto %}{% include "components/_badge.html" with estado="FALTAN_PESOS" etiqueta="Faltan pesos de caja" only %}<span class="block mt-1 text-xs whitespace-normal text-slate-600">Alguna caja del lote no tiene peso neto registrado.</span>{% else %}{{ lote.total_empacado|floatformat:2 }} kg{% endif %}</dd></div>
+            <div><dt class="text-slate-600">Disponible para empacar</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{% if lote.historial_empaque_incompleto %}{% include "components/_badge.html" with estado="FALTAN_PESOS" etiqueta="Faltan pesos de caja" only %}<span class="block mt-1 text-xs whitespace-normal text-slate-600">Alguna caja del lote no tiene peso neto registrado.</span>{% else %}{{ lote.disponible_empacar|floatformat:2 }} kg{% endif %}</dd></div>
+            <div><dt class="text-slate-600">Fecha elaboración</dt><dd class="mt-1">{{ lote.fecha_elaboracion|date:"d/m/Y" }}</dd></div>
+            <div><dt class="text-slate-600">Fecha vencimiento</dt><dd class="mt-1">{{ lote.fecha_vencimiento|date:"d/m/Y"|default:"No informada" }}</dd></div>
         </dl>
     </section>
     {% if errores %}<div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{% for error in errores %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
@@ -20,7 +20,7 @@
         {% csrf_token %}
         <section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 class="text-lg font-semibold">Composición</h2>
-            <p class="mt-2 text-sm leading-6 text-slate-500">Elige las presentaciones y la cantidad de bolsas de esta caja. Cada presentación debe aparecer una sola vez.</p>
+            <p class="mt-2 text-sm leading-6 text-slate-600">Elige las presentaciones y la cantidad de bolsas de esta caja. Cada presentación debe aparecer una sola vez.</p>
             {{ composiciones.management_form }}
             {% if composiciones.non_form_errors %}<div role="alert" class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ composiciones.non_form_errors }}</div>{% endif %}
             <div id="composiciones-filas" class="mt-5 space-y-4">{% for fila in composiciones %}{% include "trazabilidad/cajas/_fila.html" %}{% endfor %}</div>
@@ -31,7 +31,7 @@
         </section>
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             {% include "trazabilidad/recepciones/_campo.html" with campo=form.peso_neto_kg %}
-            <p class="mt-2 text-sm text-slate-500">{{ form.peso_neto_kg.help_text }}</p>
+            <p class="mt-2 text-sm text-slate-600">{{ form.peso_neto_kg.help_text }}</p>
         </section>
         <div class="flex flex-col gap-3 sm:flex-row"><button type="submit" class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Crear caja</button><a href="{% url 'producto_terminado:lista_cajas' %}" class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm text-slate-700 hover:bg-slate-50">Cancelar</a></div>
     </form>

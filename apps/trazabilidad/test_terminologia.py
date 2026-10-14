@@ -48,7 +48,8 @@ class TerminologiaSeguimientoTests(DatosProcesamiento, TestCase):
         self.assertContains(respuesta, self.especie.nombre)
         self.assertContains(respuesta, f"Seguimiento #{self.partida.pk}")
         self.assertNotContains(respuesta, "Partida #")
-        self.assertContains(respuesta, "Volver al seguimiento")
+        self.assertContains(respuesta, reverse("trazabilidad:detalle_partida", args=[self.partida.pk]))
+        self.assertContains(respuesta, 'aria-label="Ruta de navegación"')
 
     def test_procesamiento_prioriza_especie_y_mantiene_seguimiento(self):
         self.iniciar()

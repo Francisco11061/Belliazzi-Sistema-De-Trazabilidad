@@ -2,10 +2,10 @@
 {% block title %}Registrar recepción | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Registrar recepción{% endblock %}
 {% block content %}
-<div class="w-full min-w-0 max-w-5xl">
+<div class="w-full min-w-0 w-full">
     <header class="mb-8">
-        <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">Registrar recepción</h1>
-        <p class="mt-2 text-sm leading-6 text-slate-500">Ingresa los datos de recepción de la materia prima.</p>
+        <h1 class="text-2xl font-semibold tracking-tight md:text-3xl">Registrar recepción</h1>
+        <p class="mt-2 text-sm leading-6 text-slate-600">Ingresa los datos de recepción de la materia prima.</p>
     </header>
     <form method="post" class="space-y-6 [&_input:not([type=checkbox])]:block [&_input:not([type=checkbox])]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:rounded-lg [&_select]:border-slate-300 [&_textarea]:block [&_textarea]:w-full [&_textarea]:min-h-32 [&_textarea]:h-32 [&_textarea]:rounded-lg [&_textarea]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600 [&_textarea:focus]:border-cyan-600 [&_textarea:focus]:ring-cyan-600">
         {% csrf_token %}

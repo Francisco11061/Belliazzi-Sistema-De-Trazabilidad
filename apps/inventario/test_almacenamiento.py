@@ -269,7 +269,7 @@ class InventarioTests(DatosInventario, TestCase):
         self.ingresar()
         self.caja()  # Pendiente, misma especie/lote.
         for filtro in ({'especie':self.especie.pk}, {'lote':self.lote.pk}, {'camara':self.camara1.pk}, {'estado':'ALMACENADA'}):
-            respuesta = self.client.get(self.url('lista'), filtro)
+            respuesta = self.client.get(self.url('lista'), {'estado': '', **filtro})
             self.assertIn(self.registro, respuesta.context['page_obj'])
         for filtro in ({'especie':self.otra_especie.pk}, {'camara':self.camara2.pk}, {'estado':'PENDIENTE'}):
             self.assertNotIn(self.registro, self.client.get(self.url('lista'), filtro).context['page_obj'])

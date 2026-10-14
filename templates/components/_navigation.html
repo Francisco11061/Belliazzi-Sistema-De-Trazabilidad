@@ -1,0 +1,19 @@
+{% with nombre=request.resolver_match.url_name modulo=request.resolver_match.namespace %}
+{% if modulo == 'trazabilidad' %}
+    {% if 'recepcion' in nombre %}{% url 'trazabilidad:lista_recepciones' as destino %}{% include 'components/_breadcrumb_page.html' with grupo='Operaciones' pagina='Recepciones' %}
+    {% else %}{% if partida and nombre != 'detalle_partida' %}{% url 'trazabilidad:detalle_partida' partida.pk as registro_destino %}{% endif %}{% url 'trazabilidad:lista_partidas' as destino %}{% include 'components/_breadcrumb_page.html' with grupo='Producción' pagina='Seguimiento de proceso' %}{% endif %}
+{% elif modulo == 'producto_terminado' %}
+    {% if 'caja' in nombre %}{% url 'producto_terminado:lista_cajas' as destino %}{% include 'components/_breadcrumb_page.html' with grupo='Producto terminado' pagina='Cajas' %}
+    {% else %}{% url 'producto_terminado:lista_lotes' as destino %}{% include 'components/_breadcrumb_page.html' with grupo='Producto terminado' pagina='Lotes de producción' %}{% endif %}
+{% elif modulo == 'inventario' %}
+    {% if 'despacho' in nombre %}{% url 'inventario:lista_despachos' as destino %}{% include 'components/_breadcrumb_page.html' with grupo='Inventario' pagina='Despachos' %}
+    {% elif 'baja' in nombre %}{% url 'inventario:lista_bajas' as destino %}{% include 'components/_breadcrumb_page.html' with grupo='Inventario' pagina='Bajas' %}
+    {% else %}{% url 'inventario:lista' as destino %}{% include 'components/_breadcrumb_page.html' with grupo='Producto terminado' pagina='Inventario' %}{% endif %}
+{% elif modulo == 'reportes' %}
+    {% if nombre == 'sernapesca' %}{% include 'components/_breadcrumb_page.html' with grupo='Gestión' pagina='Reportes' %}
+    {% else %}{% url 'reportes:dashboard' as destino %}{% include 'components/_breadcrumb_page.html' with grupo='Gestión' pagina='Dashboard' %}{% endif %}
+{% elif modulo == 'usuarios' %}
+    {% if nombre == 'inicio' %}{% include 'components/_breadcrumbs.html' with pagina='Inicio' %}
+    {% elif nombre == 'cambiar_contrasena' %}{% url 'usuarios:inicio' as destino %}{% include 'components/_breadcrumbs.html' with pagina='Inicio' actual='Contraseña' %}
+    {% else %}{% url 'usuarios:lista_usuarios' as destino %}{% include 'components/_breadcrumb_page.html' with grupo='Administración' pagina='Usuarios' %}{% endif %}
+{% endif %}{% endwith %}

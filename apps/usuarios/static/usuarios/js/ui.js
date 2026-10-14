@@ -21,4 +21,14 @@
         if (event.key !== 'Escape') return;
         document.querySelectorAll('[data-action-menu][open]').forEach(menu => { menu.open = false; menu.querySelector('summary').focus(); });
     });
+    document.querySelectorAll('[data-dismiss-message]').forEach(button => {
+        button.addEventListener('click', () => {
+            const message = button.closest('[data-message]');
+            if (message.contains(document.activeElement)) document.getElementById('main-content')?.focus();
+            message.remove();
+        });
+    });
+    document.querySelectorAll('[data-auto-dismiss]').forEach(message => {
+        window.setTimeout(() => { if (!message.contains(document.activeElement)) message.remove(); }, 6000);
+    });
 })();

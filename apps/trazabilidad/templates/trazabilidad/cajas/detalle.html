@@ -3,19 +3,19 @@
 {% block title %}Caja #{{ caja.pk }} | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Producto terminado / Detalle de caja{% endblock %}
 {% block content %}{% language "es" %}
-<div class="w-full min-w-0 max-w-4xl space-y-6">
-    <header><a href="{% url 'producto_terminado:lista_cajas' %}" class="text-sm font-medium text-cyan-700 hover:underline">Volver a cajas</a><h1 class="mt-4 text-2xl font-semibold sm:text-3xl">Caja #{{ caja.pk }}</h1><p class="mt-2 text-lg font-medium">{{ caja.lote_produccion.especie.nombre }}</p><p class="mt-1 text-sm text-slate-500">{{ caja.lote_produccion.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p></header>
+<div class="w-full min-w-0 w-full space-y-6">
+    <header><h1 class="mt-4 text-2xl font-semibold md:text-3xl">Caja #{{ caja.pk }}</h1><p class="mt-2 text-lg font-medium">{{ caja.lote_produccion.especie.nombre }}</p><p class="mt-1 text-sm text-slate-600">{{ caja.lote_produccion.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p></header>
     <section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-lg font-semibold">Identificación</h2>
         <p class="mt-3 text-sm">Caja #{{ caja.pk }} · Identificador QR</p>
         <p class="mt-2 break-all text-sm text-slate-600">{{ caja.identificador_qr }}</p>
         <img src="{% url 'producto_terminado:caja_qr_png' caja.pk %}" alt="QR de Caja #{{ caja.pk }} para consulta interna" width="288" height="288" class="mt-5 h-auto w-72 max-w-full rounded-lg border border-slate-200 bg-white">
-        <p class="mt-3 text-sm text-slate-500">La consulta requiere iniciar sesión.</p>
-        <a href="{% url 'producto_terminado:consulta_caja_qr' caja.identificador_qr %}" class="mt-5 inline-flex rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Ver trazabilidad</a>
+        <p class="mt-3 text-sm text-slate-600">La consulta requiere iniciar sesión.</p>
+        <a href="{% url 'producto_terminado:consulta_caja_qr' caja.identificador_qr %}" class="mt-5 inline-flex rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Ver trazabilidad</a>
     </section>
     {% include "trazabilidad/cajas/_datos_caja.html" %}
     {% include "inventario/_almacenamiento.html" %}
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 class="text-lg font-semibold">Origen</h2><p class="mt-3">Lote {{ caja.lote_produccion.codigo_visible }}</p>{% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}<a href="{% url 'producto_terminado:detalle_lote' caja.lote_produccion_id %}" class="mt-4 inline-flex rounded-lg border border-cyan-700 px-5 py-3 text-sm font-medium text-cyan-700 hover:bg-cyan-50">Ver lote</a>{% endif %}</section>
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 class="text-lg font-semibold">Origen</h2><p class="mt-3">Lote {{ caja.lote_produccion.codigo_visible }}</p>{% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}<a href="{% url 'producto_terminado:detalle_lote' caja.lote_produccion_id %}" class="mt-4 inline-flex rounded-lg border border-cyan-700 px-5 py-3 text-sm font-medium text-cyan-700 hover:bg-cyan-50">Ver detalle</a>{% endif %}</section>
 
 </div>
 {% endlanguage %}{% endblock %}
