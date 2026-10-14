@@ -402,3 +402,14 @@ ComposicionCajaFormSet = formset_factory(
 
 class CajaFiltroForm(forms.Form):
     q = forms.CharField(required=False, max_length=200, label="Buscar por ID de caja, código de lote o especie")
+
+
+class SeleccionarLoteCajaForm(forms.Form):
+    lote = forms.ChoiceField(label="Lote para registrar la caja")
+
+    def __init__(self, *args, lotes, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["lote"].choices = [("", "Selecciona un lote")] + [
+            (str(lote.pk), f"{lote.codigo_visible} · {lote.especie.nombre} · {lote.disponible_empacar} kg disponibles")
+            for lote in lotes
+        ]

@@ -142,7 +142,7 @@ class CajasTests(DatosCajas, TestCase):
         self.assertIsNone(self.resumen().disponible_empacar)
         with self.assertRaises(ValidationError):
             self.caja()
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         for url in (self.url_lote("detalle_caja", caja.pk), self.url_lote("lista_cajas")):
             self.assertContains(self.client.get(url), "Peso neto no documentado")
         self.assertContains(self.client.get(self.url_lote("detalle_caja", caja.pk)), "500,00 kg")
@@ -162,7 +162,7 @@ class CajasTests(DatosCajas, TestCase):
 
     def test_vistas_muestran_real_teorico_y_diferencia(self):
         caja = self.caja(peso_neto_kg=Decimal("24.82"))
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         detalle = self.client.get(self.url_lote("detalle_caja", caja.pk))
         for texto in ("24,82 kg", "25,00 kg", "-0,18 kg", "Subtotal nominal"):
             self.assertContains(detalle, texto)
@@ -296,7 +296,7 @@ class CajasTests(DatosCajas, TestCase):
         self.assertEqual(self.resumen().disponible_empacar, Decimal("0"))
         with self.assertRaises(ValidationError):
             self.caja([{"presentacion": self.bolsa1, "cantidad": 1}])
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         respuesta = self.client.get(self.url_lote("detalle_lote", self.lote.pk))
         self.assertContains(respuesta, "Todo el producto asignado a este lote ya fue empacado.")
         self.assertNotContains(respuesta, ">Crear caja</a>")
@@ -320,7 +320,7 @@ class CajasTests(DatosCajas, TestCase):
         LoteProduccion.objects.filter(pk=self.lote.pk).update(ruta_proceso=None)
         with self.assertRaises(ValidationError):
             self.caja()
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         self.assertContains(self.client.get(self.url_lote("lista_lotes")), "Sin ruta documentada")
         respuesta = self.client.get(self.url_lote("detalle_lote", self.lote.pk))
         self.assertContains(respuesta, "Lote histórico sin ruta documentada")
@@ -471,7 +471,7 @@ class CajasTests(DatosCajas, TestCase):
 
     def test_listados_y_detalle_lote_sin_n_mas_uno(self):
         self.caja()
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         urls = [self.url_lote("lista_cajas"), self.url_lote("lista_lotes"), self.url_lote("detalle_lote", self.lote.pk)]
         antes = []
         for url in urls:
@@ -487,7 +487,7 @@ class CajasTests(DatosCajas, TestCase):
 
     def test_navegacion_bidireccional_y_sidebar_un_activo(self):
         caja = self.caja()
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         respuesta = self.client.get(self.url_lote("detalle_lote", self.lote.pk))
         self.assertContains(respuesta, self.url_lote("detalle_caja", caja.pk))
         respuesta = self.client.get(self.url_lote("detalle_caja", caja.pk))

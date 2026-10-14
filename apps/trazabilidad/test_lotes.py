@@ -285,7 +285,7 @@ class LotesTests(DatosLotes, TestCase):
         with self.assertRaises(ValidationError):
             self.agregar(lote)
         self.assertFalse(partidas_para_lote(lote).exists())
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         respuesta = self.client.get(self.url_lote("detalle_lote", lote.pk))
         self.assertContains(respuesta, "Sin ruta documentada")
         self.assertNotContains(respuesta, ">Agregar producto</a>")
@@ -303,7 +303,7 @@ class LotesTests(DatosLotes, TestCase):
         lote = self.crear_lote()
         otra = self.otra_lista()
         self.agregar(lote, otra)
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         respuesta = self.client.get(self.url_lote("detalle_lote", lote.pk))
         for texto in (lote.codigo_visible, "Origen del producto", "125,00 kg", "2 seguimientos", "100,00 kg", "25,00 kg"):
             self.assertContains(respuesta, texto)
@@ -313,7 +313,7 @@ class LotesTests(DatosLotes, TestCase):
             self.assertContains(respuesta, reverse("trazabilidad:detalle_partida", args=[partida.pk]))
 
     def test_detalle_seguimiento_muestra_lotes_y_oculta_accion_sin_saldo(self):
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         url = reverse("trazabilidad:detalle_partida", args=[self.partida.pk])
         self.assertContains(self.client.get(url), "Asignar a lote de producción")
         lote = self.crear_lote()
@@ -328,7 +328,7 @@ class LotesTests(DatosLotes, TestCase):
 
     def test_permisos_operativos_y_especie_ruta_post_no_confiables(self):
         encargada, _ = Rol.objects.get_or_create(codigo="ENCARGADA", defaults={"nombre": "Encargada"})
-        usuarios = [self.usuario, self.jefe, Usuario.objects.create_user(username="enc_lotes", rol=encargada),
+        usuarios = [self.jefe, Usuario.objects.create_user(username="enc_lotes", rol=encargada),
                     Usuario.objects.create_superuser(username="super_lotes")]
         for i, usuario in enumerate(usuarios):
             otra = self.otra_lista()
@@ -367,7 +367,7 @@ class LotesTests(DatosLotes, TestCase):
             self.agregar(lote, usuario=usuario, cantidad="1")
 
     def test_gets_no_escriben_y_post_invalido_conserva_form(self):
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         url = self.url_lote("crear_lote", self.partida.pk)
         self.client.get(url)
         self.assertFalse(LoteProduccion.objects.exists())
@@ -381,7 +381,7 @@ class LotesTests(DatosLotes, TestCase):
     def test_post_agregar_incompatible_o_duplicado_no_escribe(self):
         lote = self.crear_lote()
         otra = self.otra_lista(ruta=self.crear_ruta(nombre="Incompatible"))
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         for partida in (self.partida, otra):
             respuesta = self.client.post(self.url_lote("agregar_producto_lote", lote.pk),
                                          {"partida": partida.pk, "cantidad_kg": "1"})
@@ -391,7 +391,7 @@ class LotesTests(DatosLotes, TestCase):
 
     def test_busqueda_paginacion_y_no_n_mas_uno(self):
         lote = self.crear_lote(codigo="BUSCAR-1", cantidad_kg=Decimal("1"))
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         url = self.url_lote("lista_lotes")
         for busqueda in ("BUSCAR", self.especie.nombre):
             self.assertEqual([l.pk for l in self.client.get(url, {"q": busqueda}).context["page_obj"]], [lote.pk])
@@ -409,7 +409,7 @@ class LotesTests(DatosLotes, TestCase):
 
     def test_detalle_y_selector_no_n_mas_uno(self):
         lote = self.crear_lote()
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         url = self.url_lote("detalle_lote", lote.pk)
         with CaptureQueriesContext(connection) as pocas:
             self.client.get(url)
@@ -423,7 +423,7 @@ class LotesTests(DatosLotes, TestCase):
         self.assertEqual(len(consultas), 1)
 
     def test_sidebar_producto_terminado_y_un_solo_activo(self):
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         respuesta = self.client.get(self.url_lote("lista_lotes"))
         self.assertContains(respuesta, "Producto terminado")
         self.assertContains(respuesta, 'aria-current="page"', count=1)

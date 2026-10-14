@@ -29,7 +29,7 @@ from .forms import PesoPostprocesoForm, MermaProcesoForm
 from .forms import CrearLoteForm, AgregarConsumoLoteForm, LoteFiltroForm
 from .selectors import partidas_con_disponibilidad, puede_asignar_lote, lotes_con_totales
 from .services import crear_lote_produccion, agregar_consumo_lote
-from .forms import ComposicionCajaFormSet, CajaFiltroForm, CajaForm
+from .forms import ComposicionCajaFormSet, CajaFiltroForm, CajaForm, SeleccionarLoteCajaForm
 from .constantes import PESO_MAXIMO_CAJA_KG
 from .models import PresentacionBolsa
 from .selectors import lotes_con_empaque, cajas_con_peso, puede_crear_caja
@@ -431,7 +431,7 @@ def registrar_merma_proceso(request, pk):
     return _registrar_medicion(request, pk, es_pesaje=False)
 
 
-@personal_operativo_requerido
+@jefe_o_encargada_requerido
 def lista_lotes(request):
     filtro = LoteFiltroForm(request.GET)
     lotes = lotes_con_empaque()
@@ -455,7 +455,7 @@ def lista_lotes(request):
     })
 
 
-@personal_operativo_requerido
+@jefe_o_encargada_requerido
 def detalle_lote(request, pk):
     lote = get_object_or_404(lotes_con_empaque(), pk=pk)
     return render(request, "trazabilidad/lotes/detalle.html", {
@@ -467,7 +467,7 @@ def detalle_lote(request, pk):
     })
 
 
-@personal_operativo_requerido
+@jefe_o_encargada_requerido
 @require_http_methods(["GET", "POST"])
 def crear_lote(request, pk):
     partida = presentar_partida(get_object_or_404(partidas_con_disponibilidad(), pk=pk))
@@ -486,7 +486,7 @@ def crear_lote(request, pk):
     })
 
 
-@personal_operativo_requerido
+@jefe_o_encargada_requerido
 @require_http_methods(["GET", "POST"])
 def agregar_producto_lote(request, pk):
     lote = get_object_or_404(lotes_con_totales(), pk=pk)
@@ -587,3 +587,13 @@ def consulta_caja_qr(request, identificador):
 def caja_qr_png(request, pk):
     caja = get_object_or_404(Caja, pk=pk)
     return HttpResponse(generar_png_qr_caja(request, caja), content_type="image/png")
+
+
+@personal_operativo_requerido
+@require_http_methods(["GET"])
+def seleccionar_lote_caja(request):
+    lotes = [lote for lote in lotes_con_empaque().order_by("-fecha_elaboracion", "-pk") if puede_crear_caja(lote)]
+    form = SeleccionarLoteCajaForm(request.GET if "lote" in request.GET else None, lotes=lotes)
+    if form.is_bound and form.is_valid():
+        return redirect("producto_terminado:crear_caja", pk=form.cleaned_data["lote"])
+    return render(request, "trazabilidad/cajas/seleccionar_lote.html", {"form": form, "hay_lotes": bool(lotes)})

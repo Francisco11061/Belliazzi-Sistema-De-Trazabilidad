@@ -5,6 +5,7 @@ from . import views
 app_name = "producto_terminado"
 
 urlpatterns = [
+    path("cajas/registrar/", views.seleccionar_lote_caja, name="seleccionar_lote_caja"),
     path("cajas/", views.lista_cajas, name="lista_cajas"),
     path("cajas/qr/<uuid:identificador>/", views.consulta_caja_qr, name="consulta_caja_qr"),
     path("cajas/<int:pk>/qr.png", views.caja_qr_png, name="caja_qr_png"),

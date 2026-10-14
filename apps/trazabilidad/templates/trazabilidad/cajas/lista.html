@@ -4,7 +4,7 @@
 {% block page_title %}Producto terminado / Cajas{% endblock %}
 {% block content %}{% language "es" %}
 <div class="w-full min-w-0 max-w-6xl space-y-6">
-    <header><h1 class="text-2xl font-semibold sm:text-3xl">Cajas</h1><p class="mt-2 text-sm text-slate-500">Consulta las cajas registradas y su composición.</p><a href="{% url 'producto_terminado:lista_lotes' %}" class="mt-4 inline-flex text-sm font-medium text-cyan-700 hover:underline">Ver lotes para crear una caja</a></header>
+    <header><h1 class="text-2xl font-semibold sm:text-3xl">Cajas</h1><p class="mt-2 text-sm text-slate-500">Consulta las cajas registradas y su composición.</p><a href="{% url 'producto_terminado:seleccionar_lote_caja' %}" class="mt-4 inline-flex text-sm font-medium text-cyan-700 hover:underline">Registrar caja</a></header>
     <form method="get" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 [&_input]:w-full [&_input]:min-w-0 [&_input]:rounded-lg [&_input]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600">
         {% for campo in filtro %}{% include "trazabilidad/recepciones/_campo.html" %}{% endfor %}
         <div class="mt-4 flex flex-col gap-3 sm:flex-row"><button type="submit" class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Buscar</button><a href="{% url 'producto_terminado:lista_cajas' %}" class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm text-slate-700 hover:bg-slate-50">Limpiar</a></div>
