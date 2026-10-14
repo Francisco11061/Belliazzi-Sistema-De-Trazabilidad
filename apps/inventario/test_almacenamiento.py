@@ -177,7 +177,7 @@ class InventarioTests(DatosInventario, TestCase):
         self.mover()
         self.assertEqual(self.stock()['stock'], {'cajas':1,'peso_conocido':Decimal('0'),'sin_peso':1})
         self.assertEqual(Caja.objects.values().get(pk=self.registro.pk), antes)
-        self.assertContains(self.client.get(self.url('lista')), 'Peso neto no documentado')
+        self.assertContains(self.client.get(self.url('lista')), 'Sin peso documentado')
 
     def test_camara_inactiva_conserva_stock_historico_permite_salida(self):
         self.ingresar()

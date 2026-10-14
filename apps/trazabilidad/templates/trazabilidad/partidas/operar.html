@@ -8,7 +8,7 @@
     <section class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <p class="font-semibold">{{ partida.detalle_recepcion.especie.nombre }}</p>
         <p class="mt-2 text-sm text-slate-500">Seguimiento #{{ partida.pk }}</p>
-        <p class="mt-2 text-sm text-slate-500">{{ partida.situacion_visible }}{% if partida.ubicacion %} · {{ partida.ubicacion }}{% endif %}</p>
+        <p class="mt-2 text-sm text-slate-500">{% include "components/_badge.html" with estado=partida.situacion etiqueta=partida.situacion_visible only %}{% if partida.ubicacion %} · {{ partida.ubicacion }}{% endif %}</p>
         <p class="mt-4 text-lg font-medium">Cantidad {% if partida.situacion == 'DISPONIBLE' %}disponible{% else %}actual{% endif %}: {{ partida.cantidad_inicial_kg|floatformat:2 }} kg</p>
         {% if compatible %}
         <form method="post" class="mt-6 space-y-5 [&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600">

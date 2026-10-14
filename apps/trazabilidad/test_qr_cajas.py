@@ -162,7 +162,8 @@ class QRCajasTests(DatosQR, TestCase):
     def test_navegacion_y_permiso_recepcion_se_conservan(self):
         url_recepcion = reverse("trazabilidad:detalle_recepcion", args=[self.partida.detalle_recepcion.recepcion_id])
         respuesta = self.client.get(self.consulta())
-        self.assertContains(respuesta, self.url_lote("detalle_lote", self.lote.pk))
+        self.assertNotContains(respuesta, self.url_lote("detalle_lote", self.lote.pk))
+        self.assertContains(respuesta, self.lote.codigo_visible)
         self.assertContains(respuesta, reverse("trazabilidad:detalle_partida", args=[self.partida.pk]))
         self.assertNotContains(respuesta, url_recepcion)
         self.client.force_login(self.jefe)
@@ -202,7 +203,7 @@ class QRCajasTests(DatosQR, TestCase):
         ComposicionCaja.objects.create(caja=historica, presentacion=self.bolsa5, cantidad=100, peso_unitario_kg=Decimal("5"))
         PresentacionBolsa.objects.filter(pk=self.bolsa5.pk).update(activo=False)
         respuesta = self.client.get(self.consulta(historica))
-        for texto in ("Peso neto no documentado", "500,00 kg", "Sin ruta documentada", "Bolsa 5 kg"):
+        for texto in ("Sin peso documentado", "500,00 kg", "Sin ruta documentada", "Bolsa 5 kg"):
             self.assertContains(respuesta, texto)
         self.assertEqual(self.client.get(self.png_url(historica)).status_code, 200)
         historica.refresh_from_db()

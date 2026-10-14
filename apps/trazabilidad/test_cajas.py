@@ -144,10 +144,10 @@ class CajasTests(DatosCajas, TestCase):
             self.caja()
         self.client.force_login(self.jefe)
         for url in (self.url_lote("detalle_caja", caja.pk), self.url_lote("lista_cajas")):
-            self.assertContains(self.client.get(url), "Peso neto no documentado")
+            self.assertContains(self.client.get(url), "Sin peso documentado")
         self.assertContains(self.client.get(self.url_lote("detalle_caja", caja.pk)), "500,00 kg")
         for url in (self.url_lote("lista_lotes"), self.url_lote("detalle_lote", self.lote.pk), self.url_lote("crear_caja", self.lote.pk)):
-            self.assertContains(self.client.get(url), "Requiere revisión")
+            self.assertContains(self.client.get(url), "Faltan pesos de caja")
         caja.refresh_from_db()
         self.assertEqual(caja.peso_total_kg, Decimal("500"))
 

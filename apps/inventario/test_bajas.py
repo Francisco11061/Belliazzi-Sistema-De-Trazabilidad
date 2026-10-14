@@ -175,7 +175,7 @@ class BajaTests(DatosBaja, TestCase):
         self.assertIsNone(self.registro.peso_neto_kg)
         self.assertEqual(self.stock()['stock']['cajas'],0)
         respuesta=self.client.get(self.url_lote('detalle_caja',self.registro.pk))
-        self.assertContains(respuesta,'Peso no documentado')
+        self.assertContains(respuesta,'Sin peso documentado')
 
     def test_historica_sin_tipo_consultable_y_con_despacho_no_disponible(self):
         BajaCaja.objects.create(caja=self.registro,motivo='Baja histórica',fecha_hora_evento=timezone.now(),registrado_por=self.usuario)

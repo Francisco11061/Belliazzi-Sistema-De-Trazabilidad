@@ -142,7 +142,7 @@ class LotesV2Tests(DatosLotes, TestCase):
         with self.assertRaisesRegex(ValidationError, "origen diferente"):
             self.agregar(lote, otra, "10")
         self.assertNotIn(otra, partidas_para_lote(lote))
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         respuesta = self.client.post(self.url_lote("agregar_producto_lote", lote.pk), {"partida": otra.pk, "cantidad_kg": "10"})
         self.assertIn("partida", respuesta.context["form"].errors)
         self.assertEqual(lote.consumos.count(), 1)
@@ -158,7 +158,7 @@ class LotesV2Tests(DatosLotes, TestCase):
         with self.assertRaisesRegex(ValidationError, "requiere revisión"):
             self.agregar(lote, tercera)
         self.assertFalse(partidas_para_lote(lote).exists())
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         respuesta = self.client.get(self.url_lote("detalle_lote", lote.pk))
         self.assertContains(respuesta, "TEST-MER-280926-A")
         self.assertContains(respuesta, "requiere revisión")
@@ -173,7 +173,7 @@ class LotesV2Tests(DatosLotes, TestCase):
         self.assertFalse(AgregarConsumoLoteForm(lote=lote).fields["partida"].queryset.exists())
 
     def test_form_precargado_total_editable_parcial_y_post_codigo_ignorado(self):
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         url = self.url_lote("crear_lote", self.partida.pk)
         respuesta = self.client.get(url)
         self.assertEqual(respuesta.context["form"]["cantidad_kg"].value(), Decimal("130"))
@@ -195,7 +195,7 @@ class LotesV2Tests(DatosLotes, TestCase):
         bolsa = PresentacionBolsa.objects.create(nombre="Bolsa v2", peso_nominal_kg=Decimal("5"))
         caja = crear_caja(lote=lote, composiciones=[{"presentacion": bolsa, "cantidad": 5}], peso_neto_kg=Decimal("24.82"), usuario=self.usuario)
         identificador = caja.identificador_qr
-        self.client.force_login(self.usuario)
+        self.client.force_login(self.jefe)
         for url in (self.url_lote("detalle_caja", caja.pk), reverse("producto_terminado:consulta_caja_qr", args=[identificador])):
             self.assertContains(self.client.get(url), "38343 0101 28092026")
         respuesta = self.client.get(reverse("producto_terminado:consulta_caja_qr", args=[identificador]))

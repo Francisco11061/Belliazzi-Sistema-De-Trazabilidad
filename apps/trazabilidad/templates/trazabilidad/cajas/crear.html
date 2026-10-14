@@ -8,8 +8,8 @@
     <section class="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 sm:p-6">
         <dl class="grid gap-5 text-sm sm:grid-cols-3">
             <div><dt class="text-slate-500">Total asignado</dt><dd class="mt-1 font-semibold">{{ lote.total_asignado|floatformat:2 }} kg</dd></div>
-            <div><dt class="text-slate-500">Total empacado real</dt><dd class="mt-1 font-semibold">{% if lote.historial_empaque_incompleto %}Requiere revisión{% else %}{{ lote.total_empacado|floatformat:2 }} kg{% endif %}</dd></div>
-            <div><dt class="text-slate-500">Disponible para empacar</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{% if lote.historial_empaque_incompleto %}Requiere revisión{% else %}{{ lote.disponible_empacar|floatformat:2 }} kg{% endif %}</dd></div>
+            <div><dt class="text-slate-500">Total empacado real</dt><dd class="mt-1 font-semibold">{% if lote.historial_empaque_incompleto %}{% include "components/_badge.html" with estado="FALTAN_PESOS" etiqueta="Faltan pesos de caja" only %}<span class="block mt-1 text-xs whitespace-normal text-slate-600">Alguna caja del lote no tiene peso neto registrado.</span>{% else %}{{ lote.total_empacado|floatformat:2 }} kg{% endif %}</dd></div>
+            <div><dt class="text-slate-500">Disponible para empacar</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{% if lote.historial_empaque_incompleto %}{% include "components/_badge.html" with estado="FALTAN_PESOS" etiqueta="Faltan pesos de caja" only %}<span class="block mt-1 text-xs whitespace-normal text-slate-600">Alguna caja del lote no tiene peso neto registrado.</span>{% else %}{{ lote.disponible_empacar|floatformat:2 }} kg{% endif %}</dd></div>
             <div><dt class="text-slate-500">Fecha elaboración</dt><dd class="mt-1">{{ lote.fecha_elaboracion|date:"d/m/Y" }}</dd></div>
             <div><dt class="text-slate-500">Fecha vencimiento</dt><dd class="mt-1">{{ lote.fecha_vencimiento|date:"d/m/Y"|default:"No informada" }}</dd></div>
         </dl>

@@ -1,5 +1,5 @@
 <dl class="grid gap-4 text-sm sm:grid-cols-2">
-<div><dt class="text-slate-500">Estado</dt><dd class="mt-1 font-semibold">Registrado</dd></div>
+<div><dt class="text-slate-500">Estado</dt><dd class="mt-1 font-semibold">{% include "components/_badge.html" with estado="REGISTRADO" etiqueta="Registrado" only %}</dd></div>
 <div><dt class="text-slate-500">Fecha/hora</dt><dd class="mt-1">{{ despacho.fecha_hora_despacho|date:"d/m/Y H:i" }}</dd></div>
 <div><dt class="text-slate-500">Tipo de destino</dt><dd class="mt-1">{{ despacho.get_tipo_destino_display|default:"No documentado" }}</dd></div>
 <div><dt class="text-slate-500">Destinatario</dt><dd class="mt-1 break-words">{{ despacho.destino|default:"No documentado" }}</dd></div>

@@ -445,7 +445,7 @@ class ActividadDashboardTests(DatosDashboard, TestCase):
         self.client.force_login(self.jefe)
         response = self.client.get(self.url())
         self.assertContains(response, "Aviso · Cajas pendientes de almacenar")
-        self.assertContains(response, "Aviso · Peso real no documentado")
+        self.assertContains(response, "Sin peso documentado")
 
     def test_umbral_inicial_null_sin_alertas_persistentes(self):
         self.assertTrue(all(u.umbral_alerta_horas is None for u in UnidadFrio.objects.all()))

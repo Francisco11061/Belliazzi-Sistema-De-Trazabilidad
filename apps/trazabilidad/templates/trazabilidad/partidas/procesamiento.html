@@ -14,7 +14,7 @@
             <div><dt class="text-slate-500">Cantidad</dt><dd class="mt-1 font-medium">{{ partida.cantidad_inicial_kg|floatformat:2 }} kg</dd></div>
             <div><dt class="text-slate-500">Recepción de origen</dt><dd class="mt-1 font-medium">#{{ partida.detalle_recepcion.recepcion_id }}</dd></div>
             <div><dt class="text-slate-500">Ruta seleccionada</dt><dd class="mt-1 font-medium">{{ partida.ruta_proceso.nombre|default:"Sin ruta asignada" }}</dd></div>
-            <div><dt class="text-slate-500">Situación</dt><dd class="mt-1 font-medium text-cyan-800">{{ partida.situacion_visible }}</dd></div>
+            <div><dt class="text-slate-500">Situación</dt><dd class="mt-1 font-medium text-cyan-800">{% include "components/_badge.html" with estado=partida.situacion etiqueta=partida.situacion_visible only %}</dd></div>
             <div><dt class="text-slate-500">Inicio del procesamiento</dt><dd class="mt-1 font-medium">{{ general.fecha_hora_inicio|date:"d/m/Y H:i"|default:"—" }}</dd></div>
         </dl>
         <div class="mt-5">{% include "trazabilidad/partidas/_accion_merma.html" %}</div>
@@ -43,7 +43,7 @@
                     <span aria-hidden="true" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full {% if fila.estado == 'COMPLETADA' %}bg-cyan-700 text-white{% else %}border border-slate-300 bg-white text-cyan-700{% endif %}">{% if fila.estado == 'COMPLETADA' %}✓{% elif fila.estado == 'EN CURSO' %}●{% else %}○{% endif %}</span>
                     <div class="min-w-0 flex-1">
                         <h3 class="font-semibold">{{ fila.etapa.orden }}. {{ fila.etapa.tipo_proceso.nombre }}</h3>
-                        <p class="mt-1 text-sm font-medium text-cyan-800">{{ fila.estado|capfirst }}</p>
+                        <p class="mt-1 text-sm font-medium text-cyan-800">{% include "components/_badge.html" with estado=fila.estado etiqueta=fila.estado|capfirst only %}</p>
                         {% if fila.evento %}
                         <p class="mt-3 text-sm leading-6 text-slate-600">Inicio: {{ fila.evento.fecha_hora_inicio|date:"d/m/Y H:i" }} · {{ fila.evento.iniciado_por.get_full_name|default:fila.evento.iniciado_por.username }}</p>
                         {% if fila.evento.fecha_hora_termino %}<p class="text-sm leading-6 text-slate-600">Término: {{ fila.evento.fecha_hora_termino|date:"d/m/Y H:i" }} · {{ fila.evento.finalizado_por.get_full_name|default:fila.evento.finalizado_por.username }}</p>{% endif %}
