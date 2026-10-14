@@ -32,13 +32,20 @@ def inventario(request):
     resumen = resumen_inventario(cajas)
     for fila in resumen["por_lote"]:
         fila["codigo_visible"] = presentar_codigo_lote(fila["lote_produccion__codigo_lote"])
+    estado_actual = request.GET.get("estado", "")
+    if "estado" not in request.GET:
+        estado_actual = "PENDIENTE" if resumen["pendientes"] else "ALMACENADA"
+        cajas = cajas.filter(estado_inventario=estado_actual)
+        parametros_filtro = request.GET.copy()
+        parametros_filtro["estado"] = estado_actual
+        filtro = InventarioFiltroForm(parametros_filtro)
     pagina = Paginator(cajas.order_by("-pk"), 10).get_page(request.GET.get("page"))
     def enlace(numero):
         parametros = request.GET.copy()
         parametros["page"] = numero
         return "?" + parametros.urlencode()
     return render(request, "inventario/lista.html", {
-        "filtro": filtro, "page_obj": pagina, **resumen,
+        "filtro": filtro, "page_obj": pagina, "estado_actual": estado_actual, **resumen,
         "pagina_anterior": enlace(pagina.previous_page_number()) if pagina.has_previous() else None,
         "pagina_siguiente": enlace(pagina.next_page_number()) if pagina.has_next() else None,
     })
