@@ -35,3 +35,9 @@
     #main-content table { max-width: 100%; }
     #main-content summary::marker { color: #0e7490; }
 }
+
+@layer components {
+    #main-content [tabindex="0"][class*="overflow-x-auto"]:focus-visible {
+        @apply outline-none ring-2 ring-inset ring-cyan-600/40;
+    }
+}
