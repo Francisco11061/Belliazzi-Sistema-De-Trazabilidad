@@ -39,7 +39,7 @@
         <h2 class="text-lg font-semibold">Origen del seguimiento</h2>
         {% if partida.partida_padre_id %}<p class="mt-4 text-sm">Proviene del <a class="font-medium text-cyan-700 underline" href="{% url 'trazabilidad:detalle_partida' partida.partida_padre_id %}">seguimiento #{{ partida.partida_padre_id }}</a>.</p>
         {% else %}<p class="mt-4 text-sm text-slate-600">Registro inicial de la especie.</p>{% endif %}
-        {% if hijas %}<p class="mt-4 text-sm text-slate-600">Se generaron los siguientes seguimientos a partir de esta división.</p>{% endif %}
+        {% if hijas %}{% endif %}
         <ul class="mt-4 space-y-3 text-sm">
         {% for hija in hijas %}<li class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-4"><a class="font-medium text-cyan-700 underline" href="{% url 'trazabilidad:detalle_partida' hija.pk %}">Seguimiento #{{ hija.pk }}</a><span>{{ hija.cantidad_inicial_kg|floatformat:2 }} kg · {% include "components/_badge.html" with estado=hija.estado etiqueta=hija.get_estado_display only %}</span></li>{% empty %}<li class="text-slate-600">Sin divisiones.</li>{% endfor %}
         </ul>
@@ -52,7 +52,7 @@
             <article class="rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <h3 class="font-medium">{{ estancia.unidad_frio.nombre }}</h3>
                 <p class="mt-2 text-slate-600">Ingreso: {{ estancia.fecha_hora_ingreso|date:"d/m/Y H:i" }} · {{ estancia.ingresado_por.get_full_name|default:estancia.ingresado_por.username }}</p>
-                <p class="mt-1 text-slate-600">{% if estancia.fecha_hora_salida %}Salida: {{ estancia.fecha_hora_salida|date:"d/m/Y H:i" }} · {% if estancia.retirado_por %}{{ estancia.retirado_por.get_full_name|default:estancia.retirado_por.username }}{% else %}Responsable no documentado{% endif %}{% else %}Estancia abierta{% endif %}</p>
+                <p class="mt-1 text-slate-600">{% if estancia.fecha_hora_salida %}Salida: {{ estancia.fecha_hora_salida|date:"d/m/Y H:i" }} · {% if estancia.retirado_por %}{{ estancia.retirado_por.get_full_name|default:estancia.retirado_por.username }}{% else %}Responsable no documentado{% endif %}{% else %}Sin salida registrada{% endif %}</p>
             </article>
         {% endfor %}
         {% for evento in eventos %}<article class="rounded-lg border border-cyan-100 bg-cyan-50 p-4"><h3 class="font-medium">{{ evento.tipo_proceso.nombre }}</h3><p class="mt-2 text-slate-600">Inicio: {{ evento.fecha_hora_inicio|date:"d/m/Y H:i" }} · {{ evento.iniciado_por.get_full_name|default:evento.iniciado_por.username }}</p>{% if evento.fecha_hora_termino %}<p class="mt-1 text-slate-600">Término: {{ evento.fecha_hora_termino|date:"d/m/Y H:i" }} · {% if evento.finalizado_por %}{{ evento.finalizado_por.get_full_name|default:evento.finalizado_por.username }}{% else %}Responsable no documentado{% endif %}</p>{% endif %}</article>{% endfor %}

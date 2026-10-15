@@ -20,14 +20,14 @@
         {% csrf_token %}
         <section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 class="text-lg font-semibold">Composición</h2>
-            <p class="mt-2 text-sm leading-6 text-slate-600">Elige las presentaciones y la cantidad de bolsas de esta caja. Cada presentación debe aparecer una sola vez.</p>
+            <p class="mt-2 text-sm leading-6 text-slate-600">No repitas una presentación en la misma caja.</p>
             {{ composiciones.management_form }}
             {% if composiciones.non_form_errors %}<div role="alert" class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ composiciones.non_form_errors }}</div>{% endif %}
             <div id="composiciones-filas" class="mt-5 space-y-4">{% for fila in composiciones %}{% include "trazabilidad/cajas/_fila.html" %}{% endfor %}</div>
             <template id="composicion-vacia">{% include "trazabilidad/cajas/_fila.html" with fila=composiciones.empty_form %}</template>
             <button id="agregar-presentacion" type="button" class="mt-5 w-full rounded-lg border border-cyan-700 px-5 py-3 text-sm font-medium text-cyan-700 hover:bg-cyan-50 sm:w-auto">+ Agregar presentación</button>
             <p class="mt-5 text-sm text-slate-600">Peso máximo por caja: {{ peso_maximo_caja_kg|floatformat:2 }} kg. Se permiten cajas parciales.</p><p class="mt-5 text-lg font-semibold">Peso teórico de la composición: <output id="peso-caja" aria-live="polite">—</output></p>
-            <noscript><p class="mt-3 text-sm">El peso se calculará y validará al registrar. Puedes completar las dos filas disponibles.</p></noscript>
+            <noscript></noscript>
         </section>
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             {% include "trazabilidad/recepciones/_campo.html" with campo=form.peso_neto_kg %}
@@ -35,7 +35,7 @@
         </section>
         <div class="flex flex-col gap-3 sm:flex-row"><button type="submit" class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Crear caja</button><a href="{% url 'producto_terminado:lista_cajas' %}" class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm text-slate-700 hover:bg-slate-50">Cancelar</a></div>
     </form>
-    {% else %}<p role="alert" class="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600">No se puede crear una caja: el lote requiere ruta documentada, historial de cajas completo y producto disponible para empacar.</p>{% endif %}
+    {% else %}<p role="alert" class="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600">Revisa la ruta, los pesos y el producto disponible del lote.</p>{% endif %}
 </div>
 {{ pesos_presentaciones|json_script:"pesos-presentaciones" }}
 {% endlanguage %}{% endblock %}

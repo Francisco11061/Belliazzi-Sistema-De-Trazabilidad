@@ -20,13 +20,13 @@
         <form method="post" class="mt-6 space-y-5 [&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_textarea]:w-full [&_textarea]:min-w-0 [&_textarea]:max-w-full [&_textarea]:rounded-lg [&_textarea]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600 [&_textarea:focus]:border-cyan-600 [&_textarea:focus]:ring-cyan-600">
             {% csrf_token %}
             {% for campo in form %}{% include "trazabilidad/recepciones/_campo.html" %}{% endfor %}
-            <p class="text-sm leading-6 text-slate-600">Este registro se conservará en el historial. Revisa los datos antes de confirmar.</p>
+            <p class="text-sm leading-6 text-slate-600">Revisa los datos: el registro quedará en el historial.</p>
             <div class="flex flex-col gap-3 sm:flex-row">
                 <button type="submit" class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Registrar</button>
                 <a href="{% url 'trazabilidad:detalle_partida' partida.pk %}" class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm text-slate-700 hover:bg-slate-50">Cancelar</a>
             </div>
         </form>
-        {% else %}<p role="alert" class="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">Esta operación no está disponible para la situación actual del seguimiento.</p>{% endif %}
+        {% else %}<p role="alert" class="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">Esta operación no está disponible en el estado actual.</p>{% endif %}
     </section>
 </div>
 {% endlanguage %}

@@ -9,9 +9,9 @@
     </dl>
     {% endif %}
     {% if partida.disponible_lote_kg == 0 %}
-    <p class="mt-5 rounded-lg border border-cyan-100 bg-cyan-50 p-4 text-sm text-cyan-800">Todo el producto postproceso ya fue asignado a lotes de producción.</p>
+    <p class="mt-5 rounded-lg border border-cyan-100 bg-cyan-50 p-4 text-sm text-cyan-800">Todo el producto fue asignado a lotes.</p>
     {% elif partida.situacion == 'LISTA_PARA_EMPAQUE' and not partida.ruta_proceso_id %}
-    <p class="mt-5 text-sm text-slate-600">Este seguimiento histórico no tiene una ruta documentada. Requiere revisión antes de asignar producto a un lote.</p>
+    <p class="mt-5 text-sm text-slate-600">Revisa la ruta antes de asignar producto a un lote.</p>
     {% endif %}
     <ul class="mt-5 space-y-3 text-sm">
         {% for consumo in consumos_lotes %}

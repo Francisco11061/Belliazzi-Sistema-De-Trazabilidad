@@ -14,9 +14,9 @@
             <div><dt class="text-sm text-slate-600">Fuentes</dt><dd class="mt-1 text-lg font-semibold">{{ lote.numero_fuentes }} seguimiento{{ lote.numero_fuentes|pluralize:"s" }}</dd></div>
         </dl>
         {% if puede_crear_caja %}<a href="{% url 'producto_terminado:crear_caja' lote.pk %}" class="mt-5 inline-flex rounded-lg bg-cyan-700 px-5 py-3 text-center text-sm font-semibold text-white hover:bg-cyan-800">Crear caja</a>{% endif %}
-        {% if lote.historial_empaque_incompleto %}<p role="alert" class="mt-5 text-sm text-slate-600">Hay cajas históricas sin peso neto documentado. El saldo requiere revisión antes de crear nuevas cajas.</p>{% elif lote.disponible_empacar == 0 %}<p class="mt-5 text-sm text-cyan-800">Todo el producto asignado a este lote ya fue empacado.</p>{% endif %}
+        {% if lote.historial_empaque_incompleto %}<p role="alert" class="mt-5 text-sm text-slate-600">Faltan pesos de caja; revisa el saldo antes de registrar más cajas.</p>{% elif lote.disponible_empacar == 0 %}<p class="mt-5 text-sm text-cyan-800">Todo el producto fue empacado.</p>{% endif %}
         {% if puede_agregar_producto %}<a href="{% url 'producto_terminado:agregar_producto_lote' lote.pk %}" class="mt-5 inline-flex rounded-lg border border-slate-300 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">Agregar producto</a>
-        {% else %}<p class="mt-5 text-sm text-slate-600">{% if not lote.ruta_proceso_id %}Lote histórico sin ruta documentada. {% endif %}Este lote requiere revisión de su ruta u origen antes de recibir nuevos aportes. Los datos históricos se conservan.</p>{% endif %}
+        {% else %}<p class="mt-5 text-sm text-slate-600">{% if not lote.ruta_proceso_id %}Lote histórico sin ruta documentada. {% endif %}Revisa la ruta y el origen antes de agregar producto.</p>{% endif %}
     </section>
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-lg font-semibold">Cajas</h2>
@@ -40,7 +40,7 @@
                 <div><h3 class="font-semibold">Seguimiento #{{ consumo.partida_id }}</h3><p class="mt-2">{{ consumo.partida.detalle_recepcion.especie.nombre }} · <strong>{{ consumo.cantidad_kg_utilizada|floatformat:2 }} kg</strong></p><p class="mt-1 text-slate-600">Recepción #{{ consumo.partida.detalle_recepcion.recepcion_id }}</p></div>
                 <a class="rounded-lg border border-cyan-700 px-4 py-3 text-center font-medium text-cyan-700 hover:bg-cyan-50" href="{% url 'trazabilidad:detalle_partida' consumo.partida_id %}">Ver seguimiento</a>
             </li>
-            {% empty %}<li class="text-sm text-slate-600">Este lote histórico no tiene aportes registrados.</li>{% endfor %}
+            {% empty %}<li class="text-sm text-slate-600">Sin producto asignado registrado.</li>{% endfor %}
         </ul>
     </section>
 </div>

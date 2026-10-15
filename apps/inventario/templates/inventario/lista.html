@@ -19,9 +19,9 @@
         <div class="min-w-0 rounded-xl border border-slate-200 bg-white p-4"><h2 class="text-sm">Pendientes de almacenar</h2><p class="mt-2 break-words text-2xl font-semibold">{{ pendientes }}</p></div>
         <div class="min-w-0 rounded-xl border border-slate-200 bg-white p-4"><h2 class="text-sm">Cajas sin peso registrado</h2><div class="mt-2">{% include "components/_badge.html" with estado="SIN_PESO" etiqueta="Sin peso documentado" only %}</div><p class="mt-2 break-words text-2xl font-semibold">{{ stock.sin_peso }}</p></div>
     </section>
-    {% if revision %}<p class="rounded-lg border border-slate-300 bg-white p-4 text-sm">{{ revision }} caja{{ revision|pluralize }} con ubicación por revisar. Se conservan sus registros y se excluyen del stock hasta aclarar su ubicación.</p>{% endif %}
+    {% if revision %}<p class="rounded-lg border border-slate-300 bg-white p-4 text-sm">{{ revision }} caja{{ revision|pluralize }} con ubicación por revisar, excluidas del stock.</p>{% endif %}
     <section class="space-y-4"><h2 class="text-xl font-semibold">Cajas</h2><div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {% for caja in page_obj %}{% include 'inventario/_caja.html' %}{% empty %}<p role="status" class="text-sm text-slate-600">No hay cajas en esta vista. Cambia los filtros o selecciona Todo para consultar las cajas registradas.</p>{% endfor %}
+        {% for caja in page_obj %}{% include 'inventario/_caja.html' %}{% empty %}<p role="status" class="text-sm text-slate-600">Sin cajas para estos filtros.</p>{% endfor %}
     </div></section>
     {% include "components/_paginacion.html" with page=page_obj %}
     {% include 'inventario/_stock.html' %}

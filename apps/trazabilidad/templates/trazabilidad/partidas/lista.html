@@ -29,7 +29,7 @@
     {% if page_obj %}
         {% if request.GET.vista == 'tarjetas' %}{% include "trazabilidad/partidas/_tarjetas.html" %}{% elif request.GET.vista == 'tabla' %}{% include "trazabilidad/partidas/_tabla.html" %}{% else %}<div class="md:hidden">{% include "trazabilidad/partidas/_tarjetas.html" %}</div><div class="hidden md:block">{% include "trazabilidad/partidas/_tabla.html" %}</div>{% endif %}
     {% else %}
-        <p role="status" class="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">{% if filtro.errors %}Revisa los filtros indicados.{% else %}No hay seguimientos activos que coincidan con la búsqueda.{% endif %}</p>
+        <p role="status" class="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">{% if filtro.errors %}Revisa los filtros indicados.{% else %}Sin seguimientos para estos filtros. <a href="{% url 'trazabilidad:lista_partidas' %}" class="inline-flex min-h-11 items-center text-cyan-700 underline">Limpiar filtros</a>{% endif %}</p>
     {% endif %}
     {% include "components/_paginacion.html" with page=page_obj %}
 </div>

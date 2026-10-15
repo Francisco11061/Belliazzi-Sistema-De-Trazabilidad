@@ -11,7 +11,7 @@
         <p class="mt-4 text-sm">Total asignado: <strong>{{ lote.total_asignado|floatformat:2 }} kg</strong></p>
         {% if form.non_field_errors %}<div role="alert" class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
         {% if hay_seguimientos %}
-        <p class="mt-5 text-sm leading-6 text-slate-600">Selecciona un seguimiento de la misma especie, ruta y origen Sernapesca. Cada opción indica sus kilos disponibles. Los seguimientos ya incluidos no se vuelven a ofrecer.</p>
+        <p class="mt-5 text-sm leading-6 text-slate-600">Selecciona un seguimiento de la misma especie, ruta y origen.</p>
         <form method="post" class="mt-5 space-y-5">
             {% csrf_token %}{% include "trazabilidad/lotes/_formulario.html" %}
             <div class="flex flex-col gap-3 sm:flex-row">
@@ -19,7 +19,7 @@
                 <a class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm text-slate-700 hover:bg-slate-50" href="{% url 'producto_terminado:detalle_lote' lote.pk %}">Cancelar</a>
             </div>
         </form>
-        {% else %}<p role="status" class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">No hay seguimientos compatibles con producto disponible para este lote.</p>{% endif %}
+        {% else %}<p role="status" class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">Sin seguimientos compatibles disponibles.</p>{% endif %}
     </section>
 </div>
 {% endlanguage %}{% endblock %}

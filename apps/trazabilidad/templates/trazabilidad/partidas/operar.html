@@ -15,14 +15,14 @@
             {% csrf_token %}
             {% if form.non_field_errors %}<div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
             {% for campo in form %}{% include "trazabilidad/recepciones/_campo.html" %}{% if campo.help_text %}<p class="text-sm text-slate-600">{{ campo.help_text }}</p>{% endif %}{% endfor %}
-            <p class="text-sm leading-6 text-slate-600">Si indicas una cantidad menor, el resto tendrá un seguimiento independiente y conservará el mismo origen.</p>
+            <p class="text-sm leading-6 text-slate-600">Si indicas menos kilos, el resto queda en otro seguimiento del mismo origen.</p>
             <div class="flex flex-col gap-3 sm:flex-row">
                 <button type="submit" class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">{{ titulo }}</button>
                 <a href="{% url 'trazabilidad:detalle_partida' partida.pk %}" class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm text-slate-700 hover:bg-slate-50">Cancelar</a>
             </div>
         </form>
         {% else %}
-        <p role="alert" class="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">Esta operación no está disponible para la situación actual del seguimiento.</p>
+        <p role="alert" class="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">Esta operación no está disponible en el estado actual.</p>
         {% endif %}
     </section>
 </div>

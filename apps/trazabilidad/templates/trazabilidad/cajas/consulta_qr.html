@@ -15,10 +15,10 @@
     {% include "trazabilidad/cajas/_datos_caja.html" %}
     {% include "inventario/_almacenamiento.html" %}
     <section aria-label="Origen del producto" class="space-y-5">
-        <div><h2 class="text-xl font-semibold">Origen del producto</h2><p class="mt-2 text-sm text-slate-600">Aportes registrados al lote de esta caja.</p></div>
+        <div><h2 class="text-xl font-semibold">Origen del producto</h2></div>
         {% for aporte in aportes %}{% with partida=aporte.partida detalle=aporte.partida.detalle_recepcion %}
         <article data-aporte="{{ aporte.pk }}" class="min-w-0 space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <header><h3 class="text-lg font-semibold">Seguimiento #{{ partida.pk }}</h3><p class="mt-2 font-medium text-cyan-800">{{ aporte.cantidad_kg_utilizada|floatformat:2 }} kg aportados al lote</p></header>
+            <header><h3 class="text-lg font-semibold">Seguimiento #{{ partida.pk }}</h3><p class="mt-2 font-medium text-cyan-800">{{ aporte.cantidad_kg_utilizada|floatformat:2 }} kg asignados al lote</p></header>
             <dl class="grid gap-4 text-sm sm:grid-cols-2">
                 <div><dt class="text-slate-600">Recepción</dt><dd class="mt-1 font-medium">#{{ detalle.recepcion_id }} · {{ detalle.recepcion.fecha_hora_recepcion|date:"d/m/Y H:i" }}</dd></div>
                 <div><dt class="text-slate-600">Folio Sernapesca</dt><dd class="mt-1 font-medium">{{ detalle.origen_sernapesca.folio_origen|default:"No documentado" }}</dd></div>
@@ -38,12 +38,12 @@
             </div>
             <div><h4 class="font-semibold">Frío del seguimiento</h4>
                 <ul class="mt-4 space-y-3 text-sm">
-                    {% for estancia in partida.estancias_qr %}<li class="rounded-lg border border-slate-200 bg-slate-50 p-4"><p class="font-medium">{{ estancia.unidad_frio.get_tipo_display }} · {{ estancia.unidad_frio.nombre }}</p><p class="mt-2">Ingreso: {{ estancia.fecha_hora_ingreso|date:"d/m/Y H:i" }}</p><p class="mt-1">{% if estancia.fecha_hora_salida %}Salida: {{ estancia.fecha_hora_salida|date:"d/m/Y H:i" }}{% else %}Estancia abierta{% endif %}</p></li>{% empty %}<li class="text-slate-600">Sin estancias documentadas.</li>{% endfor %}
+                    {% for estancia in partida.estancias_qr %}<li class="rounded-lg border border-slate-200 bg-slate-50 p-4"><p class="font-medium">{{ estancia.unidad_frio.get_tipo_display }} · {{ estancia.unidad_frio.nombre }}</p><p class="mt-2">Ingreso: {{ estancia.fecha_hora_ingreso|date:"d/m/Y H:i" }}</p><p class="mt-1">{% if estancia.fecha_hora_salida %}Salida: {{ estancia.fecha_hora_salida|date:"d/m/Y H:i" }}{% else %}Sin salida registrada{% endif %}</p></li>{% empty %}<li class="text-slate-600">Sin ingresos a frío registrados.</li>{% endfor %}
                 </ul>
             </div>
             <div><h4 class="font-semibold">Peso postproceso del seguimiento</h4><ul class="mt-3 space-y-2 text-sm">{% for pesaje in partida.postprocesos_qr %}<li><strong>{{ pesaje.peso_kg|floatformat:2 }} kg</strong> · {{ pesaje.fecha_hora_evento|date:"d/m/Y H:i" }}</li>{% empty %}<li class="text-slate-600">Peso postproceso no documentado.</li>{% endfor %}</ul></div>
         </article>
-        {% endwith %}{% empty %}<p class="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Este lote histórico no tiene aportes documentados.</p>{% endfor %}
+        {% endwith %}{% empty %}<p class="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Sin producto asignado registrado.</p>{% endfor %}
     </section>
 </div>
 {% endlanguage %}{% endblock %}

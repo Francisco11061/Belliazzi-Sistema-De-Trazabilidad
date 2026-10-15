@@ -19,7 +19,7 @@
                 <a href="{% url 'trazabilidad:gestionar_procesamiento' partida.pk %}" class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm text-slate-700 hover:bg-slate-50">Cancelar</a>
             </div>
         </form>
-        {% else %}<p role="alert" class="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">Complete la ruta de procesamiento antes de enviar el producto al túnel.</p>{% endif %}
+        {% else %}<p role="alert" class="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">Completa la ruta antes de ingresar al túnel.</p>{% endif %}
     </section>
 </div>
 {% endblock %}

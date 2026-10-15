@@ -9,6 +9,6 @@
         {% include "trazabilidad/recepciones/_campo.html" with campo=form.lote %}
         <button type="submit" class="min-h-11 rounded-lg bg-cyan-700 px-4 py-3 font-semibold text-white hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-700">Continuar</button>
     </form>
-    {% else %}<p role="status" class="rounded-xl border border-slate-200 bg-white p-5 text-slate-600">No hay lotes disponibles para registrar cajas. Solicita a la Encargada o al Jefe que revise las asignaciones y los pesos registrados.</p>{% endif %}
+    {% else %}<p role="status" class="rounded-xl border border-slate-200 bg-white p-5 text-slate-600">Sin lotes disponibles; solicita su revisión a la Encargada o al Jefe.</p>{% endif %}
 </div>
 {% endblock %}
