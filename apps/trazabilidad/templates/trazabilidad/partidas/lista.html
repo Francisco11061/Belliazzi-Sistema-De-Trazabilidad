@@ -14,13 +14,13 @@
     <form method="get" aria-label="Filtros de seguimientos" class="rounded-xl border border-slate-200 bg-white p-4 [&_input]:min-h-11 [&_input]:w-full [&_input]:min-w-0 [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:min-h-11 [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300">
         {% if request.GET.vista == 'tabla' or request.GET.vista == 'tarjetas' %}<input type="hidden" name="vista" value="{{ request.GET.vista }}">{% endif %}
         <details data-responsive-filters open>
-            <summary class="min-h-11 cursor-pointer font-semibold md:hidden">Filtros <span data-filter-count hidden></span></summary>
+            <summary class="cursor-pointer font-semibold md:hidden list-item list-inside min-h-11 py-2.5 leading-6 md:min-h-0 md:py-0">Filtros <span data-filter-count hidden></span></summary>
             <div class="grid min-w-0 gap-4 md:grid-cols-2">
                 {% include 'trazabilidad/recepciones/_campo.html' with campo=filtro.especie %}
                 {% include 'trazabilidad/recepciones/_campo.html' with campo=filtro.situacion %}
             </div>
             <details class="mt-3" {% if request.GET.partida or request.GET.recepcion %}open{% endif %}>
-                <summary class="flex min-h-11 cursor-pointer items-center text-sm font-medium text-cyan-700">Más filtros</summary>
+                <summary class="cursor-pointer text-sm font-medium text-cyan-700 list-item list-inside min-h-11 py-2.5 leading-6 md:min-h-0 md:py-0">Más filtros</summary>
                 <div class="grid min-w-0 gap-4 md:grid-cols-2">{% include 'trazabilidad/recepciones/_campo.html' with campo=filtro.partida %}{% include 'trazabilidad/recepciones/_campo.html' with campo=filtro.recepcion %}</div>
             </details>
             <div class="mt-4 flex flex-col gap-3 md:flex-row"><button type="submit" class="min-h-11 rounded-lg bg-cyan-700 px-4 py-3 text-sm font-semibold text-white">Aplicar filtros</button><a href="{% url 'trazabilidad:lista_partidas' %}{% if request.GET.vista == 'tabla' or request.GET.vista == 'tarjetas' %}?vista={{ request.GET.vista }}{% endif %}" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 px-4 py-3 text-sm">Limpiar</a></div>
