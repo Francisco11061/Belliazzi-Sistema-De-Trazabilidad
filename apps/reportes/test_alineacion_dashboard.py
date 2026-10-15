@@ -60,6 +60,24 @@ class AlineacionDashboardTests(DatosDashboard, TestCase):
         self.assertEqual(otro["stock"]["peso_conocido"], Decimal("5"))
         self.assertEqual(otro["kg_periodo"], 0)
 
+    def test_indicadores_fuera_del_rango_y_sin_datos(self):
+        partida = self.partida()
+        Pesaje.objects.create(partida=partida, tipo=Pesaje.POSTPROCESO, peso_kg=90,
+                              fecha_hora_evento=AHORA, registrado_por=self.jefe)
+        MermaProceso.objects.create(partida=partida, tipo="DESCARTE", cantidad_kg=2,
+            fecha_hora_evento=AHORA, registrado_por=self.jefe, motivo="Prueba")
+        self.caja("4")
+        self.baja()
+        self.despacho()
+        datos = dashboard_operacional(ahora=AHORA, desde=date(2000,1,1), hasta=date(2000,1,2))
+        for grupo, campos in (("recibido", ("recepciones", "kg")), ("postproceso", ("registros", "inicial", "final", "superiores")),
+                              ("producidas", ("cajas", "peso_conocido", "sin_peso")), ("bajas", ("cajas", "peso_conocido", "sin_peso"))):
+            for campo in campos:
+                self.assertEqual(datos[grupo][campo], 0, (grupo, campo))
+        self.assertEqual(sum(m["kg"] for m in datos["mermas"]), 0)
+        self.assertEqual(datos["cajas_periodo"], 0)
+        self.assertTrue(all(t["registros"] == 0 for t in datos["tiempos"]))
+
     def test_tiempos_solo_completos_por_fecha_termino(self):
         partida = self.partida()
         for duracion in (2, 4):

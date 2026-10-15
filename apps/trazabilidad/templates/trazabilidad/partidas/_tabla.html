@@ -12,7 +12,7 @@
                 <td class="px-4 py-2">{% include "trazabilidad/partidas/_situacion.html" %}</td>
                 {% if mostrar_ubicacion %}<td class="max-w-48 break-words px-4 py-2 text-slate-600">{% if partida.ubicacion %}{{ partida.ubicacion }}{% else %}<span class="sr-only">Sin ubicación registrada</span>{% endif %}</td>{% endif %}
                 <td class="px-4 py-2 text-xs whitespace-nowrap text-slate-600">{{ partida.creado_en|date:"d/m/Y" }}<br>{{ partida.creado_en|date:"H:i" }}</td>
-                <td class="px-4 py-2">{% include "trazabilidad/partidas/_siguiente_paso.html" with compacto=True %}</td>
+                <td class="px-4 py-2">{% include "trazabilidad/partidas/_siguiente_paso.html" with compacto=True %}<div class="mt-2">{% include 'trazabilidad/partidas/_accion_merma.html' %}</div></td>
             </tr>{% endfor %}</tbody>
         </table>
     </div>

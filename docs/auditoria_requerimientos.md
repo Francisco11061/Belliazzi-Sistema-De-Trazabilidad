@@ -5,9 +5,9 @@ Fecha: 14-10-2026. Línea base: `5dfbc88` más los cambios previos del workspace
 | ID | Estado | Evidencia (archivo y función/vista/test) | Brecha |
 |---|---|---|---|
 | RF01 | Cumple | apps/trazabilidad/models.py: Recepcion, OrigenSernapesca, DetalleRecepcion; services.py: registrar_recepcion; tests.py: RegistroRecepcionServiceTests | Referencia de origen separada de codigo_lote; detalles por especie y dos pesos. |
-| RF02 | Cumple | apps/trazabilidad/services.py: enviar_a_mantencion, retirar_de_mantencion; models.py: EstanciaPartida; test_partidas.py | Estancia opcional con ingreso/salida y duración derivada. |
-| RF03 | Cumple | apps/trazabilidad/models.py: EventoProceso, EtapaRutaProceso; services.py: iniciar_etapa_proceso, finalizar_etapa_proceso; test_procesamiento.py | Múltiples eventos configurados por ruta/especie. |
-| RF04 | Cumple | apps/trazabilidad/services.py: enviar_a_tunel, retirar_de_tunel; models.py: EstanciaPartida; test_procesamiento.py | Túnel identificado, permanencia derivada. |
+| RF02 | Parcial | apps/trazabilidad/services.py: enviar_a_mantencion, retirar_de_mantencion; models.py: EstanciaPartida; test_partidas.py | Estancia opcional con ingreso/salida; el detalle muestra fechas, no duración individual calculada. Datos suficientes para calcularla. |
+| RF03 | Parcial | apps/trazabilidad/models.py: EventoProceso, EtapaRutaProceso; services.py: iniciar_etapa_proceso, finalizar_etapa_proceso; test_procesamiento.py | Múltiples eventos configurados por ruta/especie con inicio/término. Falta duración individual visible. |
+| RF04 | Parcial | apps/trazabilidad/services.py: enviar_a_tunel, retirar_de_tunel; models.py: EstanciaPartida; test_procesamiento.py | Túnel identificado e ingreso/salida conservados; falta permanencia individual visible. |
 | RF05 | Cumple | apps/trazabilidad/services.py: registrar_peso_postproceso; selectors.py: resumen_pesajes_mermas; test_postproceso.py | Conserva cantidad inicial; peso positivo; superar inicial advierte sin bloquear. |
 | RF06 | Cumple | apps/trazabilidad/models.py: Caja, ComposicionCaja, LoteProduccion; services.py: crear_caja; selectors.py: cajas_con_peso; test_cajas.py | Peso teórico calculado y peso neto medido separados; fechas pertenecen al lote. |
 | RF07 | Parcial | apps/trazabilidad/qr.py: generar_png_qr_caja; models.py: Caja.identificador_qr; test_qr_cajas.py | UUID único y PNG; no hay diseño físico de etiqueta ni prueba de impresión/lectura en planta. |
@@ -85,4 +85,69 @@ Extensiones respecto al resumen del informe: alertas de frío y umbrales; rutas 
 
 ## Resultado de fase 2
 
-Pendiente de implementación y validación.
+### A — Dashboard
+
+Implementados rango libre inclusive en Chile, especie, atajos con fechas y aria-current, validación con semana por defecto, actualización conservando GET y `never_cache`. Indicadores actuales por especie: stock, almacenadas, pendientes y almacenadas sin peso. Indicadores del período: recepciones/kg recibidos; kg iniciales y postproceso/rendimiento ponderado; cajas producidas/kg netos conocidos y desconocidos; cajas/kg despachados; merma/descarte/pérdida y bajas; promedio y número de estancias cerradas de mantención/túnel y eventos de procesamiento por tipo. Tiempos se atribuyen por fecha de término. Gráficos conservan alternativas textuales; tiempos usan tabla accesible.
+
+Semáforo: pendientes y peso desconocido 0 verde / >0 ámbar; merma y bajas 0 verde / >0 ámbar; postproceso mayor al inicial ámbar; frío excedido rojo; falta global de umbrales ámbar. Franja actual prioriza críticos y luego suma pendientes + almacenadas sin peso + falta de umbrales. Mermas y postproceso no se mezclan con la franja actual. Indicadores sin umbral objetivo son neutros. Ámbar/rojo usan icono + texto. No se implementó 80 %/dentro del umbral: salida de alertas_frio insuficiente bajo la restricción recibida. No se agregó una constante 80 % sin uso ni se inventó una clasificación.
+
+Agregaciones SQL sin consultas por registro. El selector completo pasa de un presupuesto de 20 a 23 consultas con los nuevos indicadores; test adicional comprueba número constante al aumentar registros. La actividad reciente filtrada por especie no muestra totales de despachos mixtos que pudieran confundirse con totales de esa especie.
+
+### B — Sernapesca
+
+Selector de operación, revisión filtrada, Excel con Resumen y solo la operación elegida (Todas conserva las tres), singular/plural, período/operación al descargar. CSV UTF-8 con BOM de una operación, mismas columnas; fechas en Chile y textos protegidos contra fórmulas de hoja de cálculo. Todas no ofrece CSV porque las operaciones tienen columnas diferentes. El servicio anterior queda intacto; la vista autorizada reutiliza selectors y generador para la selección. No envía declaraciones ni escribe registros.
+
+### C — Permisos y nombres
+
+No hubo discrepancias inequívocas de decoradores que corregir. Se añadió prueba con subTest de todas las URLs funcionales por O/E/J/anónimo, incluyendo métodos POST para acciones exclusivas; otro test verifica cobertura contra los URLconfs para detectar futuras rutas sin clasificar. Login/logout/next tienen prueba aparte. Los nombres se presentan por código desde un componente compartido, incluido el select del formulario, sin cambiar códigos, modelos o registros históricos. Superusuario se presenta como Jefe / Administrador, conservando su explicación técnica en el detalle.
+
+### D — Recorridos y QR
+
+Inicio ofrece Registrar caja directamente: Inicio → selección de lote → formulario → confirmar (3 clics, incluido confirmar). Encargada/Jefe tienen accesos a Seguimiento e Inventario en el contenido, evitando abrir el drawer. Merma tiene acceso en tarjetas/tabla: Inicio → Seguimiento → merma → confirmar (3). Baja tiene enlace visible en tarjeta: Inicio → Inventario → baja → confirmar (3). Despacho directo desde Inicio de E/J reduce a 2 clics. Mantención/proceso/postproceso/almacenamiento conservan 3. Retiro del túnel conserva 3. Ingreso al túnel sigue con 4: el listado no conoce si las etapas terminaron y el detalle tampoco recibe ese resumen; reducirlo sin mostrar acciones prematuras requiere contexto adicional de backend, fuera de D.
+
+QR conserva 10 consultas con dos/tres aportes; nuevo test fija máximo 10 para los tres perfiles. Sin cambios de consultas porque no se encontró N+1. La matriz detectó además historial de estancia/evento cerrado con responsable NULL que rompía el template; ahora muestra «Responsable no documentado» sin alterar datos.
+
+Revisión responsive por código: 375 px, KPIs actuales 2×2 y resto apilado; 768 px filtros/indicadores en columnas; 1280 px cuatro KPIs considerando offset del sidebar. Controles >=44 px y sin dependencia de hover; tablas con scroll local. No se efectuó prueba visual en navegador ni medición del tiempo de respuesta en planta.
+
+### Pendientes que requieren una decisión fuera de esta autorización
+
+1. Autorizar ampliar la salida de alertas_frio para distinguir 80 % y dentro del umbral.
+2. Autorizar contexto de etapas completas en lista/detalle para acceso directo al túnel.
+3. Definir etiqueta física, mensaje 404 específico y alcance de corrección auditada fuera de Recepciones.
+4. Validar latencia QR/stock con equipo, red y volumen reales; 10 consultas no prueba el SLA.
+5. Duración individual visible de cada estancia/evento (RF02–RF04): el detalle hoy muestra fechas. A incorpora promedios en Dashboard, pero no modifica el detalle fuera del alcance de D.
+
+### Validación final
+
+Validado el 15-10-2026: `uv run python manage.py test --noinput`: **614 tests OK**, 141,821 s. `uv run python manage.py check`: sin problemas. `git diff --check` y diff staged: correctos. Tailwind 4.3.3 recompilado mediante Node + CLI instalada con los argumentos de build:css, sin dependencias nuevas. Pruebas parciales: A 53, B 23, C 4 y D 9 aprobadas (algunas pruebas existentes se reutilizan entre conjuntos). Sin modelos/migraciones/dependencias nuevas ni modificaciones de datos de producción. Los cambios previos del workspace se conservan.
+
+## Archivos modificados en A-D
+
+- `apps/inventario/templates/inventario/_caja.html`
+- `apps/reportes/excel_sernapesca.py`
+- `apps/reportes/forms.py`
+- `apps/reportes/selectors.py`
+- `apps/reportes/templates/reportes/dashboard.html`
+- `apps/reportes/templates/reportes/sernapesca.html`
+- `apps/reportes/test_alineacion_dashboard.py`
+- `apps/reportes/test_dashboard.py`
+- `apps/reportes/test_matriz_permisos.py`
+- `apps/reportes/test_operaciones_reporte.py`
+- `apps/reportes/test_recorridos_qr.py`
+- `apps/reportes/views.py`
+- `apps/trazabilidad/templates/trazabilidad/partidas/_tabla.html`
+- `apps/trazabilidad/templates/trazabilidad/partidas/_tarjetas.html`
+- `apps/trazabilidad/templates/trazabilidad/partidas/detalle.html`
+- `apps/usuarios/static/usuarios/css/output.css`
+- `apps/usuarios/templates/usuarios/gestion/_campo_rol.html`
+- `apps/usuarios/templates/usuarios/gestion/_rol.html`
+- `apps/usuarios/templates/usuarios/gestion/formulario.html`
+- `apps/usuarios/templates/usuarios/gestion/lista.html`
+- `apps/usuarios/templates/usuarios/inicio.html`
+- `apps/usuarios/test_badges.py`
+- `apps/usuarios/test_gestion.py`
+- `docs/auditoria_requerimientos.md`
+- `static/src/input.css`
+- `templates/base.html`
+- `templates/components/_badge.html`
+- `templates/components/_nombre_rol.html`

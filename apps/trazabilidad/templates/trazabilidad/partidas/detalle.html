@@ -52,10 +52,10 @@
             <article class="rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <h3 class="font-medium">{{ estancia.unidad_frio.nombre }}</h3>
                 <p class="mt-2 text-slate-600">Ingreso: {{ estancia.fecha_hora_ingreso|date:"d/m/Y H:i" }} · {{ estancia.ingresado_por.get_full_name|default:estancia.ingresado_por.username }}</p>
-                <p class="mt-1 text-slate-600">{% if estancia.fecha_hora_salida %}Salida: {{ estancia.fecha_hora_salida|date:"d/m/Y H:i" }} · {{ estancia.retirado_por.get_full_name|default:estancia.retirado_por.username }}{% else %}Estancia abierta{% endif %}</p>
+                <p class="mt-1 text-slate-600">{% if estancia.fecha_hora_salida %}Salida: {{ estancia.fecha_hora_salida|date:"d/m/Y H:i" }} · {% if estancia.retirado_por %}{{ estancia.retirado_por.get_full_name|default:estancia.retirado_por.username }}{% else %}Responsable no documentado{% endif %}{% else %}Estancia abierta{% endif %}</p>
             </article>
         {% endfor %}
-        {% for evento in eventos %}<article class="rounded-lg border border-cyan-100 bg-cyan-50 p-4"><h3 class="font-medium">{{ evento.tipo_proceso.nombre }}</h3><p class="mt-2 text-slate-600">Inicio: {{ evento.fecha_hora_inicio|date:"d/m/Y H:i" }} · {{ evento.iniciado_por.get_full_name|default:evento.iniciado_por.username }}</p>{% if evento.fecha_hora_termino %}<p class="mt-1 text-slate-600">Término: {{ evento.fecha_hora_termino|date:"d/m/Y H:i" }} · {{ evento.finalizado_por.get_full_name|default:evento.finalizado_por.username }}</p>{% endif %}</article>{% endfor %}
+        {% for evento in eventos %}<article class="rounded-lg border border-cyan-100 bg-cyan-50 p-4"><h3 class="font-medium">{{ evento.tipo_proceso.nombre }}</h3><p class="mt-2 text-slate-600">Inicio: {{ evento.fecha_hora_inicio|date:"d/m/Y H:i" }} · {{ evento.iniciado_por.get_full_name|default:evento.iniciado_por.username }}</p>{% if evento.fecha_hora_termino %}<p class="mt-1 text-slate-600">Término: {{ evento.fecha_hora_termino|date:"d/m/Y H:i" }} · {% if evento.finalizado_por %}{{ evento.finalizado_por.get_full_name|default:evento.finalizado_por.username }}{% else %}Responsable no documentado{% endif %}</p>{% endif %}</article>{% endfor %}
         </div>
     </section>
     {% endif %}

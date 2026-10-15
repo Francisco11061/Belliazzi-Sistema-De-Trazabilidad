@@ -9,6 +9,16 @@
         <h1 class="text-2xl font-semibold tracking-tight break-words md:text-3xl">Bienvenido, {{ user.first_name|default:user.username }}</h1>
         <p class="mt-2 text-sm leading-6 text-slate-600">{% if not user.is_superuser and user.rol.codigo == "OPERARIA" %}¿Qué necesitas hacer?{% else %}Accede a las funciones disponibles del sistema.{% endif %}</p>
     </header>
+    {% if user.is_superuser or user.rol.codigo == 'OPERARIA' or user.rol.codigo == 'ENCARGADA' or user.rol.codigo == 'JEFE' %}
+    <nav aria-label="Registrar operaciones" class="mb-6 flex min-w-0 flex-wrap gap-3">
+        {% url 'producto_terminado:seleccionar_lote_caja' as destino %}{% include 'components/_accion.html' with texto='Registrar caja' %}
+        {% if user.is_superuser or user.rol.codigo != 'OPERARIA' %}
+            {% url 'trazabilidad:lista_partidas' as destino %}{% include 'components/_accion.html' with texto='Seguimiento de proceso' secundaria=True %}
+            {% url 'inventario:lista' as destino %}{% include 'components/_accion.html' with texto='Inventario y bajas' secundaria=True %}
+            {% url 'inventario:crear_despacho' as destino %}{% include 'components/_accion.html' with texto='Registrar despacho' secundaria=True %}
+        {% endif %}
+    </nav>
+    {% endif %}
     {% if not user.is_superuser and user.rol.codigo == "OPERARIA" %}
         {% include "usuarios/_inicio_operario.html" %}
     {% endif %}

@@ -20,7 +20,7 @@ class BadgeTests(SimpleTestCase):
                     self.assertIn(f'border-{color}-200', html)
                     if estado not in ('SIN_PESO', 'FALTAN_PESOS'):
                         self.assertIn('Etiqueta visible', html)
-                    self.assertEqual('<svg' in html, color == 'amber')
+                    self.assertEqual('<svg' in html, color in ('amber', 'red'))
 
     def test_pendiente_conserva_el_contexto(self):
         for etiqueta in ('Pendiente de almacenar', 'Pendiente'):
