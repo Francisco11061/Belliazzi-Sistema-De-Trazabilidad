@@ -90,7 +90,7 @@ class ReporteSernapescaTests(DatosDashboard, TestCase):
     def test_pantalla_y_urls_existentes(self):
         self.client.force_login(self.jefe)
         response = self.client.get(self.url("sernapesca"))
-        self.assertContains(response, NOTA_ALCANCE)
+        self.assertContains(response, "Reporte de apoyo. No reemplaza las declaraciones oficiales ante Sernapesca.")
         self.assertContains(response, "Descargar Excel")
         self.assertContains(response, 'aria-current="page"', count=1)
         self.assertEqual(self.url(), "/dashboard/")
