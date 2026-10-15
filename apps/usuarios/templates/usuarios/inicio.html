@@ -7,7 +7,7 @@
 {% block content %}
     <header class="mb-8">
         <h1 class="text-2xl font-semibold tracking-tight break-words md:text-3xl">Bienvenido, {{ user.first_name|default:user.username }}</h1>
-        <p class="mt-2 text-sm leading-6 text-slate-600">{% if not user.is_superuser and user.rol.codigo == "OPERARIA" %}¿Qué necesitas hacer?{% else %}Accede a las funciones disponibles del sistema.{% endif %}</p>
+
     </header>
     {% if user.is_superuser or user.rol.codigo == 'OPERARIA' or user.rol.codigo == 'ENCARGADA' or user.rol.codigo == 'JEFE' %}
     <nav aria-label="Registrar operaciones" class="mb-6 flex min-w-0 flex-wrap gap-3">
@@ -31,7 +31,7 @@
                 <svg class="h-6 w-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16l2 10v6H2v-6L4 4ZM2 14h6l2 3h4l2-3h6M12 6v6m-3-3 3 3 3-3" /></svg>
             </div>
             <h2 id="recepciones-title" class="text-lg font-semibold">Recepciones</h2>
-            <p class="mt-2 text-sm leading-6 text-slate-600">Registra y consulta las recepciones de materia prima.</p>
+
             <a href="{% url 'trazabilidad:lista_recepciones' %}" class="mt-6 inline-flex items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600">Ir a recepciones</a>
         </section>
     {% endif %}

@@ -4,7 +4,7 @@
 {% block page_title %}Usuarios{% endblock %}
 {% block content %}{% language "es" %}
 <div class="min-w-0 space-y-6">
-    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h1 class="text-2xl font-semibold md:text-3xl">Usuarios</h1><p class="mt-2 text-sm text-slate-600">Cuentas internas y su historial de gestión.</p></div><a href="{% url 'usuarios:crear_usuario' %}" class="rounded-lg bg-cyan-700 px-5 py-3 text-center text-sm font-semibold text-white hover:bg-cyan-800">Crear usuario</a></header>
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h1 class="text-2xl font-semibold md:text-3xl">Usuarios</h1></div><a href="{% url 'usuarios:crear_usuario' %}" class="rounded-lg bg-cyan-700 px-5 py-3 text-center text-sm font-semibold text-white hover:bg-cyan-800">Crear usuario</a></header>
     <form method="get" class="grid min-w-0 gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2 xl:grid-cols-4">
         <div class="min-w-0"><label for="q" class="mb-2 block text-sm font-medium">Usuario o nombre</label><input id="q" name="q" value="{{ texto }}" class="w-full min-w-0 rounded-lg border border-slate-300 px-3 py-2.5 text-sm"></div>
         <div class="min-w-0"><label for="rol" class="mb-2 block text-sm font-medium">Rol</label><select id="rol" name="rol" class="w-full min-w-0 rounded-lg border border-slate-300 px-3 py-2.5 text-sm"><option value="">Todos</option>{% for rol in roles %}<option value="{{ rol.codigo }}" {% if rol_filtro == rol.codigo %}selected{% endif %}>{% include 'components/_nombre_rol.html' with codigo=rol.codigo nombre=rol.nombre only %}{% if not rol.activo %} (inactivo){% endif %}</option>{% endfor %}</select></div>

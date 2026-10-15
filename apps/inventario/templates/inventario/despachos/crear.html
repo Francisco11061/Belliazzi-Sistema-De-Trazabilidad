@@ -4,7 +4,7 @@
 {% block page_title %}Inventario / Despachos / Registrar{% endblock %}
 {% block content %}{% language "es" %}
 <div class="w-full min-w-0 w-full space-y-6">
-<header><h1 class="mt-4 text-2xl font-semibold md:text-3xl">Registrar despacho</h1><p class="mt-2 text-sm text-slate-600">Selecciona cajas completas para registrar su salida física. La fecha, hora y usuario se registran al confirmar.</p></header>
+<header><h1 class="mt-4 text-2xl font-semibold md:text-3xl">Registrar despacho</h1></header>
 <form method="post" id="despacho-form" class="space-y-6 [&_input:not([type=checkbox])]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_textarea]:w-full [&_textarea]:min-w-0 [&_textarea]:rounded-lg [&_textarea]:border-slate-300">
 {% csrf_token %}
 {% if form.non_field_errors %}<div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}

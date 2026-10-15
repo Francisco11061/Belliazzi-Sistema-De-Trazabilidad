@@ -4,7 +4,7 @@
 {% block page_title %}Inventario{% endblock %}
 {% block content %}{% language "es" %}
 <div class="w-full min-w-0 w-full space-y-6">
-    <header><h1 class="text-2xl font-semibold md:text-3xl">Inventario</h1><p class="mt-2 text-sm text-slate-600">Stock físico y ubicación de cajas. Los totales reflejan los filtros seleccionados.</p></header>
+    <header><h1 class="text-2xl font-semibold md:text-3xl">Inventario</h1></header>
     <nav aria-label="Vistas de inventario" class="flex min-w-0 flex-wrap border-b border-slate-200">
         {% url 'inventario:lista' as inventario_url %}
         {% if estado_actual == '' %}{% include 'components/_tab.html' with destino=inventario_url|add:'?estado=' texto='Todo' activo=True cantidad=None %}{% else %}{% include 'components/_tab.html' with destino=inventario_url|add:'?estado=' texto='Todo' activo=False cantidad=None %}{% endif %}

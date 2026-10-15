@@ -4,7 +4,7 @@
 {% block page_title %}Producto terminado / Crear lote{% endblock %}
 {% block content %}{% language "es" %}
 <div class="w-full min-w-0 w-full space-y-6">
-    <header><h1 class="mt-4 text-2xl font-semibold md:text-3xl">Crear lote de producción</h1><p class="mt-2 text-sm text-slate-600">Asigna producto del seguimiento a un lote nuevo.</p></header>
+    <header><h1 class="mt-4 text-2xl font-semibold md:text-3xl">Crear lote de producción</h1></header>
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-lg font-semibold">{{ partida.detalle_recepcion.especie.nombre }}</h2>
         <p class="mt-2 text-sm text-slate-600">{{ partida.ruta_proceso.nombre|default:"Sin ruta documentada" }} · Seguimiento #{{ partida.pk }}</p>
