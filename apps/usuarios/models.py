@@ -12,8 +12,12 @@ class Rol(models.Model):
     class Meta:
         ordering = ["nombre"]
 
+    @property
+    def nombre_visible(self):
+        return "Operario" if self.codigo == "OPERARIA" else self.nombre
+
     def __str__(self):
-        return self.nombre
+        return self.nombre_visible
 
 
 class Usuario(AbstractUser):

@@ -1,9 +1,30 @@
 from django import forms
-from django.contrib.auth.forms import PasswordChangeForm, UsernameField
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UsernameField
 from django.contrib.auth.password_validation import validate_password, password_validators_help_text_html
 
 from .models import Usuario
 from .services import roles_disponibles
+
+
+class LoginUsuarioForm(AuthenticationForm):
+    """Personaliza únicamente los mensajes del formulario de Django."""
+
+    error_messages = {
+        **AuthenticationForm.error_messages,
+        "invalid_login": "Usuario o contraseña incorrectos. Verifica tus credenciales e inténtalo nuevamente.",
+        "inactive": "Esta cuenta está inactiva. Contacta al administrador del sistema.",
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for nombre, mensaje in (
+            ("username", "Ingresa tu nombre de usuario."),
+            ("password", "Ingresa tu contraseña."),
+        ):
+            self.fields[nombre].error_messages.update({
+                "required": mensaje,
+                "null_characters_not_allowed": "Este campo contiene caracteres no permitidos.",
+            })
 
 
 class EstiloFormulario:

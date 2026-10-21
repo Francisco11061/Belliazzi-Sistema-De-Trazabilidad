@@ -5,7 +5,6 @@
 {% block content %}{% language "es" %}
 <div class="min-w-0 w-full space-y-6">
     <header><h1 class="text-2xl font-semibold md:text-3xl">Reporte de apoyo a Sernapesca</h1></header>
-    <p class="rounded-xl border border-cyan-100 bg-cyan-50 p-4 text-sm leading-6 text-cyan-900">Reporte de apoyo. No reemplaza las declaraciones oficiales ante Sernapesca.</p>
     <form method="get" class="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
         <h2 class="font-semibold">Período del reporte</h2>
         <div class="grid min-w-0 gap-4 sm:grid-cols-2">{% for field in form %}<div class="min-w-0"><label for="{{ field.id_for_label }}" class="mb-2 block text-sm font-medium">{{ field.label }}</label><div class="[&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:rounded-lg [&_select]:border-slate-300 [&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:rounded-lg [&_input]:border [&_input]:border-slate-300 [&_input]:px-3 [&_input]:py-2.5">{{ field }}</div>{% if field.errors %}<div id="{{ field.auto_id }}_error" role="alert" class="mt-2 text-sm text-red-700">{{ field.errors }}</div>{% endif %}</div>{% endfor %}</div>

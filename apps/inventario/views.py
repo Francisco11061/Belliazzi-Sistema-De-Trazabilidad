@@ -9,7 +9,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.trazabilidad.lotes import presentar_codigo_lote
-from apps.usuarios.permisos import personal_operativo_requerido
+from apps.usuarios.permisos import jefe_o_encargada_requerido, personal_operativo_requerido
 from .forms import BajaCajaForm, BajaFiltroForm, DespachoFiltroForm, DespachoForm, DestinoForm, InventarioFiltroForm
 from .selectors import bajas_con_trazabilidad, cajas_con_inventario, resumen_inventario, despachos_con_totales
 from .services import ingresar_caja, mover_caja, registrar_baja, registrar_despacho
@@ -78,7 +78,7 @@ def mover(request, pk):
     return _operacion(request, pk, True)
 
 
-@personal_operativo_requerido
+@jefe_o_encargada_requerido
 @require_http_methods(["GET"])
 def lista_despachos(request):
     despachos = despachos_con_totales()
@@ -107,7 +107,7 @@ def lista_despachos(request):
         "pagina_siguiente": enlace(pagina.next_page_number()) if pagina.has_next() else None})
 
 
-@personal_operativo_requerido
+@jefe_o_encargada_requerido
 @require_http_methods(["GET", "POST"])
 def crear_despacho(request):
     form = DespachoForm(request.POST if request.method == "POST" else None,
@@ -130,7 +130,7 @@ def crear_despacho(request):
         "cantidad_seleccionada":len(elegidas), "peso_seleccionado":sum((c.peso_neto_kg for c in elegidas), Decimal("0.00"))})
 
 
-@personal_operativo_requerido
+@jefe_o_encargada_requerido
 @require_http_methods(["GET"])
 def detalle_despacho(request, pk):
     despacho = get_object_or_404(despachos_con_totales(), pk=pk)

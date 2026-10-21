@@ -1,10 +1,12 @@
 from django.contrib.auth.models import AnonymousUser
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
+from django.utils.translation import override
 
+from .forms import LoginUsuarioForm
 from .models import Rol, Usuario
 from .permisos import (
     ROL_ENCARGADA,
@@ -59,6 +61,51 @@ class AutenticacionUsuarioTests(TestCase):
         self.assertTemplateUsed(response, "usuarios/login.html")
         self.assertTrue(response.context["form"].errors)
         self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertContains(response, "Usuario o contraseña incorrectos. Verifica tus credenciales e inténtalo nuevamente.")
+        self.assertContains(response, 'role="alert"')
+
+    def test_errores_login_en_espanol_con_idioma_ingles(self):
+        with override("en"):
+            response = self.client.post(reverse("usuarios:login"), {})
+            self.assertContains(response, "Ingresa tu nombre de usuario.")
+            self.assertContains(response, "Ingresa tu contraseña.")
+            self.assertNotContains(response, "This field is required")
+            for campo in ("username", "password"):
+                datos = {"username": "jefe_prueba", "password": "clave-prueba-123", campo: "valor\x00"}
+                form = LoginUsuarioForm(data=datos)
+                self.assertFalse(form.is_valid())
+                self.assertEqual(form.errors[campo], ["Este campo contiene caracteres no permitidos."])
+                self.assertEqual(form.errors.as_data()[campo][0].code, "null_characters_not_allowed")
+
+    def test_cuenta_inactiva_conserva_rechazo_y_mensaje_espanol(self):
+        self.usuario.is_active = False
+        self.usuario.save()
+        response = self.client.post(reverse("usuarios:login"), {
+            "username": "jefe_prueba", "password": "clave-prueba-123",
+        })
+        # El backend predeterminado rechaza cuentas inactivas con el error genérico.
+        self.assertContains(response, "Usuario o contraseña incorrectos.")
+        self.assertNotIn("_auth_user_id", self.client.session)
+        with override("en"), self.assertRaisesMessage(ValidationError, "Esta cuenta está inactiva. Contacta al administrador del sistema."):
+            LoginUsuarioForm().confirm_login_allowed(self.usuario)
+
+    def test_login_preserva_next_tras_error_y_autenticacion(self):
+        destino = reverse("usuarios:inicio") + "?origen=qr&vista=detalle"
+        acceso = self.client.get(destino)
+        self.assertEqual(acceso.status_code, 302)
+        response = self.client.get(acceso.url)
+        self.assertEqual(response.context["next"], destino)
+        datos = {"username": "jefe_prueba", "password": "incorrecta", "next": destino}
+        response = self.client.post(acceso.url, datos)
+        self.assertEqual(response.context["next"], destino)
+        datos["password"] = "clave-prueba-123"
+        self.assertRedirects(self.client.post(acceso.url, datos), destino)
+
+    def test_login_sigue_rechazando_next_externo(self):
+        response = self.client.post(reverse("usuarios:login"), {
+            "username": "jefe_prueba", "password": "clave-prueba-123", "next": "https://example.com/",
+        })
+        self.assertRedirects(response, reverse("usuarios:inicio"))
 
     def test_usuario_autenticado_puede_ver_inicio(self):
         self.assertTrue(

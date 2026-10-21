@@ -11,13 +11,14 @@ from django.utils.translation import override
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_POST
 
-from .forms import CambioContrasenaForm, ContrasenaTemporalForm, CrearUsuarioForm, RolUsuarioForm
+from .forms import CambioContrasenaForm, ContrasenaTemporalForm, CrearUsuarioForm, LoginUsuarioForm, RolUsuarioForm
 from .models import Rol, Usuario
 from .permisos import jefe_requerido
 from . import services
 
 
 class LoginUsuarioView(LoginView):
+    authentication_form = LoginUsuarioForm
     template_name = "usuarios/login.html"
     redirect_authenticated_user = True
     next_page = reverse_lazy("usuarios:inicio")

@@ -51,7 +51,7 @@ def mover_caja(*, caja, unidad, usuario):
 @transaction.atomic
 def registrar_despacho(*, cajas, usuario, tipo_destino, destino="", rut_destinatario="", pais_destino="",
                        tipo_documento="", numero_documento="", fecha_documento=None, observaciones=""):
-    if not tiene_rol(usuario, ROL_JEFE, ROL_ENCARGADA, ROL_OPERARIA):
+    if not tiene_rol(usuario, ROL_JEFE, ROL_ENCARGADA):
         raise PermissionDenied
     ids = [c.pk if isinstance(c, Caja) else c for c in cajas]
     if not ids:

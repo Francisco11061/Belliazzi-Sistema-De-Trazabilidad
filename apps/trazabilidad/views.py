@@ -250,6 +250,10 @@ def corregir_recepcion(request, pk):
 
 @personal_operativo_requerido
 def lista_partidas(request):
+    vista_inicial = "tarjetas" if not request.user.is_superuser and request.user.rol.codigo == "OPERARIA" else "tabla"
+    vista = request.GET.get("vista", vista_inicial)
+    if vista not in ("tarjetas", "tabla"):
+        vista = vista_inicial
     partidas = partidas_con_disponibilidad().filter(estado=PartidaProceso.Estado.ACTIVA, tiene_hijas=False)
     filtro = PartidaFiltroForm(request.GET)
     if filtro.is_valid():
@@ -263,16 +267,24 @@ def lista_partidas(request):
         partidas = partidas.none()
     pagina = Paginator(partidas.order_by("-creado_en", "-pk"), 10).get_page(request.GET.get("page"))
     pagina.object_list = [presentar_partida(p) for p in pagina.object_list]
+    for partida in pagina.object_list:
+        partida.puede_asignar_lote = puede_asignar_lote(partida)
+
+    def enlace_vista(seleccion):
+        parametros = request.GET.copy()
+        parametros["vista"] = seleccion
+        return "?" + parametros.urlencode()
 
     def enlace(numero):
         parametros = request.GET.copy()
+        parametros["vista"] = vista
         parametros["page"] = numero
-    for partida in pagina.object_list:
-        partida.puede_asignar_lote = puede_asignar_lote(partida)
         return "?" + parametros.urlencode()
 
     return render(request, "trazabilidad/partidas/lista.html", {
         "filtro": filtro, "page_obj": pagina,
+        "vista": vista, "vista_tarjetas": enlace_vista("tarjetas"), "vista_tabla": enlace_vista("tabla"),
+        "mostrar_ubicacion": any(p.ubicacion for p in pagina.object_list),
         "pagina_anterior": enlace(pagina.previous_page_number()) if pagina.has_previous() else None,
         "pagina_siguiente": enlace(pagina.next_page_number()) if pagina.has_next() else None,
     })

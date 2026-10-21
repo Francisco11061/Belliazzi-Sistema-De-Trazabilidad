@@ -28,7 +28,7 @@ class DatosDespacho(DatosInventario):
         self.ingresar()
 
     def datos_despacho(self, **cambios):
-        datos = dict(cajas=[self.registro], usuario=self.usuario, tipo_destino='NACIONAL',
+        datos = dict(cajas=[self.registro], usuario=self.jefe, tipo_destino='NACIONAL',
             destino='Comercializadora de prueba', rut_destinatario='12.345.678-5',
             tipo_documento='Guía de despacho', numero_documento='GD-001', fecha_documento=timezone.localdate())
         datos.update(cambios)
@@ -50,6 +50,8 @@ class DatosDespacho(DatosInventario):
 class DespachoTests(DatosDespacho, TestCase):
     def setUp(self):
         self.preparar_despacho()
+        self.operario = self.usuario
+        self.usuario = self.jefe
         self.client.force_login(self.usuario)
 
     def test_una_caja_cierre_mismo_instante_usuario_estado_stock(self):
@@ -218,17 +220,44 @@ class DespachoTests(DatosDespacho, TestCase):
         self.despachar()
         self.assertEqual(self.estado().estado_inventario,'DESPACHADA')
 
-    def test_roles_operativos_y_superusuario_post(self):
+    def test_jefe_encargada_y_superusuario_get_y_post(self):
         rol,_=Rol.objects.get_or_create(codigo='ENCARGADA',defaults={'nombre':'Encargada'})
         encargada=Usuario.objects.create_user(username='enc_despacho',rol=rol)
         tecnico=Usuario.objects.create_superuser(username='tec_despacho')
-        for usuario in (self.jefe,encargada,self.usuario,tecnico):
+        for usuario in (self.jefe,encargada,tecnico):
             caja=self.caja()
             self.ingresar(caja=caja)
             self.client.force_login(usuario)
+            self.assertContains(self.client.get(reverse('usuarios:inicio')), f'href="{self.url_despacho("lista_despachos")}"')
+            for nombre in ('lista_despachos', 'crear_despacho'):
+                self.assertEqual(self.client.get(self.url_despacho(nombre)).status_code, 200)
             respuesta=self.client.post(self.url_despacho(),self.datos_post(cajas=[caja.pk]))
             self.assertEqual(respuesta.status_code,302)
             self.assertEqual(caja.detalle_despacho.despacho.registrado_por,usuario)
+            self.assertEqual(self.client.get(respuesta.url).status_code, 200)
+
+    def test_operario_no_ve_despachos_ni_accede_ni_crea(self):
+        historico = Despacho.objects.create(fecha_hora_despacho=timezone.now(), registrado_por=self.jefe)
+        self.client.force_login(self.operario)
+        self.assertNotContains(self.client.get(reverse('usuarios:inicio')), f'href="{self.url_despacho("lista_despachos")}"')
+        for url in (self.url_despacho('lista_despachos'), self.url_despacho(), self.url_despacho('detalle_despacho', historico.pk)):
+            self.assertEqual(self.client.get(url).status_code, 403)
+        self.assertEqual(self.client.post(self.url_despacho(), self.datos_post()).status_code, 403)
+        with self.assertRaises(PermissionDenied):
+            self.despachar(usuario=self.operario)
+        self.assertEqual(Despacho.objects.count(), 1)
+        self.assertFalse(DetalleDespacho.objects.exists())
+        self.assertTrue(EstanciaCaja.objects.filter(caja=self.registro, fecha_hora_salida__isnull=True).exists())
+        self.assertEqual(self.estado().estado_inventario, 'ALMACENADA')
+
+    def test_operario_conserva_traza_sin_enlace_a_despacho(self):
+        despacho = self.despachar()
+        self.client.force_login(self.operario)
+        url = self.url_despacho('detalle_despacho', despacho.pk)
+        for ruta in (self.url_lote('detalle_caja', self.registro.pk), reverse('producto_terminado:consulta_caja_qr', args=[self.registro.identificador_qr])):
+            response = self.client.get(ruta)
+            self.assertContains(response, 'GD-001')
+            self.assertNotContains(response, f'href="{url}"')
 
     def test_no_permiso_anonimo_get_y_post(self):
         rol=Rol.objects.create(codigo='CONSULTA',nombre='Consulta')
