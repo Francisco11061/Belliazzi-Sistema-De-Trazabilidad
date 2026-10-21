@@ -17,7 +17,7 @@ class InicioOperarioTests(TestCase):
         self.client.force_login(self.operario)
         response = self.client.get(reverse("usuarios:inicio"))
         self.assertContains(response, "Bienvenido, Francisco")
-        self.assertContains(response, "¿Qué necesitas hacer?")
+        self.assertNotContains(response, "¿Qué necesitas hacer?")
         for texto in ("Seguimiento de proceso", "Cajas", "Inventario", "Bajas"):
             self.assertContains(response, texto)
         for destino in ("trazabilidad:lista_partidas", "producto_terminado:lista_cajas", "inventario:lista", "inventario:lista_bajas"):

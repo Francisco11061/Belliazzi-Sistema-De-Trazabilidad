@@ -459,7 +459,7 @@ class PartidasTests(TestCase):
         self.retirar()
         self.procesar()
         respuesta = self.client.get(url)
-        self.assertContains(respuesta, "ya ingresó a procesamiento")
+        self.assertContains(respuesta, "Gestionar procesamiento")
         for texto in ("Enviar a cámara", "Enviar a proceso", "Retirar de cámara"):
             self.assertNotContains(respuesta, texto)
 

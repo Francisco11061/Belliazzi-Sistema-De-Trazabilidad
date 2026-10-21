@@ -183,7 +183,7 @@ class BajaTests(DatosBaja, TestCase):
         DetalleDespacho.objects.create(caja=self.registro,despacho=despacho)
         respuesta=self.client.get(self.url_lote('detalle_caja',self.registro.pk))
         self.assertContains(respuesta,'No documentado')
-        self.assertContains(respuesta,'también tiene un despacho histórico')
+        self.assertContains(respuesta,'La caja tiene baja y despacho registrados; no está disponible.')
         self.assertEqual(self.estado().estado_inventario,'BAJA')
         self.assertEqual(self.stock()['stock']['cajas'],0)
         self.assertEqual(BajaCaja.objects.count(),1)

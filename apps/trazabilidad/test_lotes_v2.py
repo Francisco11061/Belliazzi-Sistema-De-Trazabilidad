@@ -161,7 +161,7 @@ class LotesV2Tests(DatosLotes, TestCase):
         self.client.force_login(self.jefe)
         respuesta = self.client.get(self.url_lote("detalle_lote", lote.pk))
         self.assertContains(respuesta, "TEST-MER-280926-A")
-        self.assertContains(respuesta, "requiere revisión")
+        self.assertContains(respuesta, "Revisa la ruta y el origen antes de agregar producto.")
         self.assertNotContains(respuesta, ">Agregar producto</a>")
         self.assertEqual(lote.consumos.count(), 2)
 

@@ -293,7 +293,7 @@ class DespachoTests(DatosDespacho, TestCase):
         DetalleDespacho.objects.create(despacho=historico,caja=self.registro)
         respuesta=self.client.get(self.url_despacho('detalle_despacho',historico.pk))
         self.assertContains(respuesta,'No documentado')
-        self.assertContains(respuesta,'total completo no está documentado')
+        self.assertContains(respuesta,'el total es parcial.')
         self.assertEqual(self.stock()['stock']['cajas'],0)
         self.assertEqual(self.estado().estado_inventario,'DESPACHADA')
 

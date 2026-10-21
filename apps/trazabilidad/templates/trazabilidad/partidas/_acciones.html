@@ -1,3 +1,2 @@
-{% if partida.situacion == 'LISTA_PARA_EMPAQUE' %}{% elif partida.situacion == 'EN_PROCESO' %}{% endif %}
 {% include "trazabilidad/partidas/_siguiente_paso.html" with detalle=True %}
 <div class="mt-3">{% include "trazabilidad/partidas/_accion_merma.html" %}</div>

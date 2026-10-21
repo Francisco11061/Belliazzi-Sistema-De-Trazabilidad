@@ -322,7 +322,7 @@ class LotesTests(DatosLotes, TestCase):
             self.assertContains(respuesta, texto)
         self.crear_lote(codigo="RESTO", cantidad_kg=Decimal("25"))
         respuesta = self.client.get(url)
-        self.assertContains(respuesta, "Todo el producto postproceso ya fue asignado a lotes de producción.")
+        self.assertContains(respuesta, "Todo el producto fue asignado a lotes.")
         self.assertNotContains(respuesta, "Asignar a lote")
         self.assertContains(respuesta, "Lista para empaque")
 

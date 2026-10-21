@@ -824,7 +824,7 @@ class ListadoRecepcionesFiltrosTests(TestCase):
 
     def test_busqueda_sin_resultados(self):
         response = self.client.get(self.url, {"q": "SIN-COINCIDENCIAS"})
-        self.assertContains(response, "No se encontraron recepciones con los criterios seleccionados.")
+        self.assertContains(response, "Sin recepciones para estos filtros.")
         self.assertContains(response, "Limpiar filtros")
         self.assertContains(response, "0 recepciones encontradas")
 

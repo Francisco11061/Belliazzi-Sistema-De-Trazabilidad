@@ -298,7 +298,7 @@ class CajasTests(DatosCajas, TestCase):
             self.caja([{"presentacion": self.bolsa1, "cantidad": 1}])
         self.client.force_login(self.jefe)
         respuesta = self.client.get(self.url_lote("detalle_lote", self.lote.pk))
-        self.assertContains(respuesta, "Todo el producto asignado a este lote ya fue empacado.")
+        self.assertContains(respuesta, "Todo el producto fue empacado.")
         self.assertNotContains(respuesta, ">Crear caja</a>")
 
     def test_no_se_usa_postproceso_directo_ni_mermas_para_caja(self):

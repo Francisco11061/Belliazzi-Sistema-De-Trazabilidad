@@ -141,7 +141,7 @@ class QRCajasTests(DatosQR, TestCase):
     def test_origenes_separados_con_aporte_recepcion_folio(self):
         respuesta = self.client.get(self.consulta())
         self.assertContains(respuesta, "data-aporte=", count=2)
-        for texto in (f"Seguimiento #{self.partida.pk}", f"Seguimiento #{self.otra.pk}", "70,00 kg aportados", "30,00 kg aportados", "ABC123", "DEF456", f"#{self.partida.detalle_recepcion.recepcion_id}", f"#{self.otra.detalle_recepcion.recepcion_id}"):
+        for texto in (f"Seguimiento #{self.partida.pk}", f"Seguimiento #{self.otra.pk}", "70,00 kg asignados", "30,00 kg asignados", "ABC123", "DEF456", f"#{self.partida.detalle_recepcion.recepcion_id}", f"#{self.otra.detalle_recepcion.recepcion_id}"):
             self.assertContains(respuesta, texto)
         aportes = list(respuesta.context["aportes"])
         self.assertEqual([a.partida.detalle_recepcion.origen_sernapesca.folio_origen for a in aportes], ["ABC123", "DEF456"])
@@ -216,7 +216,7 @@ class QRCajasTests(DatosQR, TestCase):
         self.assertContains(self.client.get(self.consulta()), "Peso postproceso no documentado")
         self.assertContains(self.client.get(self.consulta()), "En curso")
         self.lote.consumos.all().delete()
-        self.assertContains(self.client.get(self.consulta()), "no tiene aportes documentados")
+        self.assertContains(self.client.get(self.consulta()), "Sin producto asignado registrado.")
 
     def test_consulta_sin_n_mas_uno_al_aumentar_origenes(self):
         with CaptureQueriesContext(connection) as antes:

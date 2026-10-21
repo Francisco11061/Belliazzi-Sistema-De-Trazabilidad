@@ -29,7 +29,7 @@
     {% if filtros_activos and not filtro.errors %}<p class="mb-4 text-sm text-slate-600" role="status">{{ page_obj.paginator.count }} recepciones encontradas</p>{% endif %}
     <section aria-label="Recepciones registradas" class="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm">
         {% if page_obj %}
-            <div class="overflow-x-auto rounded-2xl focus-visible:outline-2 focus-visible:outline-cyan-600" tabindex="0" role="region" aria-label="Tabla de recepciones">
+            <div class="relative overflow-x-auto rounded-2xl focus-visible:outline-2 focus-visible:outline-cyan-600" tabindex="0" role="region" aria-label="Tabla de recepciones">
                 <table class="w-full min-w-[40rem] text-left text-sm">
                     <thead class="border-b border-slate-200 bg-slate-50 text-slate-600">
                         <tr>

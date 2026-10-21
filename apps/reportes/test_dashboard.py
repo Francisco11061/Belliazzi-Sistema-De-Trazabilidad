@@ -111,8 +111,8 @@ class DashboardPermisosTests(DatosDashboard, TestCase):
     def test_estados_vacios(self):
         self.client.force_login(self.jefe)
         response = self.client.get(self.url())
-        for mensaje in ("Aún no hay despachos en este período.", "No hay cajas almacenadas actualmente.",
-                        "Sin alertas operativas en este momento.", "Aún no hay actividad reciente.",
+        for mensaje in ("Sin despachos en este período.", "No hay cajas almacenadas.",
+                        "Sin alertas de frío.", "Sin actividad reciente.",
                         "No hay umbrales de frío configurados."):
             self.assertContains(response, mensaje)
         self.assertNotContains(response, '<canvas')

@@ -527,7 +527,7 @@ class ProcesamientoTests(DatosProcesamiento, TestCase):
         self.assertNotContains(respuesta, "Gestionar procesamiento")
         retirar_de_tunel(partida=self.partida, usuario=self.usuario)
         respuesta = self.client.get(detalle)
-        self.assertContains(respuesta, "Registra el peso obtenido antes de continuar al empaque.")
+        self.assertContains(respuesta, "Registra el peso postproceso antes de empacar.")
         for accion in ("Retirar del túnel", "Gestionar procesamiento", "Enviar a proceso", "Enviar a cámara"):
             self.assertNotContains(respuesta, accion)
 
