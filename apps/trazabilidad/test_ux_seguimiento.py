@@ -13,7 +13,7 @@ class SiguientePasoTests(DatosCajas, TestCase):
         for codigo in ("OPERARIA", "ENCARGADA", "JEFE"):
             cuenta = Usuario.objects.create_user(username=f"paso_{codigo}", rol=Rol.objects.get(codigo=codigo))
             self.client.force_login(cuenta)
-            urls = [reverse("trazabilidad:lista_partidas") + "?vista=" + vista for vista in ("tabla", "tarjetas")]
+            urls = [reverse("trazabilidad:lista_partidas") + "?categoria=empaque&vista=" + vista for vista in ("tabla", "tarjetas")]
             urls.append(reverse("trazabilidad:detalle_partida", args=[self.partida.pk]))
             for url in urls:
                 with self.subTest(rol=codigo, url=url):

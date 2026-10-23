@@ -1,0 +1,5 @@
+{% if categoria != 'historial' %}
+    {% if categoria != 'empaque' or user.is_superuser or user.rol.codigo == 'JEFE' or user.rol.codigo == 'ENCARGADA' %}
+        {% include "trazabilidad/partidas/_siguiente_paso.html" %}
+    {% endif %}
+{% endif %}

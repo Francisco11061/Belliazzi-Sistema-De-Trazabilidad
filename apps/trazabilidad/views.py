@@ -3,7 +3,7 @@ from datetime import datetime, time
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.views.decorators.cache import never_cache
 from django.shortcuts import get_object_or_404, redirect, render
@@ -28,6 +28,7 @@ from .services import (
 from .forms import PesoPostprocesoForm, MermaProcesoForm
 from .forms import CrearLoteForm, AgregarConsumoLoteForm, LoteFiltroForm
 from .selectors import partidas_con_disponibilidad, puede_asignar_lote, lotes_con_totales
+from .seguimiento_operativo import CATEGORIAS, seguimientos_operativos
 from .services import crear_lote_produccion, agregar_consumo_lote
 from .forms import ComposicionCajaFormSet, CajaFiltroForm, CajaForm, SeleccionarLoteCajaForm
 from .constantes import PESO_MAXIMO_CAJA_KG
@@ -254,9 +255,15 @@ def lista_partidas(request):
     vista = request.GET.get("vista", vista_inicial)
     if vista not in ("tarjetas", "tabla"):
         vista = vista_inicial
-    partidas = partidas_con_disponibilidad().filter(estado=PartidaProceso.Estado.ACTIVA, tiene_hijas=False)
+    categoria = request.GET.get("categoria", "atender")
+    if categoria not in dict(CATEGORIAS):
+        categoria = "atender"
+    partidas = seguimientos_operativos()
     filtro = PartidaFiltroForm(request.GET)
     if filtro.is_valid():
+        if filtro.cleaned_data["q"]:
+            numero = filtro.cleaned_data["q"]
+            partidas = partidas.filter(Q(pk=numero) | Q(detalle_recepcion__recepcion_id=numero))
         for campo, lookup in (
             ("partida", "pk"), ("recepcion", "detalle_recepcion__recepcion_id"),
             ("especie", "detalle_recepcion__especie"), ("situacion", "situacion"),
@@ -265,10 +272,23 @@ def lista_partidas(request):
                 partidas = partidas.filter(**{lookup: filtro.cleaned_data[campo]})
     else:
         partidas = partidas.none()
-    pagina = Paginator(partidas.order_by("-creado_en", "-pk"), 10).get_page(request.GET.get("page"))
+    cantidades = dict(partidas.order_by().values_list("categoria_operativa").annotate(total=Count("pk")))
+    categorias = []
+    for codigo, nombre in CATEGORIAS:
+        parametros = request.GET.copy()
+        parametros["categoria"] = codigo
+        parametros.pop("page", None)
+        categorias.append({"codigo": codigo, "nombre": nombre, "cantidad": cantidades.get(codigo, 0),
+                           "url": "?" + parametros.urlencode(), "activa": codigo == categoria})
+    pagina = Paginator(partidas.filter(categoria_operativa=categoria), 10).get_page(request.GET.get("page"))
     pagina.object_list = [presentar_partida(p) for p in pagina.object_list]
     for partida in pagina.object_list:
         partida.puede_asignar_lote = puede_asignar_lote(partida)
+        if partida.revision_operativa:
+            partida.situacion_visible = "Requiere revisión"
+            partida.puede_registrar_merma = False
+        elif partida.situacion == "LISTA_PARA_EMPAQUE" and partida.categoria_operativa == "historial":
+            partida.situacion_visible = "Asignado por completo"
 
     def enlace_vista(seleccion):
         parametros = request.GET.copy()
@@ -282,7 +302,7 @@ def lista_partidas(request):
         return "?" + parametros.urlencode()
 
     return render(request, "trazabilidad/partidas/lista.html", {
-        "filtro": filtro, "page_obj": pagina,
+        "filtro": filtro, "page_obj": pagina, "categoria": categoria, "categorias": categorias,
         "vista": vista, "vista_tarjetas": enlace_vista("tarjetas"), "vista_tabla": enlace_vista("tabla"),
         "mostrar_ubicacion": any(p.ubicacion for p in pagina.object_list),
         "pagina_anterior": enlace(pagina.previous_page_number()) if pagina.has_previous() else None,

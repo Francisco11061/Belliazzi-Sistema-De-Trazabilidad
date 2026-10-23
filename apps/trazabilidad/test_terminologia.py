@@ -30,7 +30,7 @@ class TerminologiaSeguimientoTests(DatosProcesamiento, TestCase):
         respuesta = self.pagina("lista_partidas")
         self.assertEqual(self.titulo(respuesta), "Seguimiento de proceso")
         self.assertContains(respuesta, "ID de seguimiento")
-        self.assertContains(respuesta, "Ver seguimiento")
+        self.assertContains(respuesta, "Consultar historial del seguimiento")
         self.assertNotContains(respuesta, "Partidas")
         self.assertNotContains(respuesta, "ID de partida")
 

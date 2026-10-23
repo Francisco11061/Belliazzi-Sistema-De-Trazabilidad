@@ -390,9 +390,9 @@ class PostprocesoTests(DatosPostproceso, TestCase):
         self.assertEqual([p.pk for p in respuesta.context["page_obj"]], [self.partida.pk])
         self.pesar()
         self.assertFalse(self.client.get(url, {"situacion": "PENDIENTE_PESAJE"}).context["page_obj"])
-        self.assertEqual(len(self.client.get(url, {"situacion": "LISTA_PARA_EMPAQUE"}).context["page_obj"]), 1)
+        self.assertEqual(len(self.client.get(url, {"situacion": "LISTA_PARA_EMPAQUE", "categoria": "empaque"}).context["page_obj"]), 1)
         with CaptureQueriesContext(connection) as pocas:
-            self.client.get(url)
+            self.client.get(url, {"categoria": "empaque"})
         for _ in range(11):
             self.crear_partida()
         with CaptureQueriesContext(connection) as muchas:

@@ -220,13 +220,18 @@ class RecepcionCorreccionForm(RecepcionForm):
 
 
 class PartidaFiltroForm(forms.Form):
+    q = forms.IntegerField(required=False, min_value=1, max_value=9223372036854775807,
+                           label="N.º de seguimiento o recepción",
+                           widget=forms.NumberInput(attrs={"placeholder": "Ej. 125", "inputmode": "numeric"}))
     partida = forms.IntegerField(required=False, min_value=1, max_value=9223372036854775807, label="ID de seguimiento")
     recepcion = forms.IntegerField(required=False, min_value=1, max_value=9223372036854775807, label="ID de recepción")
     especie = forms.ModelChoiceField(
         queryset=Especie.objects.all(), required=False, empty_label="Todas las especies", label="Especie",
     )
     situacion = forms.ChoiceField(
-        required=False, choices=[("", "Todas las situaciones"), *SITUACIONES], label="Situación",
+        required=False, choices=[("", "Todas las situaciones"), *SITUACIONES,
+            ("NO_OPERABLE", "Requiere revisión"), ("DIVIDIDA", "Dividida"),
+            ("CONSUMIDA", "Consumida"), ("CERRADA", "Cerrada")], label="Situación",
     )
 
 

@@ -1,1 +1,8 @@
-{% include "components/_badge.html" with estado=partida.situacion etiqueta=partida.situacion_visible only %}
+{% if partida.revision_operativa %}
+    {% include "components/_badge.html" with estado="REVISION" etiqueta=partida.situacion_visible only %}
+{% elif partida.categoria_operativa == 'historial' %}
+    {% include "components/_badge.html" with estado="NEUTRO" etiqueta=partida.situacion_visible only %}
+{% else %}
+    {% include "components/_badge.html" with estado=partida.situacion etiqueta=partida.situacion_visible only %}
+{% endif %}
+{% if partida.revision_operativa %}<p class="mt-2 max-w-sm text-sm leading-5 text-slate-600">{{ partida.revision_operativa }}</p>{% endif %}
