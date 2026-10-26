@@ -1,0 +1,8 @@
+<div data-fila class="flex min-w-0 flex-wrap items-end gap-2 rounded-lg bg-slate-50 p-3 [&_select]:w-full [&_select]:max-w-full [&_select]:min-h-11 [&_select]:rounded-lg [&_select]:border-slate-300 [&_input[type=number]]:w-20 [&_input:not([type=checkbox])]:min-h-11 [&_input]:rounded-lg [&_input]:border-slate-300 [&_input[type=checkbox]]:size-5" {% if fila.DELETE.value %}hidden{% endif %}>
+    <div class="min-w-0 basis-full lg:flex-1"><label for="{{ fila.tipo_proceso.id_for_label }}" class="block text-sm">Operación</label>{{ fila.tipo_proceso }}{{ fila.tipo_proceso.errors }}</div>
+    <div><label for="{{ fila.ORDER.id_for_label }}" class="block text-sm">Orden</label>{{ fila.ORDER }}{{ fila.ORDER.errors }}</div>
+    <label class="inline-flex min-h-11 items-center gap-1 text-sm">{{ fila.DELETE }} Quitar</label>
+    <button type="button" data-subir class="min-h-11 rounded-lg border border-slate-300 px-3" aria-label="Subir operación">↑</button>
+    <button type="button" data-bajar class="min-h-11 rounded-lg border border-slate-300 px-3" aria-label="Bajar operación">↓</button>
+    {{ fila.non_field_errors }}
+</div>

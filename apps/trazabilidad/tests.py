@@ -393,7 +393,7 @@ class RecepcionViewsTests(TestCase):
         for usuario in (self.jefe, self.encargada, tecnico):
             with self.subTest(usuario=usuario.username):
                 self.client.force_login(usuario)
-                self.assertContains(self.client.get(reverse("usuarios:inicio")), enlace)
+                self.assertContains(self.client.get(reverse("usuarios:inicio"), follow=True), enlace)
                 self.assertEqual(self.client.get(enlace).status_code, 200)
         self.client.force_login(self.operaria)
         self.assertNotContains(self.client.get(reverse("usuarios:inicio")), enlace)

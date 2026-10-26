@@ -2,6 +2,7 @@
 {% block title %}Procesamiento de {{ partida.detalle_recepcion.especie.nombre }} | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Seguimiento de proceso / Procesamiento{% endblock %}
 {% block content %}
+{% include "components/_enlace_integral.html" with tipo="seguimiento" registro=partida %}
 <div class="w-full min-w-0 w-full space-y-6">
     <header>
 

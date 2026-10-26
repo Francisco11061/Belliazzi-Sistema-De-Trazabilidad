@@ -83,7 +83,7 @@ class DashboardPermisosTests(DatosDashboard, TestCase):
                 self.client.force_login(usuario)
                 for nombre in ("dashboard", "umbrales"):
                     self.assertEqual(self.client.get(self.url(nombre)).status_code, 200 if permitido else 403)
-                inicio = self.client.get(reverse("usuarios:inicio"))
+                inicio = self.client.get(reverse("usuarios:inicio"), follow=True)
                 enlace = f'href="{self.url()}"'
                 if permitido:
                     self.assertContains(inicio, enlace)
@@ -437,7 +437,7 @@ class ActividadDashboardTests(DatosDashboard, TestCase):
         self.assertTrue(datos["frio"]["total"])
         self.assertTrue(all(q["sql"].lstrip().upper().startswith("SELECT") for q in consultas))
         self.assertEqual(antes, {m._meta.label: list(m.objects.order_by("pk").values()) for m in modelos})
-        self.assertLessEqual(len(consultas), 23)  # Cinco agregaciones nuevas; sin consultas por fila.
+        self.assertLessEqual(len(consultas), 33)  # Agregaciones de producción, ranking y stock; sin consultas por fila.
 
     def test_avisos_pendiente_y_peso_no_documentado(self):
         self.caja()

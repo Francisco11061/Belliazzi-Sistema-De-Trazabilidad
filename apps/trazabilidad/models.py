@@ -140,6 +140,17 @@ class TipoProceso(models.Model):
     def __str__(self):
         return self.nombre
 
+    def tiene_referencias(self):
+        return self.eventos.exists() or self.etapas_ruta.exists() or self.etapas_solicitadas.exists()
+
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        if self.pk:
+            original = TipoProceso.objects.select_for_update().get(pk=self.pk)
+            if original.tiene_referencias() and (original.codigo != self.codigo or original.nombre != self.nombre):
+                raise ValidationError("Una operación referenciada conserva su código y nombre.")
+        return super().save(*args, **kwargs)
+
 
 class EventoProceso(models.Model):
     etapa_ruta = models.ForeignKey(
@@ -203,11 +214,15 @@ class RutaProceso(models.Model):
     def __str__(self):
         return f"{self.especie} / {self.nombre}"
 
+    def tiene_historial(self):
+        return (self.partidas.exists() or self.lotes_produccion.exists()
+                or EventoProceso.objects.filter(etapa_ruta__ruta=self).exists())
+
     @transaction.atomic
     def save(self, *args, **kwargs):
         if self.pk:
             original = RutaProceso.objects.select_for_update().get(pk=self.pk)
-            if original.partidas.exists() and any(
+            if original.tiene_historial() and any(
                 getattr(original, campo) != getattr(self, campo)
                 for campo in ("especie_id", "nombre", "descripcion")
             ):
@@ -244,7 +259,7 @@ class EtapaRutaProceso(models.Model):
         if self.pk:
             ids.update(EtapaRutaProceso.objects.filter(pk=self.pk).values_list("ruta_id", flat=True))
         for ruta in RutaProceso.objects.select_for_update().filter(pk__in=ids).order_by("pk"):
-            if ruta.partidas.exists():
+            if ruta.tiene_historial():
                 raise ValidationError("No se pueden agregar, modificar ni borrar etapas de una ruta utilizada.")
 
     @transaction.atomic
@@ -586,3 +601,36 @@ class Correccion(models.Model):
 
     def __str__(self):
         return f"{self.entidad_afectada} {self.identificador_registro} - {self.campo}"
+
+
+class SolicitudRuta(models.Model):
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        APROBADA = "APROBADA", "Aprobada"
+        RECHAZADA = "RECHAZADA", "Rechazada"
+
+    solicitante = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="solicitudes_ruta")
+    especie = models.ForeignKey(Especie, on_delete=models.PROTECT, related_name="solicitudes_ruta")
+    observacion = models.TextField(blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PENDIENTE, db_index=True)
+    resuelto_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="solicitudes_ruta_resueltas")
+    resuelto_en = models.DateTimeField(null=True, blank=True)
+    respuesta = models.TextField(blank=True)
+    ruta_aprobada = models.ForeignKey(RutaProceso, on_delete=models.PROTECT, null=True, blank=True, related_name="solicitudes_aprobadas")
+
+    class Meta:
+        ordering = ["creado_en", "pk"]
+
+
+class EtapaSolicitudRuta(models.Model):
+    solicitud = models.ForeignKey(SolicitudRuta, on_delete=models.PROTECT, related_name="etapas")
+    tipo_proceso = models.ForeignKey(TipoProceso, on_delete=models.PROTECT, related_name="etapas_solicitadas")
+    orden = models.PositiveSmallIntegerField()
+
+    class Meta:
+        ordering = ["orden", "pk"]
+        constraints = [
+            models.UniqueConstraint(fields=["solicitud", "orden"], name="solicitud_ruta_orden_unico"),
+            models.CheckConstraint(condition=models.Q(orden__gt=0), name="solicitud_ruta_orden_positivo"),
+        ]

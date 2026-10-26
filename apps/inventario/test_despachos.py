@@ -228,7 +228,7 @@ class DespachoTests(DatosDespacho, TestCase):
             caja=self.caja()
             self.ingresar(caja=caja)
             self.client.force_login(usuario)
-            self.assertContains(self.client.get(reverse('usuarios:inicio')), f'href="{self.url_despacho("lista_despachos")}"')
+            self.assertContains(self.client.get(reverse('usuarios:inicio'), follow=True), f'href="{self.url_despacho("lista_despachos")}"')
             for nombre in ('lista_despachos', 'crear_despacho'):
                 self.assertEqual(self.client.get(self.url_despacho(nombre)).status_code, 200)
             respuesta=self.client.post(self.url_despacho(),self.datos_post(cajas=[caja.pk]))

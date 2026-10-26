@@ -1,0 +1,7 @@
+{% if user.is_superuser or user.rol.codigo == 'JEFE' or user.rol.codigo == 'ENCARGADA' %}
+<a href="{% url 'trazabilidad:consulta_integral' %}" {% if request.resolver_match.url_name == 'consulta_integral' or request.resolver_match.url_name == 'ficha_integral' %}aria-current="page"{% endif %} class="flex min-h-11 items-center rounded-lg px-3 py-3 text-sm font-medium text-cyan-700 hover:bg-cyan-50 focus-visible:outline-2 focus-visible:outline-cyan-700">Consulta de trazabilidad</a>
+{% endif %}
+{% if user.is_superuser or user.rol.codigo == 'JEFE' %}
+<a href="{% url 'trazabilidad:rutas' %}" {% if request.resolver_match.url_name == 'rutas' %}aria-current="page"{% endif %} class="flex min-h-11 items-center rounded-lg px-3 py-3 text-sm font-medium text-cyan-700 hover:bg-cyan-50 focus-visible:outline-2 focus-visible:outline-cyan-700">Rutas de procesamiento</a>
+{% endif %}
+<a href="{% url 'trazabilidad:solicitudes_ruta' %}" {% if request.resolver_match.url_name == 'solicitudes_ruta' %}aria-current="page"{% endif %} class="flex min-h-11 items-center rounded-lg px-3 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-cyan-700">Solicitudes de rutas</a>

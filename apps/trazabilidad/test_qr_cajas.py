@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from apps.usuarios.models import Rol, Usuario
 from .forms import CajaForm
-from .models import Caja, ComposicionCaja, ConsumoLote, EstanciaPartida, LoteProduccion, PresentacionBolsa, UnidadFrio
+from .models import Caja, ComposicionCaja, ConsumoLote, EstanciaPartida, LoteProduccion, PresentacionBolsa, UnidadFrio, TipoProceso
 from .qr import construir_url_qr_caja, generar_png_qr_caja
 from .services import agregar_consumo_lote
 from .test_cajas import DatosCajas
@@ -154,10 +154,13 @@ class QRCajasTests(DatosQR, TestCase):
         self.assertEqual([len(a.partida.postprocesos_qr) for a in respuesta.context["aportes"]], [1, 1])
 
     def test_etapas_configurables_sin_lista_fija(self):
-        tipo = self.tipos["DESCABEZADO"]
-        tipo.nombre = "Limpieza especial configurada"
-        tipo.save()
-        self.assertContains(self.client.get(self.consulta()), tipo.nombre)
+        tipo = TipoProceso.objects.create(codigo="LIMPIEZA_PRUEBA", nombre="Limpieza especial configurada")
+        self.tipos[tipo.codigo] = tipo
+        ruta = self.crear_ruta(nombre="Ruta configurada para prueba", codigos=[tipo.codigo])
+        partida = self.otra_lista(ruta=ruta)
+        lote = self.crear_lote(partida=partida, cantidad_kg=Decimal("40"), usuario=self.jefe)
+        caja = self.caja(lote=lote)
+        self.assertContains(self.client.get(self.consulta(caja)), tipo.nombre)
 
     def test_navegacion_y_permiso_recepcion_se_conservan(self):
         url_recepcion = reverse("trazabilidad:detalle_recepcion", args=[self.partida.detalle_recepcion.recepcion_id])

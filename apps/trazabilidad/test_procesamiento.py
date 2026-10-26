@@ -107,10 +107,10 @@ class ProcesamientoTests(DatosProcesamiento, TestCase):
             self.iniciar(ruta=ruta)
         self.assertFalse(EventoProceso.objects.exists())
 
-    def test_ruta_debe_terminar_en_emparrillado(self):
-        ruta = self.crear_ruta(nombre="Final incorrecto", codigos=["EMPARRILLADO", "FILETEO"])
-        with self.assertRaisesRegex(ValidationError, "última etapa"):
-            self.iniciar(ruta=ruta)
+    def test_ruta_puede_terminar_en_otra_operacion(self):
+        ruta = self.crear_ruta(nombre="Final en fileteo", codigos=["EMPARRILLADO", "FILETEO"])
+        self.iniciar(ruta=ruta)
+        self.assertEqual(self.situacion(), "EN_PROCESO")
 
     def test_procesamiento_no_es_etapa_incluso_si_se_elude_admin(self):
         with self.assertRaises(ValidationError):
@@ -426,7 +426,7 @@ class ProcesamientoTests(DatosProcesamiento, TestCase):
         respuesta = self.client.post(reverse("admin:trazabilidad_etaparutaproceso_delete", args=[self.etapas[0].pk]), {"post": "yes"})
         self.assertEqual(respuesta.status_code, 403)
 
-    def test_admin_configura_ruta_con_inline_y_rechaza_final_invalido(self):
+    def test_admin_configura_ruta_con_inline_y_admite_otro_final(self):
         administrador = Usuario.objects.create_superuser(username="admin_ruta")
         self.client.force_login(administrador)
         url = reverse("admin:trazabilidad_rutaproceso_add")
@@ -443,8 +443,8 @@ class ProcesamientoTests(DatosProcesamiento, TestCase):
         datos["nombre"] = "Ruta inválida"
         datos["etapas-1-tipo_proceso"] = self.tipos["FILETEO"].pk
         respuesta = self.client.post(url, datos)
-        self.assertContains(respuesta, "última etapa")
-        self.assertFalse(RutaProceso.objects.filter(nombre="Ruta inválida").exists())
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertTrue(RutaProceso.objects.filter(nombre="Ruta inválida").exists())
 
     def test_admin_puede_desactivar_ruta_usada_sin_cambiar_historia(self):
         self.iniciar()

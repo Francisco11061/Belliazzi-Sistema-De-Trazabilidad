@@ -1,6 +1,10 @@
 {% with nombre=request.resolver_match.url_name modulo=request.resolver_match.namespace %}
 {% if modulo == 'trazabilidad' %}
-    {% if 'recepcion' in nombre %}{% url 'trazabilidad:lista_recepciones' as destino %}{% include 'components/_breadcrumb_page.html' with grupo='Operaciones' pagina='Recepciones' %}
+    {% if 'integral' in nombre %}{% url 'trazabilidad:consulta_integral' as destino %}{% include 'components/_breadcrumbs.html' with grupo='Trazabilidad' pagina='Consulta de trazabilidad' %}
+    {% elif 'solicitud' in nombre %}{% url 'trazabilidad:solicitudes_ruta' as destino %}{% include 'components/_breadcrumbs.html' with grupo='Trazabilidad' pagina='Solicitudes de rutas' %}
+    {% elif 'ruta' in nombre %}{% url 'trazabilidad:rutas' as destino %}{% include 'components/_breadcrumbs.html' with grupo='Trazabilidad' pagina='Rutas de procesamiento' %}
+    {% elif nombre == 'operaciones' or nombre == 'editar_operacion' %}{% url 'trazabilidad:operaciones' as destino %}{% include 'components/_breadcrumbs.html' with grupo='Trazabilidad' pagina='Catálogo de operaciones' %}
+    {% elif 'recepcion' in nombre %}{% url 'trazabilidad:lista_recepciones' as destino %}{% include 'components/_breadcrumb_page.html' with grupo='Operaciones' pagina='Recepciones' %}
     {% else %}{% if partida and nombre != 'detalle_partida' %}{% url 'trazabilidad:detalle_partida' partida.pk as registro_destino %}{% endif %}{% url 'trazabilidad:lista_partidas' as destino %}{% include 'components/_breadcrumb_page.html' with grupo='Producción' pagina='Seguimiento de proceso' %}{% endif %}
 {% elif modulo == 'producto_terminado' %}
     {% if 'caja' in nombre %}{% url 'producto_terminado:lista_cajas' as destino %}{% include 'components/_breadcrumb_page.html' with grupo='Producto terminado' pagina='Cajas' %}

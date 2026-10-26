@@ -57,10 +57,11 @@ class InicioOperarioTests(TestCase):
         for usuario in (self.jefe, self.encargada, self.tecnico):
             self.client.force_login(usuario)
             response = self.client.get(reverse("usuarios:inicio"))
+            if usuario != self.encargada:
+                self.assertRedirects(response, reverse("reportes:dashboard"))
+                continue
             self.assertContains(response, "Ir a recepciones")
             self.assertNotContains(response, 'aria-label="Accesos rápidos de planta"')
             self.assertContains(response, f'href="{reverse("inventario:lista_despachos")}"')
-            if usuario != self.encargada:
-                self.assertContains(response, "Ver dashboard operacional")
         self.assertEqual(self.encargada.rol.nombre_visible, self.encargada.rol.nombre)
         self.assertEqual(self.jefe.rol.nombre_visible, self.jefe.rol.nombre)

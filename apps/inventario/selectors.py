@@ -96,11 +96,12 @@ def cajas_para_despacho():
     ).order_by("pk")
 
 
-def despachos_con_totales():
+def despachos_con_totales(especie=None):
+    filtro = Q(detalles__caja__lote_produccion__especie=especie) if especie else Q()
     return Despacho.objects.select_related("registrado_por").annotate(
-        cantidad_cajas=Count("detalles"),
-        peso_conocido=Coalesce(Sum("detalles__caja__peso_neto_kg"), Value(Decimal("0.00"))),
-        cajas_sin_peso=Count("detalles", filter=Q(detalles__caja__peso_neto_kg__isnull=True)),
+        cantidad_cajas=Count("detalles", filter=filtro),
+        peso_conocido=Coalesce(Sum("detalles__caja__peso_neto_kg", filter=filtro), Value(Decimal("0.00"))),
+        cajas_sin_peso=Count("detalles", filter=filtro & Q(detalles__caja__peso_neto_kg__isnull=True)),
     ).order_by("-fecha_hora_despacho", "-pk")
 
 

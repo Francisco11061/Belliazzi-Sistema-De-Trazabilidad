@@ -2,7 +2,8 @@
 {% load i18n %}
 {% block title %}Lote {{ lote.codigo_visible }} | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Producto terminado / Detalle del lote{% endblock %}
-{% block content %}{% language "es" %}
+{% block content %}
+{% include "components/_enlace_integral.html" with tipo="lote" registro=lote %}{% language "es" %}
 <div class="w-full min-w-0 w-full space-y-6">
     <header><h1 class="mt-4 text-2xl font-semibold md:text-3xl">Lote {{ lote.codigo_visible }}</h1><p class="mt-2 text-lg font-medium">{{ lote.especie.nombre }}</p><p class="mt-1 text-sm text-slate-600">{{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p></header>
     <section class="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 sm:p-6">

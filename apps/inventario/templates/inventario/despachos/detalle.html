@@ -2,7 +2,8 @@
 {% load i18n %}
 {% block title %}Despacho #{{ despacho.pk }} | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Inventario / Despachos / Detalle{% endblock %}
-{% block content %}{% language "es" %}
+{% block content %}
+{% include "components/_enlace_integral.html" with tipo="despacho" registro=despacho %}{% language "es" %}
 <div class="w-full min-w-0 w-full space-y-6"><header><h1 class="mt-4 text-2xl font-semibold md:text-3xl">Despacho #{{ despacho.pk }}</h1></header>
 <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">{% include "inventario/despachos/_datos.html" %}{% if despacho.observaciones %}<h2 class="mt-6 font-semibold">Observaciones</h2><p class="mt-2 whitespace-pre-wrap break-words text-sm">{{ despacho.observaciones }}</p>{% endif %}</section>
 <section class="rounded-2xl border border-cyan-100 bg-cyan-50 p-5"><p>{{ despacho.cantidad_cajas }} caja{{ despacho.cantidad_cajas|pluralize }}</p><p class="mt-2 text-2xl font-semibold">{% if despacho.cajas_sin_peso %}Peso conocido: {% else %}Peso total: {% endif %}{{ despacho.peso_conocido|floatformat:2 }} kg</p>{% if despacho.cajas_sin_peso %}<p class="mt-2 text-sm">{{ despacho.cajas_sin_peso }} caja{{ despacho.cajas_sin_peso|pluralize }} sin peso registrado; el total es parcial.</p>{% endif %}</section>

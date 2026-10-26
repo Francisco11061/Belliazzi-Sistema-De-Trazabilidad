@@ -1,0 +1,11 @@
+{% load static %}
+<fieldset data-secuencia class="mt-5 min-w-0 rounded-xl border border-slate-200 p-4">
+    <legend class="px-2 font-semibold">Operaciones en orden de ejecución</legend>
+    {{ secuencia.management_form }}
+    {% for error in secuencia.non_form_errors %}<p role="alert" class="mb-3 text-red-800">{{ error }}</p>{% endfor %}
+    <div data-filas class="space-y-3">{% for fila in secuencia %}{% include 'trazabilidad/rutas/_fila.html' %}{% endfor %}</div>
+    <template data-vacia>{% include 'trazabilidad/rutas/_fila.html' with fila=secuencia.empty_form %}</template>
+    <button type="button" data-agregar class="mt-4 min-h-11 rounded-lg border border-cyan-700 px-4 py-2 font-medium text-cyan-700">Agregar operación</button>
+    <p aria-live="polite" data-resumen class="mt-3 break-words text-sm text-slate-600"></p>
+</fieldset>
+<script src="{% static 'trazabilidad/secuencia.js' %}" defer></script>

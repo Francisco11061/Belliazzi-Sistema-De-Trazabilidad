@@ -13,7 +13,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import CambioContrasenaForm, ContrasenaTemporalForm, CrearUsuarioForm, LoginUsuarioForm, RolUsuarioForm
 from .models import Rol, Usuario
-from .permisos import jefe_requerido
+from .permisos import jefe_requerido, tiene_rol
 from . import services
 
 
@@ -22,6 +22,9 @@ class LoginUsuarioView(LoginView):
     template_name = "usuarios/login.html"
     redirect_authenticated_user = True
     next_page = reverse_lazy("usuarios:inicio")
+
+    def get_default_redirect_url(self):
+        return reverse_lazy("reportes:dashboard") if tiene_rol(self.request.user, "JEFE") else super().get_default_redirect_url()
 
     def get_success_url(self):
         if self.request.user.cambio_contrasena_pendiente and not self.request.user.is_superuser:
@@ -35,6 +38,8 @@ class LogoutUsuarioView(LogoutView):
 
 @login_required(login_url="usuarios:login")
 def inicio(request):
+    if tiene_rol(request.user, "JEFE"):
+        return redirect("reportes:dashboard")
     return render(request, "usuarios/inicio.html")
 
 

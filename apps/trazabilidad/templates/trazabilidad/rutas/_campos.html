@@ -1,0 +1,9 @@
+{% for error in form.non_field_errors %}<p role="alert" class="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-red-800">{{ error }}</p>{% endfor %}
+<div class="grid min-w-0 gap-4 sm:grid-cols-2 [&_input:not([type=checkbox])]:w-full [&_input:not([type=checkbox])]:min-h-11 [&_input]:rounded-lg [&_input]:border-slate-300 [&_input[type=checkbox]]:size-5 [&_select]:w-full [&_select]:min-h-11 [&_select]:rounded-lg [&_select]:border-slate-300 [&_textarea]:w-full [&_textarea]:rounded-lg [&_textarea]:border-slate-300">
+{% for campo in form %}
+    {% if campo.field.widget.input_type == 'checkbox' %}
+        <div><label for="{{ campo.id_for_label }}" class="inline-flex min-h-11 items-center gap-3 text-sm font-medium">{{ campo }} {{ campo.label }}</label>{% if campo.errors %}<div role="alert" class="text-sm text-red-700">{{ campo.errors }}</div>{% endif %}</div>
+    {% else %}{% include 'trazabilidad/recepciones/_campo.html' %}{% endif %}
+    {% if campo.help_text %}<p class="text-sm text-slate-600">{{ campo.help_text }}</p>{% endif %}
+{% endfor %}
+</div>

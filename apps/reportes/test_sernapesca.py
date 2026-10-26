@@ -38,7 +38,7 @@ class ReporteSernapescaTests(DatosDashboard, TestCase):
             for nombre in ("sernapesca", "descargar_sernapesca"):
                 with self.subTest(usuario=usuario.username, ruta=nombre):
                     self.assertEqual(self.client.get(self.url(nombre)).status_code, 200 if permitido else 403)
-            inicio = self.client.get(reverse("usuarios:inicio")).content.decode()
+            inicio = self.client.get(reverse("usuarios:inicio"), follow=True).content.decode()
             self.assertEqual(f'href="{self.url("sernapesca")}"' in inicio, permitido)
 
     def test_anonimo_y_post(self):

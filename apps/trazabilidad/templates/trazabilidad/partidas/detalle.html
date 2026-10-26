@@ -4,6 +4,7 @@
 {% block page_title %}Seguimiento de proceso / Detalle{% endblock %}
 {% block breadcrumbs %}{% url 'trazabilidad:lista_partidas' as destino %}{% include 'components/_breadcrumbs.html' with grupo='Producción' pagina='Seguimiento de proceso' actual='Detalle' %}{% endblock %}
 {% block content %}
+{% include "components/_enlace_integral.html" with tipo="seguimiento" registro=partida %}
 {% language "es" %}
 <div class="w-full min-w-0 w-full space-y-6">
     <header>
@@ -45,8 +46,8 @@
         </ul>
     </section>
     {% if estancias or eventos %}
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <h2 class="text-lg font-semibold">Actividad registrada</h2>
+    <details class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <summary class="min-h-11 cursor-pointer text-lg font-semibold">Actividad registrada</summary>
         <div class="mt-4 space-y-4 text-sm">
         {% for estancia in estancias %}
             <article class="rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -57,9 +58,12 @@
         {% endfor %}
         {% for evento in eventos %}<article class="rounded-lg border border-cyan-100 bg-cyan-50 p-4"><h3 class="font-medium">{{ evento.tipo_proceso.nombre }}</h3><p class="mt-2 text-slate-600">Inicio: {{ evento.fecha_hora_inicio|date:"d/m/Y H:i" }} · {{ evento.iniciado_por.get_full_name|default:evento.iniciado_por.username }}</p>{% if evento.fecha_hora_termino %}<p class="mt-1 text-slate-600">Término: {{ evento.fecha_hora_termino|date:"d/m/Y H:i" }} · {% if evento.finalizado_por %}{{ evento.finalizado_por.get_full_name|default:evento.finalizado_por.username }}{% else %}Responsable no documentado{% endif %}</p>{% endif %}</article>{% endfor %}
         </div>
-    </section>
+    </details>
     {% endif %}
-    {% include "trazabilidad/partidas/_historial_mediciones.html" %}
+    <details class="rounded-2xl border border-slate-200 bg-white p-5">
+        <summary class="min-h-11 cursor-pointer font-semibold">Consultar pesajes y mermas registrados</summary>
+        {% include "trazabilidad/partidas/_historial_mediciones.html" %}
+    </details>
 </div>
 {% endlanguage %}
 {% endblock %}

@@ -44,12 +44,12 @@ class AutenticacionUsuarioTests(TestCase):
             f"{reverse('usuarios:login')}?next={reverse('usuarios:inicio')}",
         )
 
-    def test_login_valido_redirige_a_inicio(self):
+    def test_login_valido_jefe_redirige_a_dashboard(self):
         response = self.client.post(
             reverse("usuarios:login"),
             {"username": "jefe_prueba", "password": "clave-prueba-123"},
         )
-        self.assertRedirects(response, reverse("usuarios:inicio"))
+        self.assertRedirects(response, reverse("reportes:dashboard"))
         self.assertEqual(self.client.session["_auth_user_id"], str(self.usuario.pk))
 
     def test_login_invalido_no_autentica(self):
@@ -99,21 +99,20 @@ class AutenticacionUsuarioTests(TestCase):
         response = self.client.post(acceso.url, datos)
         self.assertEqual(response.context["next"], destino)
         datos["password"] = "clave-prueba-123"
-        self.assertRedirects(self.client.post(acceso.url, datos), destino)
+        self.assertRedirects(self.client.post(acceso.url, datos), destino, fetch_redirect_response=False)
 
     def test_login_sigue_rechazando_next_externo(self):
         response = self.client.post(reverse("usuarios:login"), {
             "username": "jefe_prueba", "password": "clave-prueba-123", "next": "https://example.com/",
         })
-        self.assertRedirects(response, reverse("usuarios:inicio"))
+        self.assertRedirects(response, reverse("reportes:dashboard"))
 
     def test_usuario_autenticado_puede_ver_inicio(self):
         self.assertTrue(
             self.client.login(username="jefe_prueba", password="clave-prueba-123")
         )
         response = self.client.get(reverse("usuarios:inicio"))
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "usuarios/inicio.html")
+        self.assertRedirects(response, reverse("reportes:dashboard"))
 
     def test_logout_por_post(self):
         self.assertTrue(

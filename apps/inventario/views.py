@@ -27,6 +27,8 @@ def inventario(request):
                 cajas = cajas.filter(**{lookup: valor})
         if filtro.cleaned_data["camara"]:
             cajas = cajas.filter(estado_inventario="ALMACENADA")
+        if filtro.cleaned_data["sin_peso"]:
+            cajas = cajas.filter(peso_neto_kg__isnull=True)
     else:
         cajas = cajas.none()
     resumen = resumen_inventario(cajas)
@@ -85,6 +87,15 @@ def lista_despachos(request):
     filtro = DespachoFiltroForm(request.GET)
     if filtro.is_valid():
         datos = filtro.cleaned_data
+        if datos["especie"]:
+            from .models import DetalleDespacho
+            despachos = despachos_con_totales(especie=datos["especie"]).filter(pk__in=DetalleDespacho.objects.filter(
+                caja__lote_produccion__especie=datos["especie"]).values("despacho_id"))
+        from datetime import datetime, time, timedelta
+        if datos["desde"]:
+            despachos = despachos.filter(fecha_hora_despacho__gte=timezone.make_aware(datetime.combine(datos["desde"], time.min)))
+        if datos["hasta"]:
+            despachos = despachos.filter(fecha_hora_despacho__lt=timezone.make_aware(datetime.combine(datos["hasta"] + timedelta(days=1), time.min)))
         if datos["destinatario"]:
             despachos = despachos.filter(Q(destino__icontains=datos["destinatario"]) | Q(pais_destino__icontains=datos["destinatario"]))
         if datos["tipo_destino"]:

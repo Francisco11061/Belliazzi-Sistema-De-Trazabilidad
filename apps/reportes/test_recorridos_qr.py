@@ -31,8 +31,12 @@ class RecorridosQRTests(DatosQR, TestCase):
     def test_inicio_con_acceso_directo_a_registro_y_rutas_por_perfil(self):
         for usuario in (self.usuario,self.encargada,self.jefe):
             self.client.force_login(usuario)
-            respuesta=self.client.get(reverse('usuarios:inicio'))
-            self.assertContains(respuesta, reverse('producto_terminado:seleccionar_lote_caja'))
+            respuesta=self.client.get(reverse('usuarios:inicio'), follow=True)
+            if usuario == self.jefe:
+                self.assertEqual(respuesta.redirect_chain, [(reverse('reportes:dashboard'), 302)])
+                self.assertContains(respuesta, reverse('producto_terminado:lista_cajas'))
+            else:
+                self.assertContains(respuesta, reverse('producto_terminado:seleccionar_lote_caja'))
             self.assertContains(respuesta, reverse('trazabilidad:lista_partidas'))
             self.assertContains(respuesta, reverse('inventario:lista'))
             if usuario != self.usuario:

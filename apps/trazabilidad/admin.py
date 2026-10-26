@@ -91,7 +91,7 @@ class TipoProcesoAdmin(admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         if obj and (obj.codigo in {"PROCESAMIENTO", "DESCABEZADO", "FILETEO", "EMPARRILLADO"}
-                    or obj.etapas_ruta.exists() or obj.eventos.exists()):
+                    or obj.tiene_referencias()):
             return ("codigo", "nombre")
         return ()
 
@@ -101,7 +101,7 @@ class EtapasRutaFormSet(BaseInlineFormSet):
         super().clean()
         if any(self.errors):
             return
-        if self.instance.pk and self.instance.partidas.exists():
+        if self.instance.pk and self.instance.tiene_historial():
             if any(form.has_changed() for form in self.forms):
                 raise ValidationError("Las etapas de una ruta utilizada no pueden modificarse.")
             return
@@ -117,13 +117,13 @@ class EtapaRutaProcesoInline(admin.TabularInline):
     fields = ("orden", "tipo_proceso")
 
     def get_readonly_fields(self, request, obj=None):
-        return self.fields if obj and obj.partidas.exists() else ()
+        return self.fields if obj and obj.tiene_historial() else ()
 
     def has_add_permission(self, request, obj=None):
-        return super().has_add_permission(request, obj) and not (obj and obj.partidas.exists())
+        return super().has_add_permission(request, obj) and not (obj and obj.tiene_historial())
 
     def has_delete_permission(self, request, obj=None):
-        return super().has_delete_permission(request, obj) and not (obj and obj.partidas.exists())
+        return super().has_delete_permission(request, obj) and not (obj and obj.tiene_historial())
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "tipo_proceso":
@@ -148,10 +148,10 @@ class RutaProcesoAdmin(admin.ModelAdmin):
         return objeto
 
     def get_readonly_fields(self, request, obj=None):
-        return ("especie", "nombre", "descripcion") if obj and obj.partidas.exists() else ()
+        return ("especie", "nombre", "descripcion") if obj and obj.tiene_historial() else ()
 
     def has_delete_permission(self, request, obj=None):
-        return super().has_delete_permission(request, obj) and not (obj and obj.partidas.exists())
+        return super().has_delete_permission(request, obj) and not (obj and obj.tiene_historial())
 
 
 @admin.register(EtapaRutaProceso)
@@ -169,10 +169,10 @@ class EtapaRutaProcesoAdmin(admin.ModelAdmin):
         return objeto
 
     def has_change_permission(self, request, obj=None):
-        return super().has_change_permission(request, obj) and not (obj and obj.ruta.partidas.exists())
+        return super().has_change_permission(request, obj) and not (obj and obj.ruta.tiene_historial())
 
     def has_delete_permission(self, request, obj=None):
-        return super().has_delete_permission(request, obj) and not (obj and obj.ruta.partidas.exists())
+        return super().has_delete_permission(request, obj) and not (obj and obj.ruta.tiene_historial())
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "tipo_proceso":

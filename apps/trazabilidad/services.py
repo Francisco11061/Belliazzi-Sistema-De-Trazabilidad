@@ -447,7 +447,7 @@ def enviar_a_tunel(*, partida, unidad, usuario):
     partida = _bloquear_partida(partida, usuario)
     general, etapas, eventos = _contexto_etapas(partida)
     if any(e.pk not in eventos or eventos[e.pk].fecha_hora_termino is None for e in etapas):
-        raise ValidationError("Complete todas las etapas, incluido Emparrillado, antes de enviar al túnel.")
+        raise ValidationError("Complete todas las etapas de la ruta antes de enviar al túnel.")
     unidad = UnidadFrio.objects.select_for_update().filter(pk=unidad.pk).first()
     if unidad is None or not unidad.activo or unidad.tipo != UnidadFrio.TipoUnidad.TUNEL_CONGELADO:
         raise ValidationError("Seleccione un túnel de congelado activo.")

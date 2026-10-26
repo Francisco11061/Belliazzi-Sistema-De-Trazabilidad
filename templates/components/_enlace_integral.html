@@ -1,0 +1,3 @@
+{% if user.is_superuser or user.rol.codigo == 'JEFE' or user.rol.codigo == 'ENCARGADA' %}
+<a href="{% url 'trazabilidad:ficha_integral' tipo registro.pk %}" class="my-3 inline-flex min-h-11 items-center rounded-lg border border-cyan-700 px-4 py-2 text-sm font-semibold text-cyan-700 focus-visible:outline-2 focus-visible:outline-cyan-700">Ver ficha integral</a>
+{% endif %}

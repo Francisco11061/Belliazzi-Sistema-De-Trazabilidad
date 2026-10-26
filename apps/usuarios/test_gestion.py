@@ -56,7 +56,7 @@ class GestionUsuariosTests(TestCase):
                 self.client.force_login(usuario)
                 response = self.client.get(self.url("lista_usuarios"))
                 self.assertEqual(response.status_code, 200 if permitido else 403)
-                inicio = self.client.get(self.url("inicio"))
+                inicio = self.client.get(self.url("inicio"), follow=True)
                 enlace = f'href="{self.url("lista_usuarios")}"'
                 if permitido:
                     self.assertContains(inicio, enlace)

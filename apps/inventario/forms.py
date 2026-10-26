@@ -20,6 +20,7 @@ class DestinoForm(forms.Form):
 
 
 class InventarioFiltroForm(forms.Form):
+    sin_peso = forms.ChoiceField(required=False, label="Peso documentado", choices=[("", "Todos"), ("on", "Sin peso documentado")])
     especie = forms.ModelChoiceField(queryset=Especie.objects.all(), required=False, empty_label="Todas las especies")
     lote = LoteChoiceField(queryset=LoteProduccion.objects.all().order_by("codigo_lote"), required=False, empty_label="Todos los lotes")
     camara = forms.ModelChoiceField(queryset=UnidadFrio.objects.filter(tipo=UnidadFrio.TipoUnidad.ALMACENAMIENTO), required=False, label="Cámara", empty_label="Todas las cámaras")
@@ -57,9 +58,21 @@ class DespachoForm(forms.ModelForm):
 
 
 class DespachoFiltroForm(forms.Form):
+    especie = forms.ModelChoiceField(queryset=Especie.objects.all(), required=False, empty_label="Todas las especies")
+    desde = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    hasta = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
     destinatario = forms.CharField(required=False, max_length=200, label="Destinatario o país")
     tipo_destino = forms.ChoiceField(required=False, choices=[("", "Todos los destinos"), *Despacho.TipoDestino.choices])
     fecha = forms.DateField(required=False, widget=forms.DateInput(attrs={"type":"date"}))
+
+    def clean(self):
+        from datetime import date
+        datos = super().clean()
+        if datos.get("hasta") == date.max or datos.get("fecha") == date.max:
+            raise forms.ValidationError("La fecha está fuera del rango admitido.")
+        if datos.get("desde") and datos.get("hasta") and datos["desde"] > datos["hasta"]:
+            raise forms.ValidationError("Hasta debe ser igual o posterior a Desde.")
+        return datos
 
 
 class BajaCajaForm(forms.Form):

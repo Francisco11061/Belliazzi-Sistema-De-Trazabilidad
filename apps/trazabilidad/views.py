@@ -256,7 +256,7 @@ def lista_partidas(request):
     if vista not in ("tarjetas", "tabla"):
         vista = vista_inicial
     categoria = request.GET.get("categoria", "atender")
-    if categoria not in dict(CATEGORIAS):
+    if categoria not in dict(CATEGORIAS) and categoria != "todos":
         categoria = "atender"
     partidas = seguimientos_operativos()
     filtro = PartidaFiltroForm(request.GET)
@@ -280,7 +280,10 @@ def lista_partidas(request):
         parametros.pop("page", None)
         categorias.append({"codigo": codigo, "nombre": nombre, "cantidad": cantidades.get(codigo, 0),
                            "url": "?" + parametros.urlencode(), "activa": codigo == categoria})
-    pagina = Paginator(partidas.filter(categoria_operativa=categoria), 10).get_page(request.GET.get("page"))
+    seleccion = partidas.filter(estado="ACTIVA", tiene_hijas=False) if categoria == "todos" else partidas.filter(categoria_operativa=categoria)
+    if categoria == "todos":
+        categorias.append({"codigo": "todos", "nombre": "Situación actual", "cantidad": seleccion.count(), "url": "?" + request.GET.urlencode(), "activa": True})
+    pagina = Paginator(seleccion, 10).get_page(request.GET.get("page"))
     pagina.object_list = [presentar_partida(p) for p in pagina.object_list]
     for partida in pagina.object_list:
         partida.puede_asignar_lote = puede_asignar_lote(partida)

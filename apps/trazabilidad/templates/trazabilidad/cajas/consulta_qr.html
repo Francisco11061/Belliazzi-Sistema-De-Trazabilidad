@@ -2,7 +2,8 @@
 {% load i18n %}
 {% block title %}Trazabilidad de Caja #{{ caja.pk }} | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Producto terminado / Consulta QR{% endblock %}
-{% block content %}{% language "es" %}
+{% block content %}
+{% include "components/_enlace_integral.html" with tipo="caja" registro=caja %}{% language "es" %}
 <div class="w-full min-w-0 w-full space-y-6">
     <header>
         <a href="{% url 'producto_terminado:detalle_caja' caja.pk %}" class="text-sm font-medium text-cyan-700 hover:underline">Ver detalle</a>
@@ -30,7 +31,9 @@
                 <a href="{% url 'trazabilidad:detalle_partida' partida.pk %}" class="rounded-lg border border-cyan-700 px-4 py-3 font-medium text-cyan-700 hover:bg-cyan-50">Ver seguimiento</a>
                 {% if puede_ver_recepcion %}<a href="{% url 'trazabilidad:detalle_recepcion' detalle.recepcion_id %}" class="rounded-lg border border-slate-300 px-4 py-3 text-slate-700 hover:bg-slate-50">Ver recepción</a>{% endif %}
             </div>
-            <div class="border-t border-slate-200 pt-5">
+            <details class="border-t border-slate-200 pt-5">
+                <summary class="min-h-11 cursor-pointer font-semibold">Consultar historial del seguimiento</summary>
+            <div>
                 <h4 class="font-semibold">Procesamiento</h4><p class="mt-2 text-sm text-slate-600">Ruta: {{ partida.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p>
                 <ul class="mt-4 space-y-3 text-sm">
                     {% for evento in partida.eventos_qr %}<li class="rounded-lg border border-cyan-100 bg-cyan-50 p-4"><p class="font-medium">{{ evento.tipo_proceso.nombre }}</p><p class="mt-2">Inicio: {{ evento.fecha_hora_inicio|date:"d/m/Y H:i" }}</p><p class="mt-1">{% if evento.fecha_hora_termino %}Término: {{ evento.fecha_hora_termino|date:"d/m/Y H:i" }}{% else %}En curso · sin término registrado{% endif %}</p></li>{% empty %}<li class="text-slate-600">Sin etapas documentadas.</li>{% endfor %}
@@ -42,6 +45,7 @@
                 </ul>
             </div>
             <div><h4 class="font-semibold">Peso postproceso del seguimiento</h4><ul class="mt-3 space-y-2 text-sm">{% for pesaje in partida.postprocesos_qr %}<li><strong>{{ pesaje.peso_kg|floatformat:2 }} kg</strong> · {{ pesaje.fecha_hora_evento|date:"d/m/Y H:i" }}</li>{% empty %}<li class="text-slate-600">Peso postproceso no documentado.</li>{% endfor %}</ul></div>
+            </details>
         </article>
         {% endwith %}{% empty %}<p class="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Sin producto asignado registrado.</p>{% endfor %}
     </section>

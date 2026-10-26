@@ -242,7 +242,12 @@ def resumen_procesamiento(partida):
             "puede_finalizar": partida.situacion == "EN_PROCESO" and evento is not None and not completa,
         })
         anteriores_completas = anteriores_completas and completa
-    completa = bool(etapas) and anteriores_completas and etapas[-1].tipo_proceso.codigo == "EMPARRILLADO"
+    tipos = {e.pk: e.tipo_proceso_id for e in etapas}
+    especificos = [e for e in eventos if e != general]
+    consistente = (len(por_etapa) == len(especificos)
+                  and all(e.etapa_ruta_id in tipos and tipos[e.etapa_ruta_id] == e.tipo_proceso_id
+                          for e in especificos))
+    completa = bool(etapas) and anteriores_completas and consistente
     return {
         "general": general, "etapas_proceso": filas, "ruta_completa": completa,
         "puede_enviar_tunel": completa and partida.situacion == "EN_PROCESO",

@@ -3,6 +3,7 @@ from django.urls import reverse
 from apps.inventario.models import Despacho
 from apps.usuarios.models import Rol, Usuario
 from apps.trazabilidad.test_qr_cajas import DatosQR
+from apps.trazabilidad.services_rutas import solicitar_ruta
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
@@ -12,6 +13,8 @@ class MatrizPermisosTests(DatosQR, TestCase):
         self.encargada = Usuario.objects.create_user(username="matriz_enc", rol=Rol.objects.get(codigo="ENCARGADA"))
         self.cuenta = Usuario.objects.create_user(username="matriz_cuenta", rol=Rol.objects.get(codigo="OPERARIA"))
         self.despacho = Despacho.objects.create(fecha_hora_despacho=self.registro.fecha_armado, registrado_por=self.jefe)
+        self.solicitud = solicitar_ruta(usuario=self.usuario, especie=self.especie,
+                                       operaciones=[self.tipos["FILETEO"].pk])
 
     def matriz(self):
         p, l, c = self.partida.pk, self.lote.pk, self.registro.pk
@@ -44,6 +47,16 @@ class MatrizPermisosTests(DatosQR, TestCase):
             *[(n, [self.cuenta.pk], "get") for n in ("detalle_usuario", "editar_rol", "reset_contrasena")],
             *[(n, [self.cuenta.pk], "post") for n in ("desactivar_usuario", "reactivar_usuario")]])
         grupo("usuarios", ("OPERARIA", "ENCARGADA", "JEFE"), [(n, [], "get") for n in ("inicio", "cambiar_contrasena")])
+        grupo("trazabilidad", ("OPERARIA", "ENCARGADA", "JEFE"), [
+            ("seleccionar_operaciones", [p], "get"), ("solicitudes_ruta", [], "get")])
+        grupo("trazabilidad", ("ENCARGADA", "JEFE"), [
+            ("consulta_integral", [], "get"), ("ficha_integral", ["caja", c], "get")])
+        grupo("trazabilidad", ("JEFE",), [
+            ("rutas", [], "get"), ("nueva_ruta", [], "get"), ("operaciones", [], "get"),
+            ("editar_ruta", [self.ruta.pk], "get"), ("duplicar_ruta", [self.ruta.pk], "get"),
+            ("estado_ruta", [self.ruta.pk], "post"),
+            ("editar_operacion", [self.tipos["FILETEO"].pk], "get"),
+            ("resolver_solicitud", [self.solicitud.pk], "get")])
         return filas
 
     def test_matriz_completa_por_perfil_y_anonimo(self):
@@ -56,6 +69,8 @@ class MatrizPermisosTests(DatosQR, TestCase):
             for nombre, args, metodo, roles in self.matriz():
                 with self.subTest(vista=nombre, rol=codigo, metodo=metodo):
                     esperado = 302 if not usuario else (403 if codigo not in roles else (302 if metodo == "post" else 200))
+                    if usuario and codigo == "JEFE" and nombre == "usuarios:inicio":
+                        esperado = 302
                     self.assertEqual(getattr(self.client, metodo)(reverse(nombre, args=args)).status_code, esperado)
 
     def test_matriz_cubre_todas_las_urls_funcionales(self):
@@ -78,7 +93,7 @@ class MatrizPermisosTests(DatosQR, TestCase):
     def test_nombres_visibles_en_encabezado_y_formulario(self):
         for usuario, nombre in ((self.usuario,'Operario'), (self.encargada,'Encargada de registro'), (self.jefe,'Jefe / Administrador')):
             self.client.force_login(usuario)
-            self.assertContains(self.client.get(reverse('usuarios:inicio')), nombre)
+            self.assertContains(self.client.get(reverse('usuarios:inicio'), follow=True), nombre)
         respuesta = self.client.get(reverse('usuarios:crear_usuario'))
         for nombre in ('Operario', 'Encargada de registro', 'Jefe / Administrador'):
             self.assertContains(respuesta,nombre)

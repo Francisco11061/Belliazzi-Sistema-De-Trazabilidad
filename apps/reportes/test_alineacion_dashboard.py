@@ -26,10 +26,10 @@ class AlineacionDashboardTests(DatosDashboard, TestCase):
         self.caja(None)
         datos = self.datos()
         self.assertEqual(datos["recibido"], dict(recepciones=1, kg=Decimal("100")))
-        self.assertEqual(datos["postproceso"], dict(registros=1, inicial=Decimal("100"), final=Decimal("110"),
-                                                   superiores=1, rendimiento=Decimal("110.00")))
+        self.assertEqual(datos["postproceso"], dict(registros=0, inicial=Decimal("0"), final=Decimal("0"),
+                                                   superiores=0, rendimiento=None, incompletos=1))
         self.assertEqual(datos["producidas"], dict(cajas=2, peso_conocido=Decimal("7.50"), sin_peso=1))
-        self.assertEqual(datos["colores"]["post"]["estado"], "REVISION")
+        self.assertEqual(datos["postproceso"]["incompletos"], 1)
         self.assertEqual(self.datos(especie=self.otra_especie)["postproceso"]["registros"], 0)
 
     def test_especie_aplica_a_indicadores_actuales_periodo_y_alertas(self):

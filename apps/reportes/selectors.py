@@ -132,6 +132,11 @@ def alertas_frio(ahora, limite=10, especie=None):
     elementos, total = [], 0
     for modelo, relacion, tipo in fuentes:
         abiertas = _especie(modelo.objects.filter(condicion, fecha_hora_salida__isnull=True), relacion, especie)
+        if tipo == "caja":
+            abiertas = abiertas.filter(caja_id__in=cajas_disponibles().values("pk"))
+        else:
+            padres = PartidaProceso.objects.filter(partida_padre__isnull=False).values("partida_padre_id")
+            abiertas = abiertas.filter(partida__estado="ACTIVA").exclude(partida_id__in=padres)
         total += abiertas.count()
         for estancia in abiertas.select_related("unidad_frio", relacion).order_by("fecha_hora_ingreso", "pk")[:limite]:
             unidad = estancia.unidad_frio
@@ -180,14 +185,18 @@ def indicadores_periodo(periodo, especie=None):
                                   kg=Sum("peso_recepcion_kg", default=Decimal("0.00")))
     primero = Pesaje.objects.filter(partida_id=OuterRef("pk"), tipo=Pesaje.POSTPROCESO).order_by("fecha_hora_evento", "pk")
     partidas = _especie(PartidaProceso.objects.all(), "detalle_recepcion__especie", especie).annotate(
+        numero_pesos=Subquery(primero.order_by().values("partida_id").annotate(n=Count("pk")).values("n")),
         peso_final=Subquery(primero.values("peso_kg")[:1]), fecha_pesaje=Subquery(primero.values("fecha_hora_evento")[:1]))
-    post = _en_periodo(partidas, "fecha_pesaje", periodo).aggregate(
+    partidas = partidas.exclude(pk__in=PartidaProceso.objects.filter(partida_padre__isnull=False).values("partida_padre_id")).exclude(estado="DIVIDIDA")
+    casos = _en_periodo(partidas, "fecha_pesaje", periodo)
+    post = casos.filter(numero_pesos=1).aggregate(
         registros=Count("pk"), inicial=Sum("cantidad_inicial_kg", default=Decimal("0.00")),
         final=Sum("peso_final", default=Decimal("0.00")),
         superiores=Count("pk", filter=Q(peso_final__gt=F("cantidad_inicial_kg"))))
+    post["incompletos"] = casos.filter(numero_pesos__gt=1).count()
     post["rendimiento"] = (post["final"] / post["inicial"] * 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if post["inicial"] > 0 else None
-    producidas = _especie(Caja.objects.all(), "lote_produccion__especie", especie).filter(
-        lote_produccion__fecha_elaboracion__range=(periodo["desde"], periodo["hasta"])).aggregate(**totales_stock())
+    producidas = _en_periodo(_especie(Caja.objects.all(), "lote_produccion__especie", especie),
+                             "fecha_armado", periodo).aggregate(**totales_stock())
     estancias = _en_periodo(_especie(EstanciaPartida.objects.filter(fecha_hora_salida__isnull=False),
                                     "partida__detalle_recepcion__especie", especie), "fecha_hora_salida", periodo)
     frios = {f["unidad_frio__tipo"]: f for f in estancias.order_by().values("unidad_frio__tipo").annotate(
@@ -231,13 +240,21 @@ def dashboard_operacional(valor="semana", ahora=None, desde=None, hasta=None, es
             if (desde, hasta) == (candidato["desde"], candidato["hasta"]):
                 periodo = candidato
                 break
-    inventario = resumen_inventario(_especie(cajas_con_inventario(), "lote_produccion__especie", especie))
+    cajas = _especie(cajas_con_inventario(), "lote_produccion__especie", especie)
+    inventario = resumen_inventario(cajas)
     especies = list(inventario["por_especie"].order_by("-peso_conocido", "lote_produccion__especie__nombre"))
     serie = serie_despachos(periodo, especie)
     mermas, bajas = mermas_y_bajas(periodo, especie)
     recibido, post, producidas, tiempos = indicadores_periodo(periodo, especie)
     frio = alertas_frio(ahora, especie=especie)
-    return dict(actualizado=ahora, periodo=periodo, periodos=PERIODOS,
+    from .control_operativo import control_operativo, enlace
+    control = control_operativo(cajas=cajas, inventario=inventario, periodo=periodo, ahora=ahora, especie=especie, frio=frio)
+    for fila in especies:
+        fila["porcentaje"] = fila["peso_conocido"] / inventario["stock"]["peso_conocido"] * 100 if inventario["stock"]["peso_conocido"] else None
+        fila["url"] = enlace("inventario:lista", estado="ALMACENADA", especie=fila["lote_produccion__especie_id"])
+    dona = especies[:6]
+    otras = especies[6:]
+    datos = dict(actualizado=ahora, periodo=periodo, periodos=PERIODOS,
                 stock=inventario["stock"], pendientes=inventario["pendientes"], especies=especies,
                 despachos_hoy=despachos_del_dia(ahora), serie=serie,
                 cajas_periodo=sum(f["cajas"] for f in serie),
@@ -251,6 +268,28 @@ def dashboard_operacional(valor="semana", ahora=None, desde=None, hasta=None, es
                     "especies": {"labels": [f["lote_produccion__especie__nombre"] for f in especies],
                                  "valores": [f["peso_conocido"] for f in especies]},
                 })
+    datos.update(control)
+    datos["graficos"]["especies"] = {
+        "labels": [f["lote_produccion__especie__nombre"] for f in dona] + (["Otras"] if otras else []),
+        "valores": [f["peso_conocido"] for f in dona] + ([sum(f["peso_conocido"] for f in otras)] if otras else []),
+    }
+    for clave, filas, nombre in (("ranking", control["ranking"], "caja__lote_produccion__especie__nombre"),
+                                 ("camaras", control["camaras"], "nombre_unidad_abierta")):
+        datos["graficos"][clave] = dict(labels=[f[nombre] for f in filas], valores=[f["peso_conocido"] for f in filas],
+            cajas=[f["cajas"] for f in filas], sin_peso=[f["sin_peso"] for f in filas])
+    datos["graficos"]["despachos"]["sin_peso"] = [f["sin_peso"] for f in serie]
+    datos["graficos"]["despachos"]["cajas"] = [f["cajas"] for f in serie]
+    datos["paneles_graficos"] = []
+    for clave, titulo, ambito, filas, campo, url in (
+        ("especies", "Distribución del stock por especie", "Actual", especies, "lote_produccion__especie__nombre", control["stock_url"]),
+        ("ranking", "Top 5 de especies despachadas", "Período", control["ranking"], "caja__lote_produccion__especie__nombre", control["despachos_url"]),
+        ("camaras", "Stock por cámara", "Actual", control["camaras"], "nombre_unidad_abierta", control["stock_url"]),
+        ("despachos", "Evolución de despachos", "Período", serie, "etiqueta", control["despachos_url"]),
+    ):
+        datos["paneles_graficos"].append(dict(clave=clave, titulo=titulo, ambito=ambito, url=url,
+            tiene_peso=any(f["peso_conocido"] > 0 for f in filas),
+            filas=[dict(f, etiqueta=f[campo]) for f in filas]))
+    return datos
 
 
 def _rango_reporte(queryset, campo, inicio, fin, fecha_sin_hora=False):

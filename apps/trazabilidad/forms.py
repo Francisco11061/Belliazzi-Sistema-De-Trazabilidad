@@ -3,9 +3,10 @@ from decimal import Decimal
 from django import forms
 from django.contrib.auth import get_user_model
 from django.forms import BaseFormSet, formset_factory
+from django.db.models import Prefetch
 from django.utils import timezone
 
-from .models import Correccion, Especie, UnidadFrio, RutaProceso, Pesaje, MermaProceso
+from .models import Correccion, Especie, UnidadFrio, RutaProceso, EtapaRutaProceso, Pesaje, MermaProceso
 from .selectors import SITUACIONES
 from .models import LoteProduccion, ConsumoLote
 from .selectors import partidas_para_lote
@@ -267,13 +268,26 @@ class EnviarMantencionForm(CantidadPartidaForm):
             self.fields["unidad"].initial = unidades[0].pk
 
 
+class RutaHabitualChoice(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        return obj.nombre + " — " + " → ".join(e.tipo_proceso.nombre for e in obj.etapas.all())
+
+
 class SeleccionRutaMixin:
     def configurar_rutas(self, partida):
         rutas = RutaProceso.objects.filter(
             activo=True, especie_id=partida.detalle_recepcion.especie_id,
-        ).select_related("especie")
-        self.fields["ruta"].queryset = rutas
-        opciones = list(rutas)
+        ).select_related("especie").prefetch_related(
+            Prefetch("etapas", queryset=EtapaRutaProceso.objects.select_related("tipo_proceso")))
+        from .rutas import validar_etapas_ruta
+        opciones = []
+        for ruta in rutas:
+            try:
+                validar_etapas_ruta(list(ruta.etapas.all()))
+            except forms.ValidationError:
+                continue
+            opciones.append(ruta)
+        self.fields["ruta"].queryset = rutas.filter(pk__in=[r.pk for r in opciones])
         predeterminadas = [ruta for ruta in opciones if ruta.predeterminada]
         if len(predeterminadas) == 1:
             self.fields["ruta"].initial = predeterminadas[0].pk
@@ -286,7 +300,7 @@ class SeleccionRutaMixin:
 
 
 class RutaPartidaForm(SeleccionRutaMixin, forms.Form):
-    ruta = forms.ModelChoiceField(queryset=RutaProceso.objects.none(), label="Ruta de procesamiento")
+    ruta = RutaHabitualChoice(queryset=RutaProceso.objects.none(), label="Ruta de procesamiento")
 
     def __init__(self, *args, partida, **kwargs):
         super().__init__(*args, **kwargs)
@@ -294,7 +308,7 @@ class RutaPartidaForm(SeleccionRutaMixin, forms.Form):
 
 
 class IniciarProcesamientoForm(SeleccionRutaMixin, CantidadPartidaForm):
-    ruta = forms.ModelChoiceField(queryset=RutaProceso.objects.none(), label="Ruta de procesamiento")
+    ruta = RutaHabitualChoice(queryset=RutaProceso.objects.none(), label="Ruta de procesamiento")
 
     def __init__(self, *args, partida, **kwargs):
         super().__init__(*args, partida=partida, **kwargs)
