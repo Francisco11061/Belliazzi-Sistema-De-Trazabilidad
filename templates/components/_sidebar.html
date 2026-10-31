@@ -1,0 +1,15 @@
+<nav class="min-h-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain p-4" aria-label="Navegación principal">
+    {% if mostrar_inicio %}
+    {% include 'components/_sidebar_enlace.html' with enlace=None destino='usuarios:inicio' nombre='Inicio' icono='inicio' activo=inicio_activo only %}
+    {% endif %}
+    {% for grupo in grupos %}
+    <section aria-labelledby="menu-grupo-{{ forloop.counter }}">
+        <h2 id="menu-grupo-{{ forloop.counter }}" class="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ grupo.titulo }}</h2>
+        <ul class="space-y-1">
+        {% for enlace in grupo.enlaces %}
+            <li>{% include 'components/_sidebar_enlace.html' with destino=enlace.destino nombre=enlace.nombre icono=enlace.clave activo=enlace.activo pendientes=enlace.pendientes only %}</li>
+        {% endfor %}
+        </ul>
+    </section>
+    {% endfor %}
+</nav>

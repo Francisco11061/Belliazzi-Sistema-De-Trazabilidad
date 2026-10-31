@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load formularios %}
 {% load i18n %}
 {% block title %}{{ titulo }} | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Usuarios / {{ titulo }}{% endblock %}
@@ -11,8 +11,8 @@
         {% if form.password1 %}<p class="mt-2 text-sm text-slate-600">La contraseña temporal debe cambiarse al ingresar.</p>{% endif %}
         {% if cambio_propio and user.cambio_contrasena_pendiente %}<p role="status" class="mt-3 rounded-lg border border-cyan-100 bg-cyan-50 p-3 text-sm text-cyan-800">Cambia tu contraseña temporal para continuar.</p>{% endif %}
     </header>
-    <form method="post" class="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        {% csrf_token %}
+    <form method="post" data-loading-text="Guardando…" class="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        {% csrf_token %}{% resumen_errores %}
         {% if form.non_field_errors %}<div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
         {% for field in form %}<div class="min-w-0">
             <label for="{{ field.id_for_label }}" class="mb-2 block text-sm font-medium">{{ field.label }}</label>

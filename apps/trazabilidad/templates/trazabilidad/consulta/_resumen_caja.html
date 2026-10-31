@@ -1,0 +1,6 @@
+<div class="hp-kpis">
+    <article class="hp-card"><h2>Peso neto</h2><strong>{% include 'trazabilidad/consulta/_peso.html' with valor=caja.peso_neto_kg only %}</strong><p class="hp-muted">Código: {{ caja.codigo_caja|default:'Sin código adicional' }}</p></article>
+    <article class="hp-card"><h2>Contenido</h2><ul>{% for composicion in caja.composiciones.all %}<li>{{ composicion.cantidad }} × {{ composicion.presentacion.nombre }}<small>{{ composicion.peso_unitario_kg|floatformat:2 }} kg por unidad</small></li>{% empty %}<li>Sin composición documentada</li>{% endfor %}</ul></article>
+    <article class="hp-card"><h2>Estado actual</h2>{% include 'components/_badge.html' with estado=caja.estado_inventario etiqueta=caja.estado_visible only %}<p class="hp-muted">Ubicación: {{ caja.ubicacion_actual }}</p></article>
+    <article class="hp-card"><h2>Fechas del producto</h2><dl><dt>Elaboración</dt><dd>{{ caja.lote_produccion.fecha_elaboracion|date:'d/m/Y' }}</dd><dt>Vencimiento</dt><dd>{{ caja.lote_produccion.fecha_vencimiento|date:'d/m/Y'|default:'Sin fecha documentada' }}</dd></dl></article>
+</div>

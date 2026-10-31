@@ -50,9 +50,9 @@ class ConsultaIntegralTests(DatosDespacho, TestCase):
         hacia_adelante = self.ficha("origen", detalle.origen_sernapesca)
         self.assertEqual({c.pk for c in hacia_adelante["cajas"]}, {self.registro.pk})
         respuesta = self.client.get(reverse("trazabilidad:ficha_integral", args=["caja", self.registro.pk]))
-        self.assertContains(respuesta, "La procedencia física específica de cada caja no está documentada")
-        self.assertContains(respuesta, "Ruta planificada")
-        self.assertContains(respuesta, "Efectivamente ejecutadas")
+        self.assertNotContains(respuesta, "Esta caja pertenece a un lote elaborado con producto de varios seguimientos.")
+        self.assertContains(respuesta, "Ruta y operaciones")
+        self.assertContains(respuesta, "Operaciones realizadas")
 
     def test_varios_aportantes_lotes_cajas_y_despachos_parciales(self):
         otra = self.otra_lista(peso="40")
@@ -156,7 +156,7 @@ class ConsultaIntegralTests(DatosDespacho, TestCase):
             buscar_integral(self.usuario, "lote", self.lote.codigo_lote)
         self.assertEqual(self.client.get(reverse("trazabilidad:consulta_integral")).status_code, 403)
         qr = self.client.get(reverse("producto_terminado:consulta_caja_qr", args=[self.registro.identificador_qr]))
-        self.assertNotContains(qr, "Ver ficha integral")
+        self.assertNotContains(qr, "Ver historial del producto")
         self.client.logout()
         respuesta = self.client.get(url)
         self.assertEqual(respuesta.status_code, 302)

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load formularios %}
 {% load i18n %}
 {% block title %}Agregar producto | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Producto terminado / Agregar producto{% endblock %}
@@ -12,8 +12,8 @@
         {% if form.non_field_errors %}<div role="alert" class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
         {% if hay_seguimientos %}
         <p class="mt-5 text-sm leading-6 text-slate-600">Selecciona un seguimiento de la misma especie, ruta y origen.</p>
-        <form method="post" class="mt-5 space-y-5">
-            {% csrf_token %}{% include "trazabilidad/lotes/_formulario.html" %}
+        <form method="post" data-loading-text="Guardando…" class="mt-5 space-y-5">
+            {% csrf_token %}{% resumen_errores %}{% include "trazabilidad/lotes/_formulario.html" %}
             <div class="flex flex-col gap-3 sm:flex-row">
                 <button class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800" type="submit">Agregar producto</button>
                 <a class="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm text-slate-700 hover:bg-slate-50" href="{% url 'producto_terminado:detalle_lote' lote.pk %}">Cancelar</a>

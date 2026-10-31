@@ -230,7 +230,7 @@ class GestionUsuariosTests(TestCase):
         self.assertContains(response, "Usuario desactivado correctamente.")
         self.operaria.refresh_from_db()
         self.assertFalse(self.operaria.is_active)
-        self.assertIsNone(authenticate(username=self.operaria.username, password=CLAVE))
+        self.assertIsNone(authenticate(request=RequestFactory().post("/login/"), username=self.operaria.username, password=CLAVE))
         self.assertEqual(otro.get(self.url("inicio")).status_code, 302)
         self.assertContains(self.client.get(self.url("lista_usuarios") + "?estado=inactivo"), self.operaria.username)
 
@@ -240,7 +240,7 @@ class GestionUsuariosTests(TestCase):
         self.operaria.refresh_from_db()
         self.assertTrue(self.operaria.is_active)
         self.assertEqual(self.operaria.rol, self.operaria_rol)
-        self.assertIsNotNone(authenticate(username=self.operaria.username, password=CLAVE))
+        self.assertIsNotNone(authenticate(request=RequestFactory().post("/login/"), username=self.operaria.username, password=CLAVE))
         self.assertEqual(list(self.operaria.eventos.values_list("tipo", flat=True)),
                          [EventoUsuario.Tipo.REACTIVACION, EventoUsuario.Tipo.DESACTIVACION])
 
@@ -290,7 +290,7 @@ class GestionUsuariosTests(TestCase):
         self.assertTrue(self.operaria.cambio_contrasena_pendiente)
         self.assertNotEqual(self.operaria.password, NUEVA)
         self.assertEqual(otro.get(self.url("inicio")).status_code, 302)
-        self.assertIsNotNone(authenticate(username=self.operaria.username, password=NUEVA))
+        self.assertIsNotNone(authenticate(request=RequestFactory().post("/login/"), username=self.operaria.username, password=NUEVA))
         self.assertEqual(self.operaria.eventos.get().tipo, EventoUsuario.Tipo.RESET)
 
     def test_reset_inactivo_no_reactiva(self):
@@ -299,7 +299,7 @@ class GestionUsuariosTests(TestCase):
         self.operaria.refresh_from_db()
         self.assertFalse(self.operaria.is_active)
         self.assertTrue(self.operaria.cambio_contrasena_pendiente)
-        self.assertIsNone(authenticate(username=self.operaria.username, password=NUEVA))
+        self.assertIsNone(authenticate(request=RequestFactory().post("/login/"), username=self.operaria.username, password=NUEVA))
 
     def test_reset_propio_no_se_permite(self):
         with self.assertRaises(ValidationError):

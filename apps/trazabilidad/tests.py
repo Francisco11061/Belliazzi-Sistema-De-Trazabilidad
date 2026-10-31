@@ -496,7 +496,7 @@ class RecepcionViewsTests(TestCase):
                 especie=self.especie, peso_origen_kg=10, peso_recepcion_kg=11)
         request = RequestFactory().get(reverse("trazabilidad:detalle_recepcion", args=[recepcion.pk]))
         request.user = self.jefe
-        with self.assertNumQueries(5):  # Incluye una consulta para el historial.
+        with self.assertNumQueries(6):  # Historial y contador único del sidebar.
             response = detalle_recepcion(request, recepcion.pk)
         for indice in range(3):
             self.assertContains(response, f"HISTORICO-{indice}")

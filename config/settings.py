@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 import environ
 
@@ -46,6 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'axes',
     'apps.usuarios.apps.UsuariosConfig',
     'apps.trazabilidad.apps.TrazabilidadConfig',
     'apps.inventario.apps.InventarioConfig',
@@ -61,6 +63,7 @@ MIDDLEWARE = [
     'apps.usuarios.middleware.CambioContrasenaPendienteMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'axes.middleware.AxesMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -71,6 +74,7 @@ TEMPLATES = [
         'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
+            'libraries': {'formularios': 'apps.usuarios.templatetags.formularios'},
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
@@ -123,7 +127,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es-cl'
 
 TIME_ZONE = "America/Santiago"
 
@@ -143,3 +147,24 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = "usuarios.Usuario"
+
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+# En desarrollo se activa explícitamente después de autorizar las migraciones.
+# Producción queda protegida por defecto; no usar DEBUG=True en AWS.
+AXES_ENABLED = env.bool('AXES_ENABLED', default=not DEBUG)
+AXES_HANDLER = 'apps.usuarios.seguridad.IntentosSinCredencialesHandler'
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(minutes=15)
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
+AXES_RESET_ON_SUCCESS = True
+AXES_RESET_COOL_OFF_ON_FAILURE_DURING_LOCKOUT = False
+AXES_DISABLE_ACCESS_LOG = True
+AXES_ENABLE_ACCESS_FAILURE_LOG = False
+AXES_CLIENT_IP_CALLABLE = 'apps.usuarios.seguridad.ip_cliente'
+AXES_LOCKOUT_CALLABLE = 'apps.usuarios.seguridad.respuesta_bloqueo'
+AXES_SENSITIVE_PARAMETERS = ['username', 'ip_address', 'password', 'csrfmiddlewaretoken', 'token', 'next']
+TRUSTED_PROXY_CIDRS = env.list('TRUSTED_PROXY_CIDRS', default=[])
+CSRF_FAILURE_VIEW = 'config.errores.csrf_failure'

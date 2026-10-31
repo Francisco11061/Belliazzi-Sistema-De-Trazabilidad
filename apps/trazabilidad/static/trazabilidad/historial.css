@@ -1,0 +1,35 @@
+/* Historial: lectura del producto, sin alterar los formularios operativos. */
+.hp-history { display:grid; gap:1.75rem; min-width:0; color:#0f172a; font-size:.875rem; line-height:1.6; overflow-wrap:anywhere; }
+.hp-history * { min-width:0; }
+.hp-header { display:flex; justify-content:space-between; align-items:start; gap:1rem; flex-wrap:wrap; }
+.hp-history h1 { font-size:clamp(1.4rem,2.4vw,1.9rem); font-weight:700; line-height:1.3; margin:.3rem 0; letter-spacing:-.025em; }
+.hp-history h2 { font-size:1.125rem; font-weight:650; }
+.hp-eyebrow { text-transform:uppercase; letter-spacing:.08em; color:#0e7490; font-size:.6875rem; font-weight:700; }
+.hp-history a { display:inline-flex; min-height:44px; align-items:center; color:#0e7490; text-decoration:underline; text-underline-offset:3px; }
+.hp-history a:hover { color:#155e75; }
+.hp-history :is(a,summary):focus-visible { outline:2px solid #0e7490; outline-offset:3px; border-radius:.25rem; }
+.hp-history summary { cursor:pointer; min-height:44px; padding:.6rem 0; }
+.hp-history .hp-button { padding:.5rem 1rem; border:1px solid #cbd5e1; border-radius:.6rem; background:white; font-weight:600; text-decoration:none; }
+.hp-muted,.hp-history small,.hp-history dt { color:#475569; font-size:.8125rem; }
+.hp-history small { display:block; }
+.hp-history dd { font-variant-numeric:tabular-nums; }
+.hp-card { background:#fff; border:1px solid #e2e8f0; border-radius:.875rem; padding:1.25rem; }
+.hp-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.875rem; }
+.hp-kpis h2 { color:#475569; font-size:.8125rem; margin-bottom:.6rem; }
+.hp-kpis strong { display:block; font-size:1.5rem; line-height:1.3; margin-bottom:.5rem; }
+.hp-kpis li+li { margin-top:.5rem; }
+.hp-kpis dd { font-weight:600; margin-bottom:.35rem; }
+.hp-notice { border-left:3px solid #d97706; border-radius:.4rem; background:#fffbeb; padding:.75rem 1rem; color:#92400e; font-size:.8125rem; }
+.hp-sections { display:flex; flex-wrap:wrap; gap:.25rem .5rem; border-block:1px solid #e2e8f0; padding:.5rem 0; }
+.hp-sections a { padding:.4rem .65rem; border-radius:.5rem; text-decoration:none; font-size:.8125rem; }
+.hp-sections a:hover { background:#ecfeff; }
+.hp-history :is(section,details)[id] { scroll-margin-top:6rem; }
+.hp-history .hp-secondary { font-size:.75rem; margin-left:.5rem; }
+.hp-history #conciliacion dd { font-size:1.125rem; font-weight:600; }
+.hp-history #cronologia ol { display:grid; gap:.75rem; }
+.hp-history #correcciones { border-top:1px solid #e2e8f0; padding-top:.5rem; }
+.hp-operativo>section { box-shadow:none; border-color:#e2e8f0; background:white; }
+.hp-operativo>section>p.text-2xl { font-size:1.5rem; }
+@media(max-width:1199px) { .hp-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:639px) { .hp-history { gap:1.25rem; } .hp-history .hp-card { padding:1rem; } .hp-kpis strong { font-size:1.25rem; } .hp-sections { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); } .hp-history #cronologia ol { padding-left:.75rem; } }
+@media(max-width:639px) { .hp-kpis>article:nth-child(n+3) { grid-column:1/-1; } .hp-kpis>article:nth-child(4) dl { display:grid; grid-template-columns:1fr 1fr; gap:.25rem; } }

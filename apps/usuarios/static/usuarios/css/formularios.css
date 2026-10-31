@@ -1,0 +1,8 @@
+.is-submitting{display:inline-flex!important;align-items:center;justify-content:center;gap:.4rem;overflow:hidden;cursor:wait!important}
+.form-spinner{width:14px;height:14px;flex:0 0 14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:form-spin .8s linear infinite}
+.form-loading-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.form-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@keyframes form-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.form-spinner{animation:none}}
+.form-error-summary{padding:1rem;margin-bottom:1rem;border:1px solid #fecaca;border-radius:.6rem;background:#fef2f2;color:#991b1b;font-size:.875rem;overflow-wrap:anywhere}
+.form-error-summary p{margin:0 0 .35rem}.form-error-summary a{display:inline-flex;align-items:center;min-height:44px;text-decoration:underline;color:#991b1b}.form-error-summary:focus-visible,.form-error-summary a:focus-visible{outline:2px solid #0e7490;outline-offset:3px}

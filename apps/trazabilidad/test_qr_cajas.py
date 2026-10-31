@@ -135,7 +135,7 @@ class QRCajasTests(DatosQR, TestCase):
 
     def test_consulta_caja_pesos_composicion_producto_lote_fechas(self):
         respuesta = self.client.get(self.consulta())
-        for texto in (f"Trazabilidad de Caja #{self.registro.pk}", "24,82 kg", "25,00 kg", "-0,18 kg", "Bolsa 5 kg", "5 bolsas", "TEST-QR-001", "Congrio", "Filete IQF", "26/09/2026", "26/10/2026", self.usuario.username):
+        for texto in (f"Historial de Caja #{self.registro.pk}", "24,82 kg", "25,00 kg", "-0,18 kg", "Bolsa 5 kg", "5 bolsas", "TEST-QR-001", "Congrio", "Filete IQF", "26/09/2026", "26/10/2026", self.usuario.username):
             self.assertContains(respuesta, texto)
 
     def test_origenes_separados_con_aporte_recepcion_folio(self):
@@ -175,7 +175,7 @@ class QRCajasTests(DatosQR, TestCase):
 
     def test_detalle_muestra_uuid_qr_y_enlace_sin_regenerar(self):
         respuesta = self.client.get(self.url_lote("detalle_caja", self.registro.pk))
-        for texto in (str(self.registro.identificador_qr), self.png_url(), self.consulta(), "Ver trazabilidad"):
+        for texto in (str(self.registro.identificador_qr), self.png_url(), self.consulta(), "Ver historial del producto"):
             self.assertContains(respuesta, texto)
         self.assertNotContains(respuesta, "Regenerar")
         self.assertContains(self.client.get(self.consulta()), 'aria-current="page"', count=1)
@@ -229,7 +229,7 @@ class QRCajasTests(DatosQR, TestCase):
         with CaptureQueriesContext(connection) as despues:
             respuesta = self.client.get(self.consulta())
         self.assertEqual(len(antes), len(despues))
-        self.assertLessEqual(len(despues), 10)
+        self.assertLessEqual(len(despues), 11)  # Incluye el contador del menú lateral.
         self.assertContains(respuesta, "data-aporte=", count=3)
 
 

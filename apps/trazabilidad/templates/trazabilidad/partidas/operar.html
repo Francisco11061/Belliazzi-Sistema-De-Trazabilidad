@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load formularios %}
 {% block title %}{{ titulo }} | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Seguimiento de proceso / {{ titulo }}{% endblock %}
 {% block content %}
@@ -12,8 +12,8 @@
         <p class="mt-2 text-sm text-slate-600">{% include "components/_badge.html" with estado=partida.situacion etiqueta=partida.situacion_visible only %}{% if partida.ubicacion %} · {{ partida.ubicacion }}{% endif %}</p>
         <p class="mt-4 text-lg font-medium">Cantidad {% if partida.situacion == 'DISPONIBLE' %}disponible{% else %}actual{% endif %}: {{ partida.cantidad_inicial_kg|floatformat:2 }} kg</p>
         {% if compatible %}
-        <form method="post" class="mt-6 space-y-5 [&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600">
-            {% csrf_token %}
+        <form method="post" data-loading-text="Guardando…" class="mt-6 space-y-5 [&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600">
+            {% csrf_token %}{% resumen_errores %}
             {% if form.non_field_errors %}<div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
             {% for campo in form %}{% include "trazabilidad/recepciones/_campo.html" %}{% if campo.help_text %}<p class="text-sm text-slate-600">{{ campo.help_text }}</p>{% endif %}{% endfor %}
             <p class="text-sm leading-6 text-slate-600">Si indicas menos kilos, el resto queda en otro seguimiento del mismo origen.</p>

@@ -30,6 +30,11 @@ def buscar(request):
 def ficha(request, tipo, pk):
     if tipo not in MODELOS:
         raise Http404
+    return mostrar_historial(request, tipo, pk)
+
+
+def mostrar_historial(request, tipo, pk):
+    """Misma ficha para la búsqueda y la URL histórica del QR; el selector exige permisos."""
     contexto = ficha_integral(request.user, tipo, pk)
     contexto["pagina_cajas"] = Paginator(contexto["cajas"], 20).get_page(request.GET.get("cajas_page"))
     contexto["pagina_partidas"] = Paginator(contexto["partidas"], 10).get_page(request.GET.get("partidas_page"))

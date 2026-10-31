@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}{% load formularios %}
 {% block page_title %}Rutas de procesamiento{% endblock %}
 {% block content %}
 <div class="space-y-5"><h1 class="text-2xl font-semibold">{{ titulo }}</h1>
@@ -6,5 +6,5 @@
 {% if bloqueada %}<p role="alert" class="rounded-xl border border-amber-200 bg-amber-50 p-4">Esta ruta tiene historial. Su configuración no se modifica.</p>
 <section class="rounded-xl border border-slate-200 bg-white p-5"><h2 class="text-lg font-semibold">{{ ruta.nombre }} · {{ ruta.especie.nombre }}</h2><p>{{ ruta.descripcion }}</p><ol class="mt-3 list-inside list-decimal">{% for etapa in ruta.etapas.all %}<li>{{ etapa.tipo_proceso.nombre }}</li>{% endfor %}</ol></section>
 <a href="{% url 'trazabilidad:duplicar_ruta' ruta.pk %}" class="inline-flex min-h-11 items-center rounded-lg bg-cyan-700 px-4 text-white">Duplicar ruta</a>
-{% else %}<form method="post" class="rounded-xl border border-slate-200 bg-white p-5">{% csrf_token %}{% include 'trazabilidad/rutas/_campos.html' %}{% include 'trazabilidad/rutas/_secuencia.html' %}<button class="mt-5 min-h-11 rounded-lg bg-cyan-700 px-5 py-3 font-semibold text-white">Guardar ruta</button></form>{% endif %}
+{% else %}<form method="post" data-loading-text="Guardando ruta…" class="rounded-xl border border-slate-200 bg-white p-5">{% csrf_token %}{% resumen_errores %}{% include 'trazabilidad/rutas/_campos.html' %}{% include 'trazabilidad/rutas/_secuencia.html' %}<button class="mt-5 min-h-11 rounded-lg bg-cyan-700 px-5 py-3 font-semibold text-white">Guardar ruta</button></form>{% endif %}
 </div>{% endblock %}

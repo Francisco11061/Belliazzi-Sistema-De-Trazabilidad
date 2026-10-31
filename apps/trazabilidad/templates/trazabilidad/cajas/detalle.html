@@ -12,7 +12,7 @@
         <p class="mt-2 break-all text-sm text-slate-600">{{ caja.identificador_qr }}</p>
         <img src="{% url 'producto_terminado:caja_qr_png' caja.pk %}" alt="QR de Caja #{{ caja.pk }} para consulta interna" width="288" height="288" class="mt-5 h-auto w-72 max-w-full rounded-lg border border-slate-200 bg-white">
         <p class="mt-3 text-sm text-slate-600">La consulta requiere iniciar sesión.</p>
-        <a href="{% url 'producto_terminado:consulta_caja_qr' caja.identificador_qr %}" class="mt-5 inline-flex rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Ver trazabilidad</a>
+        <a href="{% url 'producto_terminado:consulta_caja_qr' caja.identificador_qr %}" class="mt-5 inline-flex rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Ver historial del producto</a>
     </section>
     {% include "trazabilidad/cajas/_datos_caja.html" %}
     {% include "inventario/_almacenamiento.html" %}

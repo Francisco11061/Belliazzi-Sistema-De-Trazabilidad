@@ -1,3 +1,4 @@
+{% load formularios %}
 <div class="flex w-full min-w-0 flex-col gap-2 {% if not compacto %}sm:flex-row sm:flex-wrap{% endif %}">
 {% if partida.revision_operativa %}
     {% url 'trazabilidad:detalle_partida' partida.pk as destino %}{% include 'components/_accion.html' with texto='Revisar seguimiento' seguimiento=partida.pk %}
@@ -9,7 +10,7 @@
 {% elif partida.situacion == 'EN_PROCESO' %}
     {% url 'trazabilidad:gestionar_procesamiento' partida.pk as destino %}{% include 'components/_accion.html' with texto='Gestionar procesamiento' seguimiento=partida.pk %}
 {% elif partida.situacion == 'EN_CONGELACION' and detalle %}
-    <form method="post" action="{% url 'trazabilidad:retirar_partida_tunel' partida.pk %}">{% csrf_token %}<button type="submit" class="min-h-11 w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Retirar del túnel</button></form>
+    <form method="post" data-loading-text="Guardando…" action="{% url 'trazabilidad:retirar_partida_tunel' partida.pk %}">{% csrf_token %}{% resumen_errores %}<button type="submit" class="min-h-11 w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Retirar del túnel</button></form>
 {% elif partida.situacion == 'EN_CONGELACION' %}
     {% url 'trazabilidad:detalle_partida' partida.pk as destino %}{% include 'components/_accion.html' with texto='Revisar retiro del túnel' seguimiento=partida.pk %}
 {% elif partida.situacion == 'PENDIENTE_PESAJE' %}

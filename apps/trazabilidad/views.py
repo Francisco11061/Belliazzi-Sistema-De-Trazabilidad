@@ -609,6 +609,10 @@ def detalle_caja(request, pk):
 @personal_operativo_requerido
 @require_http_methods(["GET"])
 def consulta_caja_qr(request, identificador):
+    if tiene_rol(request.user, ROL_JEFE, ROL_ENCARGADA):
+        from .views_consulta import mostrar_historial
+        caja = get_object_or_404(Caja.objects.only("pk"), identificador_qr=identificador)
+        return mostrar_historial(request, "caja", caja.pk)
     caja = get_object_or_404(cajas_con_inventario(cajas_con_trazabilidad()), identificador_qr=identificador)
     return render(request, "trazabilidad/cajas/consulta_qr.html", {
         "caja": caja, "composiciones": caja.composiciones_qr,

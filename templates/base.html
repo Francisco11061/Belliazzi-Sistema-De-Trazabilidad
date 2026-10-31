@@ -1,86 +1,38 @@
-{% load static %}
+{% load static navegacion %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Pesquera Belliazzi{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'usuarios/css/output.css' %}?v=layout-responsive-2">
+    <link rel="stylesheet" href="{% static 'usuarios/css/output.css' %}?v=sidebar-3">
     {% block extra_css %}{% endblock %}
+<link rel="stylesheet" href="{% static 'usuarios/css/formularios.css' %}">
 </head>
 <body class="[--sidebar-width:16rem] bg-slate-50 font-sans text-slate-900 antialiased">
-    <svg class="hidden" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg width="20" height="20" class="hidden" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <symbol id="icon-wave" viewBox="0 0 32 32">
             <path d="M4 12c4-4 8 4 12 0s8 4 12 0M4 18c4-4 8 4 12 0s8 4 12 0M4 24c4-4 8 4 12 0s8 4 12 0" />
             <path d="M22 5h6" class="text-sky-500" />
         </symbol>
     </svg>
     <div id="sidebar-overlay" class="fixed inset-0 z-40 bg-slate-900/40 lg:hidden" hidden aria-hidden="true"></div>
-    <aside id="sidebar" aria-label="Menú principal" tabindex="-1" class="fixed inset-y-0 left-0 z-50 flex w-[var(--sidebar-width)] max-w-full -translate-x-full flex-col max-lg:invisible max-lg:[&[aria-modal=true]]:visible border-r border-slate-200 bg-white transition-transform motion-reduce:transition-none lg:translate-x-0">
-        <div class="relative flex min-h-24 shrink-0 items-center gap-3 border-b border-slate-200 px-4 py-5 pr-12 lg:px-5">
-            <svg class="h-9 w-9 shrink-0 text-cyan-700" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><use href="#icon-wave" /></svg>
+    <aside id="sidebar" aria-label="Menú principal" tabindex="-1" class="fixed inset-y-0 left-0 z-50 flex w-[var(--sidebar-width)] max-w-[calc(100vw-1rem)] -translate-x-full flex-col max-lg:invisible max-lg:[&[aria-modal=true]]:visible border-r border-slate-200 bg-white transition-transform motion-reduce:transition-none lg:translate-x-0">
+        <div class="relative flex min-h-24 shrink-0 items-center gap-3 border-b border-slate-200 px-4 py-5 pr-12 lg:px-5 lg:pr-5">
+            <svg width="36" height="36" class="h-9 w-9 shrink-0 text-cyan-700" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><use href="#icon-wave" /></svg>
             <div class="min-w-0 flex-1">
                 <p class="text-xs leading-5 font-semibold tracking-wide">PESQUERA BELLIAZZI</p>
                 <p class="mt-1 text-xs leading-5 text-slate-600">Sistema de Trazabilidad</p>
             </div>
-            <button id="sidebar-close" type="button" aria-label="Cerrar menú" class="absolute top-3 right-3 shrink-0 rounded-lg p-1 text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-cyan-700 lg:hidden">
-                <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
+            <button id="sidebar-close" type="button" aria-label="Cerrar menú" class="absolute top-3 right-3 shrink-0 flex size-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-cyan-700 lg:hidden">
+                <svg width="20" height="20" class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
             </button>
         </div>
-        <nav class="min-h-0 flex-1 space-y-2 overflow-y-auto p-4" aria-label="Navegación principal">
-            {% if user.is_superuser or user.rol.codigo == "JEFE" %}
-            <a href="{% url 'reportes:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'umbrales' %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium {% if request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'umbrales' %}bg-cyan-50 text-cyan-700{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>Dashboard</a>
-            <a href="{% url 'reportes:sernapesca' %}" {% if request.resolver_match.url_name == 'sernapesca' %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium {% if request.resolver_match.url_name == 'sernapesca' %}bg-cyan-50 text-cyan-700{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM9 11h7M9 15h7M9 7h3"/></svg>Reportes</a>
-            {% endif %}
-            {% if not user.is_superuser and user.rol.codigo != "JEFE" %}
-            <a href="{% url 'usuarios:inicio' %}" {% if request.resolver_match.view_name == 'usuarios:inicio' %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.view_name == 'usuarios:inicio' %}bg-cyan-50 text-cyan-700{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
-                <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9" /></svg>
-                Inicio
-            </a>
-            {% endif %}
-            {% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}
-                <a href="{% url 'trazabilidad:lista_recepciones' %}" {% if 'recepcion' in request.resolver_match.url_name %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-cyan-700 {% if 'recepcion' in request.resolver_match.url_name %}bg-cyan-50 text-cyan-700{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
-                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16l2 10v6H2v-6L4 4ZM2 14h6l2 3h4l2-3h6M12 6v6m-3-3 3 3 3-3" /></svg>
-                    Recepciones
-                </a>
-            {% endif %}
-            {% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" or user.rol.codigo == "OPERARIA" %}
-                <a href="{% url 'trazabilidad:lista_partidas' %}" {% if request.resolver_match.namespace == 'trazabilidad' and 'partidas/' in request.path %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.namespace == 'trazabilidad' and 'partidas/' in request.path %}bg-cyan-50 text-cyan-700{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
-                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5ZM3 8v9l9 5 9-5V8M12 13v9" /></svg>
-                    Seguimiento de proceso
-                </a>
-                {% include "components/_navegacion_trazabilidad.html" %}
-                <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-600">Producto terminado</p>
-                {% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}<a href="{% url 'producto_terminado:lista_lotes' %}" {% if request.resolver_match.namespace == 'producto_terminado' and 'caja' not in request.resolver_match.url_name %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.namespace == 'producto_terminado' and 'caja' not in request.resolver_match.url_name %}bg-cyan-50 text-cyan-700{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
-                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h4" /></svg>
-                    Lotes de producción
-                </a>{% endif %}
-                <a href="{% url 'producto_terminado:lista_cajas' %}" {% if request.resolver_match.namespace == 'producto_terminado' and 'caja' in request.resolver_match.url_name %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.namespace == 'producto_terminado' and 'caja' in request.resolver_match.url_name %}bg-cyan-50 text-cyan-700{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
-                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v14H3zM3 7l3-4h12l3 4M12 7v6" /></svg>
-                    Cajas
-                </a>
-                <a href="{% url 'inventario:lista' %}" {% if request.resolver_match.namespace == 'inventario' and 'despacho' not in request.resolver_match.url_name %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.namespace == 'inventario' and 'despacho' not in request.resolver_match.url_name %}bg-cyan-50 text-cyan-700{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
-                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V8l9-5 9 5v13M7 21V11h10v10M7 15h10M7 19h10" /></svg>
-                    Inventario
-                </a>
-                {% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}
-                <a href="{% url 'inventario:lista_despachos' %}" {% if request.resolver_match.namespace == 'inventario' and 'despacho' in request.resolver_match.url_name %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.namespace == 'inventario' and 'despacho' in request.resolver_match.url_name %}bg-cyan-50 text-cyan-700{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
-                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h12v12H3zM15 10h4l3 4v4h-7M7 18v2M18 18v2M5 10h6" /></svg>
-                    Despachos
-                </a>
-                {% endif %}
-            {% endif %}
-            {% if user.is_superuser or user.rol.codigo == "JEFE" %}
-                <a href="{% url 'usuarios:lista_usuarios' %}" {% if request.resolver_match.namespace == 'usuarios' and request.resolver_match.url_name != 'inicio' and request.resolver_match.url_name != 'cambiar_contrasena' %}aria-current="page"{% endif %} class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-cyan-700 {% if request.resolver_match.namespace == 'usuarios' and request.resolver_match.url_name != 'inicio' and request.resolver_match.url_name != 'cambiar_contrasena' %}bg-cyan-50 text-cyan-700{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %}">
-                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M17 4a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4v3"/></svg>
-                    Usuarios
-                </a>
-            {% endif %}
-        </nav>
+        {% menu_lateral %}
         <form method="post" action="{% url 'usuarios:logout' %}" class="shrink-0 border-t border-slate-200 p-4">
             {% csrf_token %}
             <button type="submit" class="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-cyan-700">
-                <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H4v16h5m5-12 4 4-4 4m-6-4h13" /></svg>
+                <svg width="20" height="20" class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H4v16h5m5-12 4 4-4 4m-6-4h13" /></svg>
                 Cerrar sesión
             </button>
         </form>
@@ -89,10 +41,10 @@
     <div id="page-shell" class="min-h-dvh min-w-0 lg:pl-[var(--sidebar-width)]">
         <header class="sticky top-0 z-30 flex min-h-20 flex-nowrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3 sm:px-6 lg:px-8">
             <div class="flex min-w-0 flex-1 items-center gap-2">
-                <button id="sidebar-open" type="button" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false" class="shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-cyan-700 lg:hidden">
-                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+                <button id="sidebar-open" type="button" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false" class="flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-cyan-700 lg:hidden">
+                    <svg width="20" height="20" class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
                 </button>
-                <svg class="h-8 w-8 shrink-0 text-cyan-700 lg:hidden" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><use href="#icon-wave" /></svg>
+                <svg width="32" height="32" class="h-8 w-8 shrink-0 text-cyan-700 lg:hidden" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><use href="#icon-wave" /></svg>
                 <span class="whitespace-nowrap text-xs font-semibold sm:text-sm lg:hidden">Pesquera Belliazzi</span>
                 <span class="hidden text-sm text-slate-600 lg:block">{% block page_title %}Inicio{% endblock %}</span>
             </div>
@@ -180,5 +132,6 @@
     </script>
     <script src="{% static 'usuarios/js/ui.js' %}" defer></script>
     {% block extra_js %}{% endblock %}
+<script src="{% static 'usuarios/js/formularios.js' %}" defer></script>
 </body>
 </html>

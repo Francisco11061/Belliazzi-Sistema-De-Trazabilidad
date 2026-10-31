@@ -304,6 +304,10 @@ class DespachoTests(DatosDespacho, TestCase):
         self.assertEqual(respuesta.context['cantidad_seleccionada'],1)
         self.assertEqual(respuesta.context['peso_seleccionado'],Decimal('24.50'))
         self.assertTrue(respuesta.context['cajas_disponibles'][0].seleccionada)
+        self.assertContains(respuesta, 'href="#id_destino"')
+        sin_cajas = self.client.post(self.url_despacho(), self.datos_post(cajas=[]))
+        self.assertContains(sin_cajas, 'href="#id_cajas"')
+        self.assertContains(sin_cajas, 'id="id_cajas" tabindex="-1"')
 
     def test_listado_filtros_y_detalle(self):
         despacho=self.despachar()

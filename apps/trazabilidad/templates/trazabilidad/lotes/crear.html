@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load formularios %}
 {% load i18n %}
 {% block title %}Crear lote de producción | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Producto terminado / Crear lote{% endblock %}
@@ -18,9 +18,9 @@
     <section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         {% if form.non_field_errors %}<div role="alert" class="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
         {% if compatible %}
-        <form method="post" class="space-y-5">
+        <form method="post" data-loading-text="Creando lote…" class="space-y-5">
             <div class="rounded-lg border border-cyan-100 bg-cyan-50 p-4 text-sm"><p class="font-semibold">Código del lote</p><p class="mt-2">Se generará automáticamente al crear el lote.</p><p class="mt-1">Formato: XXXXX XXXX DDMMAAAA</p></div>
-            {% csrf_token %}{% include "trazabilidad/lotes/_formulario.html" %}
+            {% csrf_token %}{% resumen_errores %}{% include "trazabilidad/lotes/_formulario.html" %}
             <p class="text-sm leading-6 text-slate-600">Revisa fechas y cantidad: el lote no se puede editar.</p>
             <div class="flex flex-col gap-3 sm:flex-row">
                 <button class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800" type="submit">Crear lote y asignar</button>

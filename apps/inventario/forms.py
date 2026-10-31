@@ -59,11 +59,11 @@ class DespachoForm(forms.ModelForm):
 
 class DespachoFiltroForm(forms.Form):
     especie = forms.ModelChoiceField(queryset=Especie.objects.all(), required=False, empty_label="Todas las especies")
-    desde = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
-    hasta = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    desde = forms.DateField(required=False, widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}))
+    hasta = forms.DateField(required=False, widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}))
     destinatario = forms.CharField(required=False, max_length=200, label="Destinatario o país")
     tipo_destino = forms.ChoiceField(required=False, choices=[("", "Todos los destinos"), *Despacho.TipoDestino.choices])
-    fecha = forms.DateField(required=False, widget=forms.DateInput(attrs={"type":"date"}))
+    fecha = forms.DateField(required=False, widget=forms.DateInput(format="%Y-%m-%d", attrs={"type":"date"}))
 
     def clean(self):
         from datetime import date
@@ -82,6 +82,6 @@ class BajaCajaForm(forms.Form):
 
 
 class BajaFiltroForm(forms.Form):
-    fecha = forms.DateField(required=False, widget=forms.DateInput(attrs={"type":"date"}))
+    fecha = forms.DateField(required=False, widget=forms.DateInput(format="%Y-%m-%d", attrs={"type":"date"}))
     especie = forms.ModelChoiceField(queryset=Especie.objects.all(), required=False, empty_label="Todas las especies")
     tipo = forms.ChoiceField(required=False, choices=[("", "Todos los tipos"), *BajaCaja.Tipo.choices])

@@ -109,14 +109,14 @@ class AutenticacionUsuarioTests(TestCase):
 
     def test_usuario_autenticado_puede_ver_inicio(self):
         self.assertTrue(
-            self.client.login(username="jefe_prueba", password="clave-prueba-123")
+            self.client.login(request=RequestFactory().post("/login/"), username="jefe_prueba", password="clave-prueba-123")
         )
         response = self.client.get(reverse("usuarios:inicio"))
         self.assertRedirects(response, reverse("reportes:dashboard"))
 
     def test_logout_por_post(self):
         self.assertTrue(
-            self.client.login(username="jefe_prueba", password="clave-prueba-123")
+            self.client.login(request=RequestFactory().post("/login/"), username="jefe_prueba", password="clave-prueba-123")
         )
         response = self.client.post(reverse("usuarios:logout"))
         self.assertRedirects(response, reverse("usuarios:login"))

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load formularios %}
 {% block title %}Procesamiento de {{ partida.detalle_recepcion.especie.nombre }} | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Seguimiento de proceso / Procesamiento{% endblock %}
 {% block content %}
@@ -24,8 +24,8 @@
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-lg font-semibold">Seleccionar ruta</h2>
         <p class="mt-2 text-sm leading-6 text-slate-600">Selecciona una ruta antes de comenzar las etapas.</p>
-        <form method="post" class="mt-5 space-y-5 [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600">
-            {% csrf_token %}
+        <form method="post" data-loading-text="Guardando…" class="mt-5 space-y-5 [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600">
+            {% csrf_token %}{% resumen_errores %}
             {% if form.non_field_errors %}<div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
             {% for campo in form %}{% include "trazabilidad/recepciones/_campo.html" %}{% if campo.help_text %}<p class="text-sm text-slate-600">{{ campo.help_text }}</p>{% endif %}{% endfor %}
             <button type="submit" class="w-full rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800 sm:w-auto">Asignar ruta</button>
@@ -52,9 +52,9 @@
                     </div>
                 </div>
                 {% if fila.puede_iniciar %}
-                <form method="post" action="{% url 'trazabilidad:iniciar_etapa' partida.pk fila.etapa.pk %}" class="mt-4">{% csrf_token %}<button type="submit" class="w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-800 sm:w-auto">Iniciar etapa<span class="sr-only"> {{ fila.etapa.tipo_proceso.nombre }}</span></button></form>
+                <form method="post" data-loading-text="Guardando…" action="{% url 'trazabilidad:iniciar_etapa' partida.pk fila.etapa.pk %}" class="mt-4">{% csrf_token %}{% resumen_errores %}<button type="submit" class="w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-800 sm:w-auto">Iniciar etapa<span class="sr-only"> {{ fila.etapa.tipo_proceso.nombre }}</span></button></form>
                 {% elif fila.puede_finalizar %}
-                <form method="post" action="{% url 'trazabilidad:finalizar_etapa' partida.pk fila.etapa.pk %}" class="mt-4">{% csrf_token %}<button type="submit" class="w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-800 sm:w-auto">Finalizar etapa<span class="sr-only"> {{ fila.etapa.tipo_proceso.nombre }}</span></button></form>
+                <form method="post" data-loading-text="Guardando…" action="{% url 'trazabilidad:finalizar_etapa' partida.pk fila.etapa.pk %}" class="mt-4">{% csrf_token %}{% resumen_errores %}<button type="submit" class="w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-800 sm:w-auto">Finalizar etapa<span class="sr-only"> {{ fila.etapa.tipo_proceso.nombre }}</span></button></form>
                 {% endif %}
             </li>
         {% endfor %}

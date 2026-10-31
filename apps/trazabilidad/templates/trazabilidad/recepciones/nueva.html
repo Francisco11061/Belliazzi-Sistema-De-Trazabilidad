@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load formularios %}
 {% block title %}Registrar recepción | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Registrar recepción{% endblock %}
 {% block content %}
@@ -7,8 +7,8 @@
         <h1 class="text-2xl font-semibold tracking-tight md:text-3xl">Registrar recepción</h1>
 
     </header>
-    <form method="post" class="space-y-6 [&_input:not([type=checkbox])]:block [&_input:not([type=checkbox])]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:rounded-lg [&_select]:border-slate-300 [&_textarea]:block [&_textarea]:w-full [&_textarea]:min-h-32 [&_textarea]:h-32 [&_textarea]:rounded-lg [&_textarea]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600 [&_textarea:focus]:border-cyan-600 [&_textarea:focus]:ring-cyan-600">
-        {% csrf_token %}
+    <form method="post" data-loading-text="Guardando recepción…" class="space-y-6 [&_input:not([type=checkbox])]:block [&_input:not([type=checkbox])]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:rounded-lg [&_select]:border-slate-300 [&_textarea]:block [&_textarea]:w-full [&_textarea]:min-h-32 [&_textarea]:h-32 [&_textarea]:rounded-lg [&_textarea]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600 [&_textarea:focus]:border-cyan-600 [&_textarea:focus]:ring-cyan-600">
+        {% csrf_token %}{% resumen_errores %}
         <section aria-labelledby="datos-title" class="min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <h2 id="datos-title" class="mb-6 text-lg font-semibold">Datos generales</h2>
             {% if form.non_field_errors %}<div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">{{ form.non_field_errors }}</div>{% endif %}

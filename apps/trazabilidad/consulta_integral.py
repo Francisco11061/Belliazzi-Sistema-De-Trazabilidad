@@ -13,7 +13,7 @@ from apps.inventario.models import Despacho, DetalleDespacho, EstanciaCaja, Baja
 from apps.inventario.selectors import cajas_con_inventario
 from .models import (OrigenSernapesca, Recepcion, DetalleRecepcion, PartidaProceso, EventoProceso,
     EstanciaPartida, Pesaje, MermaProceso, ConsumoLote, LoteProduccion, Caja, ComposicionCaja, Correccion)
-from .selectors import lotes_con_empaque, partidas_con_disponibilidad, presentar_partida
+from .selectors import cajas_con_peso, lotes_con_empaque, partidas_con_disponibilidad, presentar_partida
 
 TIPOS = (("origen", "Folio Sernapesca"), ("recepcion", "Número de recepción"),
          ("seguimiento", "Identificador de seguimiento"), ("lote", "Código de lote"),
@@ -107,9 +107,12 @@ def ficha_integral(usuario, tipo, pk):
         recepciones[raiz.pk] = raiz
     lotes = list(lotes_con_empaque().filter(pk__in=lote_ids).select_related("especie", "ruta_proceso", "registrado_por").order_by("pk"))
     aportes = list(ConsumoLote.objects.filter(lote_produccion_id__in=lote_ids).select_related("lote_produccion").order_by("pk"))
-    cajas = list(cajas_con_inventario().filter(lote_produccion_id__in=lote_ids).select_related("registrado_por").prefetch_related(
+    cajas = list(cajas_con_inventario(cajas_con_peso()).filter(lote_produccion_id__in=lote_ids).select_related("registrado_por").prefetch_related(
         Prefetch("composiciones", queryset=ComposicionCaja.objects.select_related("presentacion").order_by("pk"))).order_by("pk"))
-    caja_ids = [c.pk for c in cajas]
+    # El origen y los pesos del lote siguen completos; los movimientos de una
+    # consulta de caja corresponden exclusivamente a esa caja.
+    cajas_lote = cajas
+    caja_ids = [c.pk for c in cajas if tipo != "caja" or c.pk == raiz.pk]
     eventos = list(EventoProceso.objects.filter(partida_id__in=partida_ids).select_related("tipo_proceso", "etapa_ruta", "iniciado_por", "finalizado_por").order_by("fecha_hora_inicio", "pk"))
     pesos = list(Pesaje.objects.filter(partida_id__in=partida_ids).select_related("registrado_por").order_by("fecha_hora_evento", "pk"))
     mermas = list(MermaProceso.objects.filter(partida_id__in=partida_ids).select_related("registrado_por").order_by("fecha_hora_evento", "pk"))
@@ -125,6 +128,14 @@ def ficha_integral(usuario, tipo, pk):
     for entidad, ids in vinculados.items():
         filtro_correcciones |= Q(entidad_afectada=entidad, identificador_registro__in=[str(i) for i in ids])
     correcciones = list(Correccion.objects.filter(filtro_correcciones).select_related("usuario").order_by("fecha_hora", "pk"))
+    entidades = {m.__name__: m for m in (*MODELOS.values(), DetalleRecepcion)}
+    nombres = {"PartidaProceso": "Seguimiento", "LoteProduccion": "Lote de producción",
+               "OrigenSernapesca": "Origen Sernapesca", "DetalleRecepcion": "Detalle de recepción",
+               "Recepcion": "Recepción", "Caja": "Caja", "Despacho": "Despacho"}
+    for correccion in correcciones:
+        correccion.entidad_visible = nombres.get(correccion.entidad_afectada, "Registro")
+        campos = {f.name: str(f.verbose_name).capitalize() for f in entidades[correccion.entidad_afectada]._meta.fields} if correccion.entidad_afectada in entidades else {}
+        correccion.campo_visible = campos.get(correccion.campo, correccion.campo.replace("_", " ").capitalize())
     for p in partidas:
         p.ejecutadas, p.pesos_documentados, p.mermas_documentadas, p.frio_documentado = [], [], [], []
     for registros, atributo in ((eventos, "ejecutadas"), (pesos, "pesos_documentados"), (mermas, "mermas_documentadas"), (frio, "frio_documentado")):
@@ -144,10 +155,16 @@ def ficha_integral(usuario, tipo, pk):
         # Sin aportes registrados no existe evidencia de un total asignado cero.
         if not lote.asignaciones:
             lote.total_asignado = lote.disponible_empacar = None
+    caja_actual = next((c for c in cajas if c.pk == raiz.pk), None) if tipo == "caja" else None
+    if caja_actual:
+        caja_actual.lote_produccion = next(l for l in lotes if l.pk == caja_actual.lote_produccion_id)
+        cajas = [caja_actual]
+    varios_aportes = bool(caja_actual and len({a.partida_id for a in aportes}) > 1)
     timeline = []
     def evento(fecha, clase, registro, responsable, texto, destino, orden):
         if fecha is not None:
-            timeline.append(dict(fecha=fecha, clase=clase, identificador=registro, responsable=responsable,
+            titulo = f"{clase} #{registro}" if clase in ("Recepción", "Registro del lote", "Armado de caja", "Despacho") else clase
+            timeline.append(dict(fecha=fecha, clase=clase, titulo=titulo, identificador=registro, responsable=responsable,
                                  texto=texto, url=destino, orden=orden))
     for r in recepciones.values():
         evento(r.fecha_hora_recepcion, "Recepción", r.pk, r.registrado_por, r.observaciones, enlace("recepcion", r.pk), 0)
@@ -157,7 +174,10 @@ def ficha_integral(usuario, tipo, pk):
     for e in eventos:
         texto = f"Seguimiento #{e.partida_id}: {e.tipo_proceso.nombre}. {e.observaciones}"
         evento(e.fecha_hora_inicio, "Inicio de operación", e.pk, e.iniciado_por, texto, enlace("seguimiento", e.partida_id), 2)
+        timeline[-1]["titulo"] = f"Inicio de {e.tipo_proceso.nombre.lower()} — Seguimiento #{e.partida_id}"
         evento(e.fecha_hora_termino, "Fin de operación", e.pk, e.finalizado_por, texto, enlace("seguimiento", e.partida_id), 3)
+        if e.fecha_hora_termino:
+            timeline[-1]["titulo"] = f"Fin de {e.tipo_proceso.nombre.lower()} — Seguimiento #{e.partida_id}"
     for lista, tipo_registro, clase in ((frio, "seguimiento", "Frío de proceso"), (almacenamiento, "caja", "Almacenamiento de caja")):
         for e in lista:
             destino_id = e.partida_id if tipo_registro == "seguimiento" else e.caja_id
@@ -185,7 +205,8 @@ def ficha_integral(usuario, tipo, pk):
     for e in bajas:
         evento(e.fecha_hora_evento, "Baja de caja", e.pk, e.registrado_por, f"Caja #{e.caja_id}: {e.motivo}", enlace("caja", e.caja_id), 11)
     for e in correcciones:
-        evento(e.fecha_hora, "Corrección auditada", e.pk, e.usuario, f"{e.entidad_afectada} #{e.identificador_registro}: {e.campo}. {e.motivo}", "", 12)
+        evento(e.fecha_hora, "Corrección auditada", e.pk, e.usuario, f"{e.entidad_visible} #{e.identificador_registro}: {e.campo_visible}. {e.motivo}", "", 12)
+        timeline[-1]["titulo"] = "Cambio registrado"
     timeline.sort(key=lambda e: (e["fecha"], e["orden"], e["identificador"]))
     padres = {p.partida_padre_id for p in partidas if p.partida_padre_id}
     hojas = [p for p in partidas if p.pk not in padres and p.estado != "DIVIDIDA"]
@@ -196,8 +217,10 @@ def ficha_integral(usuario, tipo, pk):
         "postproceso": suma_documentada(p.peso_final_kg if p.numero_postprocesos == 1 else None for p in hojas if p.procesamiento_iniciado),
         "mermas": suma_documentada(m.cantidad_kg for m in mermas),
         "asignado": suma_documentada(a.cantidad_kg_utilizada for a in aportes),
-        "cajas": suma_documentada(c.peso_neto_kg for c in cajas),
+        "cajas": suma_documentada(c.peso_neto_kg for c in cajas_lote),
     }
     return dict(raiz=raiz, tipo=tipo, lotes=lotes, detalles=detalles, partidas=partidas, aportes=aportes,
         cajas=cajas, almacenamiento=almacenamiento, despachos=list(por_despacho.values()), bajas=bajas,
-        correcciones=correcciones, timeline=timeline, conciliacion=conciliacion)
+        correcciones=correcciones, timeline=timeline, conciliacion=conciliacion,
+        caja=caja_actual, varios_aportes=varios_aportes,
+        otras_cajas=len(cajas_lote) - 1 if caja_actual else 0)

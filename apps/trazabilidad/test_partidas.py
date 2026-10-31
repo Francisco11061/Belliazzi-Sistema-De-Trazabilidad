@@ -473,7 +473,7 @@ class PartidasTests(TestCase):
         with CaptureQueriesContext(connection) as muchas:
             respuesta = self.client.get(url)
         self.assertEqual(len(muchas), len(pocas))
-        self.assertLessEqual(len(muchas), 7)
+        self.assertLessEqual(len(muchas), 8)  # Incluye el contador único del sidebar.
         self.assertEqual(len(respuesta.context["page_obj"]), 10)
         respuesta = self.client.get(url, {"especie": self.merluza.pk, "situacion": "DISPONIBLE", "page": "2"})
         self.assertEqual(len(respuesta.context["page_obj"]), 2)
