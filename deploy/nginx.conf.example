@@ -1,0 +1,39 @@
+# Instalar dentro del contexto http de Nginx; sustituir el dominio.
+# Topología: ALB HTTPS -> Nginx HTTP -> Gunicorn loopback.
+# REQUISITO: security group de EC2 acepta puerto 80 SOLO desde el SG del ALB.
+# ALB: listener 80 redirige a HTTPS; listener 443 termina TLS; XFF modo append.
+map $http_x_forwarded_proto $belliazzi_proto {
+    default http;
+    https https;
+}
+log_format belliazzi '$time_local "$request_method $uri" $status $request_time';
+server {
+    listen 80 default_server;
+    server_name _;
+    # Health check del target group (no valida DB ni proceso Django).
+    location = /healthz { access_log off; return 200 "ok\n"; }
+    location / { return 444; }
+}
+server {
+    listen 80;
+    server_name belliazzi.example.com;
+    server_tokens off;
+    access_log /var/log/nginx/belliazzi-access.log belliazzi;
+    client_max_body_size 2m;
+    location = /healthz { access_log off; return 200 "ok\n"; }
+    # Debe coincidir con STATIC_ROOT y ser legible por Nginx.
+    location /static/ {
+        alias /srv/belliazzi/staticfiles/;
+        autoindex off;
+        add_header X-Content-Type-Options nosniff always;
+    }
+    location / {
+        proxy_pass http://127.0.0.1:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host "";
+        proxy_set_header X-Forwarded-Proto $belliazzi_proto;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Connection "";
+        proxy_read_timeout 65s;
+    }
+}

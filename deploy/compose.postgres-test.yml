@@ -1,0 +1,15 @@
+services:
+  postgres-test:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: belliazzi_test
+      POSTGRES_PASSWORD: ${POSTGRES_TEST_PASSWORD:?Define una contraseña temporal}
+    ports:
+      - "127.0.0.1:${POSTGRES_TEST_PORT:-55432}:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U belliazzi_test -d postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 30

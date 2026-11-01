@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
+import os
+from django.core.exceptions import ImproperlyConfigured
 
 import environ
 
@@ -23,7 +25,8 @@ env = environ.Env(
     ALLOWED_HOSTS=(list, []),
 )
 
-environ.Env.read_env(BASE_DIR / '.env')
+if os.environ.get('DJANGO_SETTINGS_MODULE') != 'config.settings_production':
+    environ.Env.read_env(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -90,17 +93,28 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+DB_ENGINE = env('DB_ENGINE', default='mysql').lower()
+if DB_ENGINE not in ('mysql', 'postgresql'):
+    raise ImproperlyConfigured('DB_ENGINE debe ser mysql o postgresql.')
+
+DB_OPTIONS = {'charset': 'utf8mb4'} if DB_ENGINE == 'mysql' else {
+    'sslmode': env('DB_SSLMODE', default='prefer'),
+    'connect_timeout': env.int('DB_CONNECT_TIMEOUT', default=10),
+}
+if DB_ENGINE == 'postgresql' and env('DB_SSLROOTCERT', default=''):
+    DB_OPTIONS['sslrootcert'] = env('DB_SSLROOTCERT')
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
+        'ENGINE': f'django.db.backends.{DB_ENGINE}',
         'NAME': env('DB_NAME', default='belliazzi_trazabilidad'),
         'USER': env('DB_USER'),
         'PASSWORD': env('DB_PASSWORD'),
         'HOST': env('DB_HOST', default='127.0.0.1'),
-        'PORT': env('DB_PORT', default='3306'),
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-        },
+        'PORT': env('DB_PORT', default='3306' if DB_ENGINE == 'mysql' else '5432'),
+        'OPTIONS': DB_OPTIONS,
+        'CONN_MAX_AGE': env.int('DB_CONN_MAX_AGE', default=0),
+        'CONN_HEALTH_CHECKS': True,
     }
 }
 
@@ -140,6 +154,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = Path(env('STATIC_ROOT', default=str(BASE_DIR / 'staticfiles')))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

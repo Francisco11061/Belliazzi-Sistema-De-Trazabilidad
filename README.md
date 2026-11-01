@@ -1,6 +1,14 @@
 # Belliazi-Sistema-De-Trazabilidad
 Sistema web de trazabilidad e inventario para Pesquera Belliazzi
 
+## Pruebas aisladas y preparación de producción
+
+Consulta [PostgreSQL y AWS](docs/postgresql_aws.md) para seleccionar el motor,
+ejecutar la suite en bases temporales y preparar estáticos, Gunicorn, Nginx y TLS.
+MySQL local sigue siendo el valor predeterminado; producción utiliza el módulo
+explícito `config.settings_production` y no lee el `.env` local.
+Los resultados de la fase están en [Resultados de fase 2](docs/resultados_fase2.md).
+
 ## Estilos del inicio de sesión
 
 Los estilos utilizan Tailwind CSS y el plugin de Flowbite. Para regenerarlos,

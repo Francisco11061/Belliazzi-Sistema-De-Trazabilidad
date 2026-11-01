@@ -32,6 +32,8 @@
     <section aria-labelledby="graficos-titulo"><div class="dc-section-head"><div><h2 id="graficos-titulo">Inventario y despachos</h2><p class="dc-muted">Peso neto documentado. Los pesos faltantes se detallan en las tablas.</p></div></div><div class="dc-two-col">{% for panel in paneles_graficos %}{% include 'reportes/dashboard/_grafico.html' %}{% endfor %}</div></section>
     {% include 'reportes/dashboard/_stock.html' %}
     {% include 'reportes/dashboard/_analisis.html' %}
+    <section class="dc-card" aria-labelledby="actividad-titulo"><h2 id="actividad-titulo">Actividad reciente</h2><ul class="dc-list">{% for evento in actividad %}<li><a href="{{ evento.url }}">{{ evento.titulo }}</a><p class="dc-muted"><time datetime="{{ evento.fecha|date:'c' }}">{{ evento.fecha|date:'d/m/Y H:i' }}</time></p></li>{% empty %}<li class="dc-empty">Sin actividad reciente.</li>{% endfor %}</ul></section>
+    <section id="criterios-colores" class="dc-card" aria-labelledby="criterios-titulo"><h2 id="criterios-titulo">Criterios de los colores</h2><ul class="dc-list"><li><strong>Verde:</strong> sin alertas o asuntos pendientes en el indicador.</li><li><strong>Ámbar:</strong> información o asuntos que requieren revisión, incluidos datos faltantes y umbrales no configurados.</li><li><strong>Rojo:</strong> permanencias en frío que superan el umbral configurado.</li></ul><p class="dc-muted">Los colores orientan la revisión. No indican temperatura ni certifican la calidad del producto.</p></section>
 </div>
 {{ graficos|json_script:"dashboard-datos" }}
 {% endlanguage %}{% endblock %}

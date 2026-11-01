@@ -219,3 +219,4 @@ __marimo__/
 
 # Frontend dependencies
 node_modules/
+staticfiles/
