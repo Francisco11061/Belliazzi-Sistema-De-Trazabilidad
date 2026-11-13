@@ -1,0 +1,44 @@
+name: Belliazzi
+on:
+  push:
+    branches: [main, codex/belliazzi-cicd]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      SECRET_KEY: belliazzi-ci-test-only
+      DB_ENGINE: postgresql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '55432'
+      DB_USER: belliazzi_test
+      DB_PASSWORD: belliazzi-ci-postgres
+      POSTGRES_TEST_PASSWORD: belliazzi-ci-postgres
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v6
+      - name: Install Python dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config default-libmysqlclient-dev
+          uv sync --locked --python 3.14.7
+      - name: Start isolated PostgreSQL
+        run: docker compose -f deploy/compose.postgres-test.yml up -d --wait
+      - name: Run PostgreSQL tests
+        run: uv run --locked python scripts/test_isolated.py --backend postgresql
+      - name: Upload test logs and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgres-tests
+          path: |
+            /tmp/belliazzi-postgresql-tests-*/tests.log
+            /tmp/belliazzi-postgresql-tests-*/results.json
+          if-no-files-found: ignore
