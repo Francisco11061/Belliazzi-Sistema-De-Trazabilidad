@@ -45,25 +45,15 @@ jobs:
             /tmp/belliazzi-postgresql-tests-*/results.json
           if-no-files-found: ignore
 
-  deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+  package:
     needs: tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    concurrency:
-      group: belliazzi-production
-      cancel-in-progress: false
-    permissions:
-      contents: read
-      id-token: write
-    env:
-      AWS_REGION: sa-east-1
-      BUCKET: pesquera-belliazzi-react-2026
-      TARGET_GROUP: arn:aws:elasticloadbalancing:sa-east-1:507814113297:targetgroup/belliazzi-app-tg/1cb4c78c77e334ba
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -78,7 +68,33 @@ jobs:
           git archive HEAD | tar -x -C "$stage"
           install -m 644 apps/usuarios/static/usuarios/css/output.css "$stage/apps/usuarios/static/usuarios/css/output.css"
           install -m 644 apps/reportes/static/reportes/vendor/chart.umd.min.js "$stage/apps/reportes/static/reportes/vendor/chart.umd.min.js"
+          install -m 644 apps/reportes/static/reportes/vendor/Chart.js-LICENSE.md "$stage/apps/reportes/static/reportes/vendor/Chart.js-LICENSE.md"
           tar -C "$stage" -czf "$RUNNER_TEMP/app.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: application-package
+          path: ${{ runner.temp }}/app.tar.gz
+          if-no-files-found: error
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    concurrency:
+      group: belliazzi-production
+      cancel-in-progress: false
+    permissions:
+      id-token: write
+    env:
+      AWS_REGION: sa-east-1
+      BUCKET: pesquera-belliazzi-react-2026
+      TARGET_GROUP: arn:aws:elasticloadbalancing:sa-east-1:507814113297:targetgroup/belliazzi-app-tg/1cb4c78c77e334ba
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: application-package
+          path: ${{ runner.temp }}
       - uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: arn:aws:iam::507814113297:role/BelliazziGitHubDeploy
