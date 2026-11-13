@@ -125,7 +125,7 @@ jobs:
               '{REVISION:[$revision],DIGEST:[$digest],PackageURL:[$url]}')
             aws elbv2 deregister-targets --target-group-arn "$TARGET_GROUP" --targets "Id=$instance,Port=80"
             aws elbv2 wait target-deregistered --target-group-arn "$TARGET_GROUP" --targets "Id=$instance,Port=80"
-            command=$(aws ssm send-command --document-name Belliazzi-InstallRelease --document-version 1 \
+            command=$(aws ssm send-command --document-name Belliazzi-InstallRelease --document-version 2 \
               --instance-ids "$instance" --parameters "$parameters" --query Command.CommandId --output text)
             for attempt in {1..65}; do
               status=$(aws ssm get-command-invocation --command-id "$command" --instance-id "$instance" \
