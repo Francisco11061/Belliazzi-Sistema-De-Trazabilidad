@@ -2,6 +2,8 @@ name: Belliazzi
 on:
   push:
     branches: [main, codex/belliazzi-cicd]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -42,3 +44,88 @@ jobs:
             /tmp/belliazzi-postgresql-tests-*/tests.log
             /tmp/belliazzi-postgresql-tests-*/results.json
           if-no-files-found: ignore
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    concurrency:
+      group: belliazzi-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: sa-east-1
+      BUCKET: pesquera-belliazzi-react-2026
+      TARGET_GROUP: arn:aws:elasticloadbalancing:sa-east-1:507814113297:targetgroup/belliazzi-app-tg/1cb4c78c77e334ba
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build immutable application package
+        shell: bash
+        run: |
+          git diff --exit-code cd597d1ecee5de4e23aba6061c2abaa878c9814a HEAD -- uv.lock pyproject.toml
+          npm ci
+          npm run build:css
+          npm run build:charts
+          stage=$(mktemp -d)
+          git archive HEAD | tar -x -C "$stage"
+          install -m 644 apps/usuarios/static/usuarios/css/output.css "$stage/apps/usuarios/static/usuarios/css/output.css"
+          install -m 644 apps/reportes/static/reportes/vendor/chart.umd.min.js "$stage/apps/reportes/static/reportes/vendor/chart.umd.min.js"
+          tar -C "$stage" -czf "$RUNNER_TEMP/app.tar.gz" .
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: arn:aws:iam::507814113297:role/BelliazziGitHubDeploy
+          aws-region: sa-east-1
+      - name: Publish and update EC2 instances in sequence
+        shell: bash
+        run: |
+          package="$RUNNER_TEMP/app.tar.gz"
+          digest=$(sha256sum "$package" | cut -d ' ' -f 1)
+          key="belliazzi/ci-releases/$GITHUB_SHA/app.tar.gz"
+          aws s3 cp "$package" "s3://$BUCKET/$key" --only-show-errors
+
+          health() {
+            aws elbv2 describe-target-health --target-group-arn "$TARGET_GROUP" \
+              --targets "Id=$1,Port=80" --query 'TargetHealthDescriptions[0].TargetHealth.State' --output text
+          }
+
+          update_instance() {
+            local instance=$1 peer=$2 url parameters command status
+            if [[ $(health "$peer") != healthy || $(health "$instance") != healthy ]]; then
+              echo "Both instances must be healthy before starting a rollout."
+              return 1
+            fi
+
+            url=$(aws s3 presign "s3://$BUCKET/$key" --expires-in 600)
+            echo "::add-mask::$url"
+            parameters=$(jq -nc --arg revision "$GITHUB_SHA" --arg digest "$digest" --arg url "$url" \
+              '{REVISION:[$revision],DIGEST:[$digest],PackageURL:[$url]}')
+            aws elbv2 deregister-targets --target-group-arn "$TARGET_GROUP" --targets "Id=$instance,Port=80"
+            aws elbv2 wait target-deregistered --target-group-arn "$TARGET_GROUP" --targets "Id=$instance,Port=80"
+            command=$(aws ssm send-command --document-name Belliazzi-InstallRelease --document-version 1 \
+              --instance-ids "$instance" --parameters "$parameters" --query Command.CommandId --output text)
+            for attempt in {1..65}; do
+              status=$(aws ssm get-command-invocation --command-id "$command" --instance-id "$instance" \
+                --query Status --output text 2>/dev/null || true)
+              case "$status" in
+                Success) break ;;
+                Failed|Cancelled|TimedOut|Cancelling)
+                  echo "Deployment failed on $instance. Inspect SSM command $command before registering the instance."
+                  return 1 ;;
+              esac
+              sleep 8
+            done
+            [[ "$status" == Success ]]
+            aws elbv2 register-targets --target-group-arn "$TARGET_GROUP" --targets "Id=$instance,Port=80"
+            aws elbv2 wait target-in-service --target-group-arn "$TARGET_GROUP" --targets "Id=$instance,Port=80"
+          }
+
+          update_instance i-0aa3c03bc2a02a3e1 i-04a865e6104e8ba19
+          update_instance i-04a865e6104e8ba19 i-0aa3c03bc2a02a3e1
