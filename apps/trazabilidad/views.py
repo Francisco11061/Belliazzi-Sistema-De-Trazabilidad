@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from apps.usuarios.permisos import jefe_o_encargada_requerido, jefe_requerido, personal_operativo_requerido
+from config.errores import respuesta_error
 
 from .forms import EspecieRecibidaFormSet, OrigenRecepcionForm, RecepcionFiltroForm, RecepcionForm
 from .models import Correccion, EtapaRutaProceso, PartidaProceso, Recepcion
@@ -609,16 +610,23 @@ def detalle_caja(request, pk):
 @personal_operativo_requerido
 @require_http_methods(["GET"])
 def consulta_caja_qr(request, identificador):
-    if tiene_rol(request.user, ROL_JEFE, ROL_ENCARGADA):
+    puede_ver_recepcion = tiene_rol(request.user, ROL_JEFE, ROL_ENCARGADA)
+    cajas = Caja.objects.only("pk") if puede_ver_recepcion else cajas_con_inventario(cajas_con_trazabilidad())
+    try:
+        caja = cajas.get(identificador_qr=identificador)
+    except Caja.DoesNotExist:
+        return respuesta_error(404, detalle=(
+            "Código QR de caja no registrado",
+            "No hay una caja asociada a este código QR. Verifica la etiqueta y vuelve a escanearla.",
+        ))
+    if puede_ver_recepcion:
         from .views_consulta import mostrar_historial
-        caja = get_object_or_404(Caja.objects.only("pk"), identificador_qr=identificador)
         return mostrar_historial(request, "caja", caja.pk)
-    caja = get_object_or_404(cajas_con_inventario(cajas_con_trazabilidad()), identificador_qr=identificador)
     return render(request, "trazabilidad/cajas/consulta_qr.html", {
         "caja": caja, "composiciones": caja.composiciones_qr,
         "aportes": caja.lote_produccion.aportes_qr,
         **almacenamiento_caja(caja),
-        "puede_ver_recepcion": tiene_rol(request.user, ROL_JEFE, ROL_ENCARGADA),
+        "puede_ver_recepcion": puede_ver_recepcion,
     })
 
 
