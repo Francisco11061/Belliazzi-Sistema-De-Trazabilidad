@@ -29,11 +29,13 @@
                 <p class="mt-2 text-sm leading-6 text-slate-500">Ingresa tus credenciales para acceder al sistema.</p>
 
                 <form method="post" data-loading-text="Iniciando sesión…" class="lg-form">
-                    {% csrf_token %}{% resumen_errores %}
+                    {% csrf_token %}
                     {% if form.non_field_errors %}
-                        <div class="login-errors rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800" role="alert">
+                        <div class="login-errors rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800" role="alert" data-error-summary tabindex="-1">
                             {{ form.non_field_errors }}
                         </div>
+                    {% else %}
+                        {% resumen_errores %}
                     {% endif %}
 
                     <div class="login-field">

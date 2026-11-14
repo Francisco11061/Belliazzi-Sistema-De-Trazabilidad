@@ -104,7 +104,9 @@ class QRCajasTests(DatosQR, TestCase):
     def test_consulta_resuelve_por_uuid_no_pk_y_desconocido_404(self):
         respuesta = self.client.get(self.consulta())
         self.assertEqual(respuesta.context["caja"].pk, self.registro.pk)
-        self.assertEqual(self.client.get(reverse("producto_terminado:consulta_caja_qr", args=[uuid4()])).status_code, 404)
+        respuesta = self.client.get(reverse("producto_terminado:consulta_caja_qr", args=[uuid4()]))
+        self.assertContains(respuesta, "Código QR de caja no registrado", status_code=404)
+        self.assertIn("no-store", respuesta["Cache-Control"])
         self.assertEqual(self.client.get(f"/producto-terminado/cajas/qr/{self.registro.pk}/").status_code, 404)
 
     def test_consulta_y_png_requieren_login_y_preservan_next(self):

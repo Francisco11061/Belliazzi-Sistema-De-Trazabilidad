@@ -151,3 +151,7 @@ Validado el 15-10-2026: `uv run python manage.py test --noinput`: **614 tests OK
 - `templates/base.html`
 - `templates/components/_badge.html`
 - `templates/components/_nombre_rol.html`
+
+## Alcance de la HU10 y del caso CP-10
+
+El registro de despachos corresponde a Jefe/Administrador y Encargada de registro. Operaria conserva acceso a inventario, movimientos de almacenamiento y bajas según su rol. En el caso CP-10 se comprueba el despacho con un perfil autorizado y se espera HTTP 403 para Operaria al intentar acceder al registro.

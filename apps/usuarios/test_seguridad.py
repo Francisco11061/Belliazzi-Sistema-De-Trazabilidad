@@ -65,7 +65,8 @@ class SeguridadLoginTests(TestCase):
 
     def test_usuario_inexistente_mismo_mensaje_y_no_credenciales_guardadas(self):
         response=self.login(username='no_existe', password='SECRETO-PRUEBA', token='TOKEN-PRUEBA', csrfmiddlewaretoken='CSRF-PRUEBA', custom_access_key='OTRO-SECRETO')
-        self.assertContains(response,'Usuario o contraseña incorrectos')
+        self.assertContains(response,'Usuario o contraseña incorrectos',count=1)
+        self.assertNotContains(response,'Revisa los datos antes de continuar.')
         attempt=AccessAttempt.objects.get()
         self.assertEqual(attempt.post_data,'')
         self.assertEqual(attempt.get_data,'')

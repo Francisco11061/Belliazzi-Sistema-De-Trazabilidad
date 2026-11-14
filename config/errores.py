@@ -11,8 +11,8 @@ MENSAJES = {
 }
 
 
-def respuesta_error(codigo, *, login_bloqueado=False, csrf=False):
-    titulo, mensaje = MENSAJES[codigo]
+def respuesta_error(codigo, *, login_bloqueado=False, csrf=False, detalle=None):
+    titulo, mensaje = detalle if detalle is not None else MENSAJES[codigo]
     if login_bloqueado:
         titulo = 'Demasiados intentos de inicio de sesión'
         mensaje = 'Por seguridad, el acceso se ha limitado temporalmente. Inténtalo nuevamente más tarde.'
