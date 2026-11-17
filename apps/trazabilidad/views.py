@@ -633,6 +633,14 @@ def consulta_caja_qr(request, identificador):
 @never_cache
 @personal_operativo_requerido
 @require_http_methods(["GET"])
+def imprimir_caja_qr(request, pk):
+    caja = get_object_or_404(cajas_con_inventario(cajas_con_peso()), pk=pk)
+    return render(request, "trazabilidad/cajas/imprimir_qr.html", {"caja": caja})
+
+
+@never_cache
+@personal_operativo_requerido
+@require_http_methods(["GET"])
 def caja_qr_png(request, pk):
     caja = get_object_or_404(Caja, pk=pk)
     return HttpResponse(generar_png_qr_caja(request, caja), content_type="image/png")

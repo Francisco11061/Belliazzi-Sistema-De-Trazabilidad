@@ -231,6 +231,25 @@ def semaforo_operacion(pendientes, sin_peso, frio, mermas, bajas, post):
                 post=senal(post["superiores"], "Sin advertencias", "Peso superior al inicial"))
 
 
+def recorrido_producto(control, stock, cajas_despachadas, kg_despachados, recibido):
+    """Cinco etapas del producto, calculadas con los mismos datos del resto del dashboard."""
+    situacion = {fila["codigo"]: fila for fila in control["produccion"]}
+    total = lambda *codigos: sum(situacion[c]["cantidad"] for c in codigos)
+    enlace_proceso = situacion["EN_PROCESO"]["url"]
+    return [
+        dict(clave="recepcion", nombre="Recepción", cifra=recibido["recepciones"], unidad="recepciones", url=reverse("trazabilidad:lista_recepciones"),
+             detalle=f'{recibido["kg"]:.2f} kg en el período'.replace(".", ",")),
+        dict(clave="planta", nombre="En planta y proceso", cifra=total("DISPONIBLE", "EN_MANTENCION", "EN_PROCESO", "EN_CONGELACION", "PENDIENTE_PESAJE"),
+             unidad="seguimientos", url=enlace_proceso, detalle="Disponibles, en cámara, proceso o pesaje"),
+        dict(clave="empaque", nombre="Listos para empaque", cifra=situacion["LISTA_PARA_EMPAQUE"]["cantidad"], unidad="seguimientos",
+             url=control["empaque_url"], detalle="Esperan armarse en cajas", atencion=bool(situacion["LISTA_PARA_EMPAQUE"]["cantidad"])),
+        dict(clave="almacen", nombre="Almacenadas", cifra=stock["cajas"], unidad="cajas", url=control["stock_url"],
+             detalle="Stock en cámaras" if stock["cajas"] else "Sin cajas almacenadas"),
+        dict(clave="despacho", nombre="Despachadas", cifra=cajas_despachadas, unidad="cajas", url=control["despachos_url"],
+             detalle="En el período"),
+    ]
+
+
 def dashboard_operacional(valor="semana", ahora=None, desde=None, hasta=None, especie=None):
     ahora = ahora or timezone.now()
     periodo = periodo_libre(desde, hasta) if desde and hasta else periodo_actual(valor, ahora)
@@ -269,6 +288,8 @@ def dashboard_operacional(valor="semana", ahora=None, desde=None, hasta=None, es
                                  "valores": [f["peso_conocido"] for f in especies]},
                 })
     datos.update(control)
+    datos["recorrido"] = recorrido_producto(control, inventario["stock"], sum(f["cajas"] for f in serie), sum((f["peso_conocido"] for f in serie), Decimal("0.00")), recibido)
+    datos["alerta_frio"] = frio["elementos"][0] if frio["total"] else None
     datos["graficos"]["especies"] = {
         "labels": [f["lote_produccion__especie__nombre"] for f in dona] + (["Otras"] if otras else []),
         "valores": [f["peso_conocido"] for f in dona] + ([sum(f["peso_conocido"] for f in otras)] if otras else []),

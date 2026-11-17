@@ -1,0 +1,25 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: ui-sans-serif, system-ui, "Segoe UI", Arial, sans-serif; color: #0f172a; background: #f8fafc; }
+nav.no-print { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.5rem; background: #fff; border-bottom: 1px solid #e2e8f0; }
+nav.no-print a { color: #0e7490; font-weight: 600; font-size: .875rem; text-decoration: none; }
+nav.no-print a:hover { text-decoration: underline; }
+#imprimir { min-height: 44px; padding: .65rem 1.5rem; border: 0; border-radius: .5rem; background: #0e7490; color: #fff; font: inherit; font-weight: 600; font-size: .875rem; cursor: pointer; }
+#imprimir:hover { background: #155e75; }
+#imprimir:focus-visible, nav.no-print a:focus-visible { outline: 2px solid #0e7490; outline-offset: 2px; }
+main { display: grid; justify-items: center; padding: 2rem 1rem; gap: 1rem; }
+.etiqueta { width: 100%; max-width: 12cm; padding: 1rem 1.25rem 1.25rem; background: #fff; border: 2px solid #0f172a; border-radius: .5rem; text-align: center; }
+.etiqueta header p { margin: 0; font-size: .75rem; letter-spacing: .14em; font-weight: 700; color: #0e7490; }
+.etiqueta h1 { margin: .15rem 0 .5rem; font-size: 1.75rem; letter-spacing: -.02em; }
+.etiqueta img { display: block; width: 7.5cm; max-width: 100%; height: auto; margin: 0 auto .75rem; }
+.etiqueta dl { display: grid; gap: .25rem; margin: 0; text-align: left; font-size: .9375rem; }
+.etiqueta dl div { display: flex; justify-content: space-between; gap: 1rem; padding: .3rem 0; border-top: 1px solid #e2e8f0; }
+.etiqueta dt { color: #475569; }
+.etiqueta dd { margin: 0; font-weight: 600; text-align: right; }
+.ayuda { font-size: .8125rem; color: #475569; }
+@page { margin: 1cm; }
+@media print {
+    body { background: #fff; }
+    .no-print, nav.no-print { display: none !important; }
+    main { padding: 0; }
+    .etiqueta { width: 100%; max-width: 12cm; margin: 0 auto; break-inside: avoid; }
+}

@@ -135,6 +135,35 @@ class QRCajasTests(DatosQR, TestCase):
         for url in (self.consulta(), self.png_url()):
             self.assertEqual(self.client.post(url).status_code, 405)
 
+    def imprimir_url(self):
+        return reverse("producto_terminado:imprimir_caja_qr", args=[self.registro.pk])
+
+    def test_detalle_muestra_boton_imprimir_bajo_el_qr(self):
+        respuesta = self.client.get(reverse("producto_terminado:detalle_caja", args=[self.registro.pk]))
+        html = respuesta.content.decode()
+        self.assertContains(respuesta, f'href="{self.imprimir_url()}"')
+        self.assertLess(html.index(self.png_url()), html.index(self.imprimir_url()))
+        self.assertLess(html.index(self.imprimir_url()), html.index("Ver historial del producto"))
+
+    def test_etiqueta_imprimible_muestra_qr_y_datos_de_la_caja(self):
+        respuesta = self.client.get(self.imprimir_url())
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertIn("no-store", respuesta["Cache-Control"])
+        for texto in (f"Caja #{self.registro.pk}", self.png_url(), "TEST-QR-001", "Congrio", "24,82 kg"):
+            self.assertContains(respuesta, texto)
+
+    def test_etiqueta_imprimible_requiere_login_y_rol_operativo_solo_get(self):
+        self.client.logout()
+        respuesta = self.client.get(self.imprimir_url())
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertIn("next=" + self.imprimir_url(), respuesta.url)
+        rol = Rol.objects.create(codigo="LECTOR_IMPRESION", nombre="Lector")
+        self.client.force_login(Usuario.objects.create_user(username="lector_impresion", rol=rol))
+        self.assertEqual(self.client.get(self.imprimir_url()).status_code, 403)
+        self.client.force_login(self.usuario)
+        self.assertEqual(self.client.get(self.imprimir_url()).status_code, 200)
+        self.assertEqual(self.client.post(self.imprimir_url()).status_code, 405)
+
     def test_consulta_caja_pesos_composicion_producto_lote_fechas(self):
         respuesta = self.client.get(self.consulta())
         for texto in (f"Historial de Caja #{self.registro.pk}", "24,82 kg", "25,00 kg", "-0,18 kg", "Bolsa 5 kg", "5 bolsas", "TEST-QR-001", "Congrio", "Filete IQF", "26/09/2026", "26/10/2026", self.usuario.username):

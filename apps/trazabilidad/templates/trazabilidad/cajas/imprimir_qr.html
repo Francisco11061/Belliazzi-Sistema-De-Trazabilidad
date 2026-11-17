@@ -1,0 +1,30 @@
+{% load static %}<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Etiqueta Caja #{{ caja.pk }} | Pesquera Belliazzi</title>
+    <link rel="stylesheet" href="{% static 'trazabilidad/etiqueta.css' %}">
+</head>
+<body>
+    <nav class="no-print" aria-label="Acciones de impresión">
+        <a href="{% url 'producto_terminado:detalle_caja' caja.pk %}">← Volver a la caja</a>
+        <button type="button" id="imprimir">Imprimir</button>
+    </nav>
+    <main>
+        <article class="etiqueta" aria-label="Etiqueta de Caja #{{ caja.pk }}">
+            <header><p>PESQUERA BELLIAZZI</p><h1>Caja #{{ caja.pk }}</h1></header>
+            <img id="qr" src="{% url 'producto_terminado:caja_qr_png' caja.pk %}" alt="QR de Caja #{{ caja.pk }}" width="288" height="288">
+            <dl>
+                <div><dt>Especie</dt><dd>{{ caja.lote_produccion.especie.nombre }}</dd></div>
+                <div><dt>Lote</dt><dd>{{ caja.lote_produccion.codigo_visible }}</dd></div>
+                <div><dt>Peso neto</dt><dd>{% if caja.peso_neto_kg != None %}{{ caja.peso_neto_kg|floatformat:2 }} kg{% else %}Sin peso documentado{% endif %}</dd></div>
+                <div><dt>Elaboración</dt><dd>{{ caja.lote_produccion.fecha_elaboracion|date:"d/m/Y" }}</dd></div>
+                {% if caja.lote_produccion.fecha_vencimiento %}<div><dt>Vencimiento</dt><dd>{{ caja.lote_produccion.fecha_vencimiento|date:"d/m/Y" }}</dd></div>{% endif %}
+            </dl>
+        </article>
+        <p class="no-print ayuda">Si el diálogo de impresión no se abrió, usa el botón Imprimir.</p>
+    </main>
+    <script src="{% static 'trazabilidad/etiqueta.js' %}"></script>
+</body>
+</html>
