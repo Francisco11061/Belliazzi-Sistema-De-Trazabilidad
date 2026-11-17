@@ -34,11 +34,10 @@ class MicrocopyAvisosTests(DatosQR, TestCase):
         self.assertIn(ADVERTENCIA_PESO_SUPERIOR,html)
         self.assertIn('role="alert"',html)
 
-    def test_dashboard_franja_enlaza_criterios_al_final(self):
+    def test_dashboard_sin_seccion_de_criterios_de_colores(self):
         respuesta=self.client.get(reverse('reportes:dashboard'))
         html=respuesta.content.decode()
-        self.assertIn('href="#criterios-colores"',html)
-        self.assertGreater(html.index('id="criterios-colores"'),html.index('Accesos rápidos'))
-        self.assertContains(respuesta,'Criterios de los colores')
+        self.assertNotIn('criterios-colores',html)
+        self.assertNotContains(respuesta,'Criterios de los colores')
         self.assertContains(respuesta,'Sin alertas de frío.')
         self.assertNotContains(respuesta,'¿Cómo se calculan los colores?')

@@ -75,6 +75,45 @@ class DatosDashboard:
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class DashboardRecorridoTests(DatosDashboard, TestCase):
+    def setUp(self):
+        self.client.force_login(self.jefe)
+
+    def test_recorrido_cuenta_cajas_almacenadas_y_despachadas_del_periodo(self):
+        self.caja("10.00", almacenada=True)
+        self.caja("5.00", almacenada=True)
+        self.despacho(("3.00",), fecha=AHORA)
+        datos = dashboard_operacional(ahora=AHORA)
+        etapas = {e["clave"]: e for e in datos["recorrido"]}
+        self.assertEqual(list(etapas), ["recepcion", "planta", "empaque", "almacen", "despacho"])
+        self.assertEqual(etapas["almacen"]["cifra"], 2)
+        self.assertEqual(etapas["despacho"]["cifra"], 1)
+        self.assertEqual(etapas["planta"]["cifra"], 0)
+
+    def test_recorrido_se_renderiza_y_no_hay_banner_sin_alertas(self):
+        respuesta = self.client.get(self.url())
+        self.assertContains(respuesta, "Recorrido del producto")
+        self.assertContains(respuesta, "Listos para empaque")
+        self.assertNotContains(respuesta, "dc-banner")
+        self.assertIsNone(respuesta.context["alerta_frio"])
+
+    def test_banner_aparece_con_permanencia_sobre_el_umbral(self):
+        self.umbral("24.00")
+        self.caja("10.00", almacenada=True, ingreso=AHORA - timedelta(hours=40))
+        with patch("django.utils.timezone.now", return_value=AHORA):
+            respuesta = self.client.get(self.url())
+        self.assertContains(respuesta, "dc-banner")
+        self.assertContains(respuesta, "sobre el umbral")
+        self.assertEqual(respuesta.context["alerta_frio"]["unidad"], self.unidad)
+
+    def test_sin_seccion_de_criterios_ni_accesos_a_rutas(self):
+        respuesta = self.client.get(self.url())
+        self.assertNotContains(respuesta, "Criterios de los colores")
+        self.assertContains(respuesta, "Nueva recepción")
+        self.assertContains(respuesta, "Nuevo despacho")
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
 class DashboardPermisosTests(DatosDashboard, TestCase):
     def test_acceso_por_roles_y_sidebar(self):
         for usuario, permitido in ((self.jefe, True), (self.tecnico, True),

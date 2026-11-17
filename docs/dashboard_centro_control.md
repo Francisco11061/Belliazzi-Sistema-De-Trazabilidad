@@ -2,11 +2,11 @@
 
 ## Resultado
 
-El dashboard conserva Django Templates, los selectores existentes y Chart.js local. Presenta, en este orden: filtros y actualización, cuatro KPI actuales, seis accesos, asuntos pendientes, estado de producción, cuatro gráficos, vencimientos y antigüedad, análisis productivo y actividad reciente.
+El dashboard conserva Django Templates, los selectores existentes y Chart.js local. Presenta, en este orden: aviso de frío (solo si hay permanencias sobre el umbral), barra de filtros, cuatro KPI actuales, recorrido del producto (recepción, planta y proceso, listos para empaque, almacenadas, despachadas), cuatro accesos, asuntos pendientes, cuatro gráficos, vencimientos y antigüedad, análisis productivo y actividad reciente. Se eliminó la sección de criterios de colores.
 
 Los KPI muestran stock documentado y cajas, seguimientos en proceso, seguimientos listos para empaque con saldo real sin asignar y motivos de atención. La interfaz aclara que un registro puede generar más de un motivo. Las mermas y bajas normales no se presentan automáticamente como incidentes.
 
-Los accesos llevan a recepción, seguimiento, nueva ruta, gestión de rutas, consulta integral y despacho. Utilizan funcionalidades existentes, incluidas las implementadas en la ronda anterior.
+Los accesos llevan a recepción, seguimiento, consulta integral y despacho (las rutas se administran desde el menú lateral). Utilizan funcionalidades existentes, incluidas las implementadas en la ronda anterior.
 
 ## Archivos de esta entrega
 
@@ -59,7 +59,7 @@ Los cuatro tienen tablas accesibles, unidades y tooltips con formato chileno. Lo
 
 El jefe y el superusuario reciben el dashboard como destino predeterminado. Un `next` válido mantiene prioridad y se conserva el cambio obligatorio de contraseña. Operarios y encargada conservan Inicio y no reciben permisos administrativos. El menú del jefe elimina el acceso Inicio redundante; su URL antigua redirige al dashboard.
 
-Cuatro KPI y dos gráficos por fila cuando hay espacio; reducción progresiva a dos y una columna. Los seis accesos se reorganizan en seis, tres o dos columnas. Filtros plegables en móvil, controles de al menos 44 px, tablas con desplazamiento local y foco visible. No se cambió el drawer compartido.
+Cuatro KPI y dos gráficos por fila cuando hay espacio; reducción progresiva a dos y una columna. Los cuatro accesos se reorganizan en cuatro o dos columnas y el recorrido en cinco, tres o dos. Filtros en una barra compacta que se apila en móvil, controles de al menos 44 px, tablas con desplazamiento local y foco visible. No se cambió el drawer compartido.
 
 ## Límites y datos faltantes
 

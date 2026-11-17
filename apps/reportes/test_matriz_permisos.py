@@ -30,7 +30,7 @@ class MatrizPermisosTests(DatosQR, TestCase):
             *[(n, [p, self.partida.ruta_proceso.etapas.first().pk], "post") for n in ("iniciar_etapa", "finalizar_etapa")]])
         grupo("producto_terminado", ("OPERARIA", "ENCARGADA", "JEFE"), [
             ("lista_cajas", [], "get"), ("seleccionar_lote_caja", [], "get"), ("crear_caja", [l], "get"),
-            ("detalle_caja", [c], "get"), ("caja_qr_png", [c], "get"),
+            ("detalle_caja", [c], "get"), ("caja_qr_png", [c], "get"), ("imprimir_caja_qr", [c], "get"),
             ("consulta_caja_qr", [self.registro.identificador_qr], "get")])
         grupo("inventario", ("OPERARIA", "ENCARGADA", "JEFE"), [
             ("lista", [], "get"), ("lista_bajas", [], "get"),
