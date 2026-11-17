@@ -64,6 +64,20 @@ class AutenticacionUsuarioTests(TestCase):
         self.assertContains(response, "Usuario o contraseña incorrectos. Verifica tus credenciales e inténtalo nuevamente.")
         self.assertContains(response, 'role="alert"')
 
+    def test_cuenta_desactivada_muestra_mensaje_diferenciado_solo_con_clave_correcta(self):
+        Usuario.objects.create_user(username="cuenta_baja", password="Clave-segura-2026!", is_active=False,
+                                    rol=Rol.objects.get(codigo="OPERARIA"))
+        url = reverse("usuarios:login")
+        correcta = self.client.post(url, {"username": "cuenta_baja", "password": "Clave-segura-2026!"})
+        self.assertContains(correcta, "Esta cuenta está inactiva. Contacta al administrador del sistema.")
+        self.assertNotContains(correcta, "Usuario o contraseña incorrectos")
+        self.assertNotIn("_auth_user_id", self.client.session)
+        # Con clave errónea no se revela que la cuenta existe ni que está desactivada.
+        for datos in ({"username": "cuenta_baja", "password": "mala"}, {"username": "no_existe", "password": "x"}):
+            respuesta = self.client.post(url, datos)
+            self.assertContains(respuesta, "Usuario o contraseña incorrectos")
+            self.assertNotContains(respuesta, "cuenta está inactiva")
+
     def test_errores_login_en_espanol_con_idioma_ingles(self):
         with override("en"):
             response = self.client.post(reverse("usuarios:login"), {})
@@ -83,8 +97,8 @@ class AutenticacionUsuarioTests(TestCase):
         response = self.client.post(reverse("usuarios:login"), {
             "username": "jefe_prueba", "password": "clave-prueba-123",
         })
-        # El backend predeterminado rechaza cuentas inactivas con el error genérico.
-        self.assertContains(response, "Usuario o contraseña incorrectos.")
+        # HU14: con la contraseña correcta se informa que la cuenta está desactivada.
+        self.assertContains(response, "Esta cuenta está inactiva. Contacta al administrador del sistema.")
         self.assertNotIn("_auth_user_id", self.client.session)
         with override("en"), self.assertRaisesMessage(ValidationError, "Esta cuenta está inactiva. Contacta al administrador del sistema."):
             LoginUsuarioForm().confirm_login_allowed(self.usuario)
