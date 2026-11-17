@@ -7,6 +7,8 @@ from .models import Despacho
 def rut_valido(rut):
     """Valida el RUT chileno (módulo 11); acepta puntos y guion."""
     limpio = rut.replace(".", "").replace("-", "").replace(" ", "").upper()
+    if not limpio.isascii():
+        return False
     if not (limpio[:-1].isdigit() and 7 <= len(limpio[:-1]) <= 8 and (limpio[-1].isdigit() or limpio[-1] == "K")):
         return False
     suma = sum(int(d) * f for d, f in zip(reversed(limpio[:-1]), (2, 3, 4, 5, 6, 7) * 2))

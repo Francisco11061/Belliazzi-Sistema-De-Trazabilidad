@@ -421,7 +421,7 @@ class RutDestinatarioTests(TestCase):
         from .despachos import rut_valido
         for rut in ('12.345.678-5','12345678-5','10.000.013-K','10000013-k'):
             self.assertTrue(rut_valido(rut), rut)
-        for rut in ('12.345.678-4','1-9','abc','12.345.678','123456789012-3',''):
+        for rut in ('12.345.678-4','1-9','abc','12.345.678','123456789012-3','12.345.67²-5',''):
             self.assertFalse(rut_valido(rut), rut)
 
     def test_despacho_nacional_rechaza_rut_con_digito_incorrecto(self):
