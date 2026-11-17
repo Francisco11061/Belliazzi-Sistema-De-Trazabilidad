@@ -34,7 +34,8 @@ class MatrizPermisosTests(DatosQR, TestCase):
             ("consulta_caja_qr", [self.registro.identificador_qr], "get")])
         grupo("inventario", ("OPERARIA", "ENCARGADA", "JEFE"), [
             ("lista", [], "get"), ("lista_bajas", [], "get"),
-            *[(n, [c], "get") for n in ("ingresar", "mover", "crear_baja")]])
+            *[(n, [c], "get") for n in ("ingresar", "mover")]])
+        grupo("inventario", ("ENCARGADA", "JEFE"), [("crear_baja", [c], "get")])
         grupo("trazabilidad", ("ENCARGADA", "JEFE"), [("lista_recepciones", [], "get"),
             ("nueva_recepcion", [], "get"), ("detalle_recepcion", [recepcion], "get")])
         grupo("producto_terminado", ("ENCARGADA", "JEFE"), [("lista_lotes", [], "get"),

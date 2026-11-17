@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from apps.inventario.models import DetalleDespacho
 from apps.inventario.selectors import totales_stock
+from apps.trazabilidad.lotes import presentar_codigo_lote
 from apps.trazabilidad.models import SolicitudRuta
 from apps.trazabilidad.selectors import SITUACIONES, partidas_con_disponibilidad
 
@@ -73,6 +74,7 @@ def control_operativo(*, cajas, inventario, periodo, ahora, especie, frio):
                 "lote_produccion__fecha_vencimiento", "lote_produccion_id")[:8])
     for fila in vencimientos:
         fecha = fila["lote_produccion__fecha_vencimiento"]
+        fila["codigo_visible"] = presentar_codigo_lote(fila["lote_produccion__codigo_lote"])
         fila["grupo"] = "sin_fecha" if fecha is None else "vencidos" if fecha < hoy else "proximos"
         fila["etiqueta"] = dict(vencidos="Vencido", proximos="Próximo a vencer", sin_fecha="Sin fecha documentada")[fila["grupo"]]
         fila["url"] = enlace("inventario:lista", estado="ALMACENADA", lote=fila["lote_produccion_id"], especie=especie_id)

@@ -38,6 +38,8 @@ class DatosBaja(DatosDespacho):
 class BajaTests(DatosBaja, TestCase):
     def setUp(self):
         self.preparar_inventario()
+        self.operario = self.usuario
+        self.usuario = self.jefe  # Las bajas las registran Jefe y Encargada.
         self.client.force_login(self.usuario)
 
     def test_pendiente_baja_sin_estancias_ni_stock_ficticio(self):
@@ -200,6 +202,18 @@ class BajaTests(DatosBaja, TestCase):
             self.assertEqual(respuesta.status_code,302)
             self.assertEqual(BajaCaja.objects.get(caja=caja).registrado_por,usuario)
 
+    def test_operaria_consulta_bajas_pero_no_las_registra(self):
+        self.ingresar()
+        self.client.force_login(self.operario)
+        self.assertEqual(self.client.get(self.url_bajas()).status_code,200)
+        self.assertEqual(self.client.get(self.url_baja()).status_code,403)
+        self.assertEqual(self.client.post(self.url_baja(),{'tipo':'DANO','motivo':'Daño'}).status_code,403)
+        with self.assertRaises(PermissionDenied):self.baja(usuario=self.operario)
+        self.assertFalse(BajaCaja.objects.exists())
+        detalle=self.url_lote('detalle_caja',self.registro.pk)
+        self.assertNotContains(self.client.get(detalle),'Registrar baja')
+        self.assertNotContains(self.client.get(reverse('inventario:lista')),'Registrar baja')
+
     def test_no_permiso_y_anonimo(self):
         rol=Rol.objects.create(codigo='CONSULTA',nombre='Consulta')
         usuario=Usuario.objects.create_user(username='consulta_baja',rol=rol)
@@ -236,6 +250,8 @@ class BajaTests(DatosBaja, TestCase):
         detalle=self.url_lote('detalle_caja',self.registro.pk)
         self.assertContains(self.client.get(detalle),'Registrar baja')
         self.baja()
+        # El personal operativo conserva la consulta operativa de la caja; gestión abre el historial integral.
+        self.client.force_login(self.operario)
         qr=reverse('producto_terminado:consulta_caja_qr',args=[self.registro.identificador_qr])
         for url in (detalle,qr):
             respuesta=self.client.get(url)
@@ -285,7 +301,9 @@ class BajaTests(DatosBaja, TestCase):
 
 
 class ConcurrenciaBajaTests(DatosBaja, TransactionTestCase):
-    def setUp(self):self.preparar_despacho()
+    def setUp(self):
+        self.preparar_despacho()
+        self.usuario=self.jefe
 
     def competir(self,acciones):
         barrera=Barrier(2)

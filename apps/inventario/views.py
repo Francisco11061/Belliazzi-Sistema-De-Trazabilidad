@@ -149,7 +149,7 @@ def detalle_despacho(request, pk):
     return render(request, "inventario/despachos/detalle.html", {"despacho":despacho, "detalles":detalles})
 
 
-@personal_operativo_requerido
+@jefe_o_encargada_requerido
 @require_http_methods(["GET", "POST"])
 def crear_baja(request, pk):
     caja = get_object_or_404(cajas_con_inventario(), pk=pk)

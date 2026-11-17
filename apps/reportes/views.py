@@ -22,7 +22,7 @@ from .excel_sernapesca import NOTA_ALCANCE, NOTA_REFERENCIAS, construir_csv_sern
 @require_http_methods(["GET"])
 def dashboard(request):
     ahora = timezone.now()
-    defecto = periodo_actual(request.GET.get("periodo", "semana"), ahora)
+    defecto = periodo_actual(request.GET.get("periodo", "mes"), ahora)
     datos = request.GET.copy()
     datos.setdefault("desde", defecto["desde"].isoformat())
     datos.setdefault("hasta", defecto["hasta"].isoformat())

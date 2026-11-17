@@ -91,7 +91,7 @@ def registrar_despacho(*, cajas, usuario, tipo_destino, destino="", rut_destinat
 
 @transaction.atomic
 def registrar_baja(*, caja, tipo, motivo, usuario):
-    if not tiene_rol(usuario, ROL_JEFE, ROL_ENCARGADA, ROL_OPERARIA):
+    if not tiene_rol(usuario, ROL_JEFE, ROL_ENCARGADA):
         raise PermissionDenied
     actual = Caja.objects.select_for_update().filter(pk=caja.pk).first()
     if actual is None:
