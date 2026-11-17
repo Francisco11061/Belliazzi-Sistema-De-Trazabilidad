@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from apps.trazabilidad.lotes import presentar_codigo_lote
 from decimal import Decimal
 from urllib.parse import urlsplit, parse_qs
 from unittest.mock import patch
@@ -136,6 +137,8 @@ class CentroControlTests(DatosDashboard, TestCase):
         self.assertEqual(datos["vencimientos_resumen"], dict(vencidos=1, proximos=2, sin_fecha=1))
         self.assertEqual(len(datos["vencimientos"]), 4)
         self.assertEqual(datos["ventana_vencimientos"], 10)
+        for fila in datos["vencimientos"]:
+            self.assertEqual(fila["codigo_visible"], presentar_codigo_lote(fila["lote_produccion__codigo_lote"]))
         caja = self.caja(almacenada=False)
         self.assertNotIn(caja.lote_produccion_id, [f["lote_produccion_id"] for f in self.datos()["vencimientos"]])
 

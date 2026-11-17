@@ -14,5 +14,5 @@
             </div>
         </details>{% endif %}
     </div>
-    {% if caja.puede_registrar_baja %}<a href="{% url 'inventario:crear_baja' caja.pk %}" class="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm text-red-700"><svg width="16" height="16" class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg>Registrar baja</a>{% endif %}
+    {% if caja.puede_registrar_baja and user.rol.codigo != 'OPERARIA' %}<a href="{% url 'inventario:crear_baja' caja.pk %}" class="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm text-red-700"><svg width="16" height="16" class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg>Registrar baja</a>{% endif %}
 </article>

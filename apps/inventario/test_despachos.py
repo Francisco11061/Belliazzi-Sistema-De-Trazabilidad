@@ -170,9 +170,9 @@ class DespachoTests(DatosDespacho, TestCase):
         for campo,valor in [('tipo_documento',''),('numero_documento',''),('fecha_documento',None)]:
             with self.subTest(campo=campo), self.assertRaises(ValidationError):
                 self.despachar(**{campo:valor})
-        despacho=self.despachar(tipo_documento='Documento de transporte',numero_documento=' ABC-100 ',observaciones=' Observación ',rut_destinatario=' 12.345.678-k ')
+        despacho=self.despachar(tipo_documento='Documento de transporte',numero_documento=' ABC-100 ',observaciones=' Observación ',rut_destinatario=' 10.000.013-k ')
         self.assertEqual(despacho.numero_documento,'ABC-100')
-        self.assertEqual(despacho.rut_destinatario,'12.345.678-K')
+        self.assertEqual(despacho.rut_destinatario,'10.000.013-K')
         self.assertEqual(despacho.fecha_documento,timezone.localdate())
         self.assertEqual(despacho.observaciones,'Observación')
 
@@ -414,3 +414,23 @@ class MigracionDespachoTests(DatosDespacho, TransactionTestCase):
             self.assertEqual(list(EstanciaCaja.objects.values()),antes)
             self.assertEqual(Caja.objects.values().get(pk=self.registro.pk),caja_antes)
         finally:MigrationExecutor(connection).migrate(actual)
+
+
+class RutDestinatarioTests(TestCase):
+    def test_modulo_11(self):
+        from .despachos import rut_valido
+        for rut in ('12.345.678-5','12345678-5','10.000.013-K','10000013-k'):
+            self.assertTrue(rut_valido(rut), rut)
+        for rut in ('12.345.678-4','1-9','abc','12.345.678','123456789012-3','12.345.67²-5',''):
+            self.assertFalse(rut_valido(rut), rut)
+
+    def test_despacho_nacional_rechaza_rut_con_digito_incorrecto(self):
+        from django.core.exceptions import ValidationError
+        from .despachos import validar_datos_despacho
+        base=dict(tipo_destino='NACIONAL',destino='Cliente',rut_destinatario='12.345.678-4',pais_destino='',
+                  tipo_documento='Guía',numero_documento='1',fecha_documento='2026-11-01',observaciones='')
+        with self.assertRaises(ValidationError) as error:
+            validar_datos_despacho(base)
+        self.assertIn('rut_destinatario',error.exception.error_dict)
+        base['rut_destinatario']='12.345.678-5'
+        self.assertEqual(validar_datos_despacho(base)['rut_destinatario'],'12.345.678-5')

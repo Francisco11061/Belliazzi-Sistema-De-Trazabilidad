@@ -147,6 +147,17 @@ class DashboardPermisosTests(DatosDashboard, TestCase):
         self.assertIsNone(self.tecnico.rol)
         self.assertContains(self.client.get(self.url()), "Dashboard operacional")
 
+    def test_periodo_inicial_es_mes_y_subtitulo_de_especie(self):
+        self.client.force_login(self.jefe)
+        respuesta = self.client.get(self.url())
+        from django.utils import timezone as dj
+        hoy = dj.localdate()
+        self.assertEqual(respuesta.context["periodo"]["desde"], hoy.replace(day=1))
+        self.assertContains(respuesta, "todas las especies")
+        self.assertNotContains(respuesta, "especie seleccionada")
+        filtrada = self.client.get(self.url(), {"desde": hoy.isoformat(), "hasta": hoy.isoformat(), "especie": self.especie.pk})
+        self.assertContains(filtrada, "especie seleccionada")
+
     def test_estados_vacios(self):
         self.client.force_login(self.jefe)
         response = self.client.get(self.url())

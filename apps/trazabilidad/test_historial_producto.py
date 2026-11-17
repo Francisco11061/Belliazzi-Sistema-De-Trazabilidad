@@ -76,7 +76,7 @@ class HistorialProductoTests(DatosDespacho, TestCase):
         ingresar_caja(caja=otra, unidad=self.camara1, usuario=self.usuario)
         despacho = self.despachar(cajas=[otra])
         tercera = self.caja()
-        registrar_baja(caja=tercera, usuario=self.usuario, tipo='DANO', motivo='Baja exclusiva de otra caja')
+        registrar_baja(caja=tercera, usuario=self.jefe, tipo='DANO', motivo='Baja exclusiva de otra caja')
         respuesta = self.client.get(self.qr())
         datos = respuesta.context
         self.assertEqual([c.pk for c in datos['cajas']], [self.registro.pk])
@@ -140,6 +140,6 @@ class HistorialProductoTests(DatosDespacho, TestCase):
         datos = self.client.get(self.qr()).context
         self.assertEqual([d['registro'].pk for d in datos['despachos']], [despacho.pk])
         otra = self.caja()
-        registrar_baja(caja=otra, usuario=self.usuario, tipo='DANO', motivo='Envase roto')
+        registrar_baja(caja=otra, usuario=self.jefe, tipo='DANO', motivo='Envase roto')
         datos = self.client.get(self.qr(otra)).context
         self.assertEqual([b.caja_id for b in datos['bajas']], [otra.pk])
