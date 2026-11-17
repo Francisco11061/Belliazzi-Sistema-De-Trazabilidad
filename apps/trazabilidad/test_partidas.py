@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
@@ -261,6 +262,27 @@ class PartidasTests(TestCase):
         self.assertEqual(self.situacion(restante), "EN_MANTENCION")
         self.assertEqual(restante.cantidad_inicial_kg, Decimal("380"))
         self.assertFalse(seleccionada.estancias_frio.exists())
+
+    def test_detalle_muestra_permanencia_en_curso_y_cerrada(self):
+        self.enviar()
+        self.client.force_login(self.operaria)
+        url = reverse("trazabilidad:detalle_partida", args=[self.partida.pk])
+        EstanciaPartida.objects.update(fecha_hora_ingreso=timezone.now() - timedelta(hours=5, minutes=30))
+        self.assertContains(self.client.get(url), "Permanencia: 5 h 30 min (en curso)")
+        EstanciaPartida.objects.update(
+            fecha_hora_ingreso=timezone.now() - timedelta(hours=3),
+            fecha_hora_salida=timezone.now() - timedelta(hours=1), retirado_por=self.operaria)
+        self.assertContains(self.client.get(url), "Permanencia: 2 h 00 min")
+        self.assertNotContains(self.client.get(url), "2 h 00 min (en curso)")
+
+    def test_detalle_muestra_duracion_de_etapa_de_proceso(self):
+        self.procesar()
+        evento = EventoProceso.objects.get()
+        EventoProceso.objects.filter(pk=evento.pk).update(
+            fecha_hora_inicio=timezone.now() - timedelta(minutes=95))
+        self.client.force_login(self.operaria)
+        respuesta = self.client.get(reverse("trazabilidad:detalle_partida", args=[self.partida.pk]))
+        self.assertContains(respuesta, "Duración: 1 h 35 min (en curso)")
 
     def test_no_retirar_fuera_camara(self):
         with self.assertRaises(ValidationError):

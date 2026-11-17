@@ -26,6 +26,24 @@ class LoginUsuarioForm(AuthenticationForm):
                 "null_characters_not_allowed": "Este campo contiene caracteres no permitidos.",
             })
 
+    def clean(self):
+        try:
+            return super().clean()
+        except forms.ValidationError as error:
+            # Django trata una cuenta desactivada como credenciales inválidas. Se distingue
+            # solo si la contraseña es correcta, para no revelar qué cuentas existen.
+            if error.code == "invalid_login" and self._cuenta_inactiva_con_clave_correcta():
+                raise forms.ValidationError(self.error_messages["inactive"], code="inactive")
+            raise
+
+    def _cuenta_inactiva_con_clave_correcta(self):
+        nombre = self.cleaned_data.get("username")
+        clave = self.cleaned_data.get("password")
+        if not nombre or not clave:
+            return False
+        cuenta = Usuario._default_manager.filter(**{Usuario.USERNAME_FIELD: nombre}).first()
+        return bool(cuenta and not cuenta.is_active and cuenta.check_password(clave))
+
 
 class EstiloFormulario:
     def __init__(self, *args, **kwargs):
