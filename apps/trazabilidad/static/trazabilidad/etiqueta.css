@@ -21,5 +21,5 @@ main { display: grid; justify-items: center; padding: 2rem 1rem; gap: 1rem; }
     body { background: #fff; }
     .no-print, nav.no-print { display: none !important; }
     main { padding: 0; }
-    .etiqueta { max-width: none; width: 12cm; margin: 0 auto; break-inside: avoid; }
+    .etiqueta { width: 100%; max-width: 12cm; margin: 0 auto; break-inside: avoid; }
 }
