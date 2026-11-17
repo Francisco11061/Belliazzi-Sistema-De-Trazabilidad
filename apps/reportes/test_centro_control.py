@@ -59,6 +59,19 @@ class CentroControlTests(DatosDashboard, TestCase):
         self.assertEqual(datos["postproceso"]["incompletos"], 1)
         self.assertIsNone(datos["postproceso"]["rendimiento"])
 
+    def test_seguimiento_totalmente_empacado_no_cuenta_como_listo(self):
+        p = self.partida()
+        self.proceso(p, terminado=True)
+        tunel = type(self.unidad).objects.create(nombre="Túnel prueba empacado", tipo="TUNEL_CONGELADO")
+        EstanciaPartida.objects.create(partida=p, unidad_frio=tunel, fecha_hora_ingreso=AHORA-timedelta(hours=2),
+            fecha_hora_salida=AHORA-timedelta(hours=1), ingresado_por=self.jefe)
+        Pesaje.objects.create(partida=p, tipo=Pesaje.POSTPROCESO, peso_kg=80, fecha_hora_evento=AHORA, registrado_por=self.jefe)
+        ConsumoLote.objects.create(partida=p, lote_produccion=self.lote(), cantidad_kg_utilizada=80)
+        datos = self.datos()
+        self.assertEqual(datos["listos_empaque"], 0)
+        self.assertEqual(next(f for f in datos["produccion"] if f["codigo"] == "LISTA_PARA_EMPAQUE")["cantidad"], 0)
+        self.assertEqual(next(f for f in datos["recorrido"] if f["clave"] == "empaque")["cifra"], 0)
+
     def test_ranking_peso_real_periodo_especie_y_bajas_excluidas(self):
         primero = self.despacho(("12.50", None))
         segundo = self.despacho(("8.00",))

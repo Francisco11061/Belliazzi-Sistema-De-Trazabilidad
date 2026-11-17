@@ -36,6 +36,14 @@ def control_operativo(*, cajas, inventario, periodo, ahora, especie, frio):
     empaque = disponibles.aggregate(
         kg=Sum("disponible_lote_kg", filter=Q(numero_postprocesos=1, disponible_lote_kg__gte=0)),
         incompletos=Count("pk", filter=~Q(numero_postprocesos=1) | Q(disponible_lote_kg__lt=0)))
+    # "Listos" son los que aún tienen saldo por armar; los ya asignados a lotes salen del flujo de empaque.
+    listos = disponibles.filter(numero_postprocesos=1, disponible_lote_kg__gt=0).count()
+    for fila in produccion:
+        if fila["codigo"] == "LISTA_PARA_EMPAQUE":
+            fila["cantidad"] = listos
+    maximo = max((f["cantidad"] for f in produccion), default=0) or 1
+    for fila in produccion:
+        fila["porcentaje"] = round(fila["cantidad"] / maximo * 100)
     solicitudes = _especie(SolicitudRuta.objects.filter(estado="PENDIENTE"), "especie", especie).count()
     pendientes = [
         dict(nombre="Por ingresar a almacenamiento", cantidad=inventario["pendientes"],
@@ -85,7 +93,7 @@ def control_operativo(*, cajas, inventario, periodo, ahora, especie, frio):
     for caja in antiguos:
         caja.permanencia = _duracion_texto(ahora - caja.ingreso_abierto) if caja.ingreso_abierto <= ahora else "Ingreso futuro: revisar"
     return dict(produccion=produccion, procesamiento_activo=cantidades.get("EN_PROCESO", 0),
-        listos_empaque=cantidades.get("LISTA_PARA_EMPAQUE", 0), saldo_empaque=empaque,
+        listos_empaque=listos, saldo_empaque=empaque,
         asuntos=frio["total"] + sum(p["cantidad"] for p in pendientes), pendientes_control=pendientes,
         solicitudes_ruta_pendientes=solicitudes, camaras=camaras, ranking=ranking,
         vencimientos=vencimientos, vencimientos_total=sum(grupos.values()), vencimientos_resumen=grupos,
