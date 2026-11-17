@@ -63,7 +63,7 @@ class ConsultaIntegralTests(DatosDespacho, TestCase):
         ingresar_caja(caja=otra_caja, unidad=self.camara1, usuario=self.usuario)
         primero = self.despachar()
         segundo = self.despachar(cajas=[otra_caja])
-        registrar_baja(caja=tercera, usuario=self.usuario, tipo="DANO", motivo="Rotura documentada")
+        registrar_baja(caja=tercera, usuario=self.jefe, tipo="DANO", motivo="Rotura documentada")
         datos = self.ficha()
         self.assertEqual({a.partida_id for a in datos["aportes"]}, {self.partida.pk, otra.pk})
         self.assertEqual({d["registro"].pk for d in datos["despachos"]}, {primero.pk, segundo.pk})
