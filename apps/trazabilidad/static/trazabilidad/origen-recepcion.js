@@ -4,6 +4,7 @@
 
     const tipo = bloque.querySelector('[name="tipo_origen"]');
     const datos = bloque.querySelector('[data-datos-embarcacion]');
+    const proveedor = bloque.querySelector('[data-datos-proveedor]');
     const nombre = datos.querySelector('[name="nombre_embarcacion"]');
     const matricula = datos.querySelector('[name="matricula_embarcacion"]');
     const rpa = datos.querySelector('[name="rpa_embarcacion"]');
@@ -29,10 +30,11 @@
         }
     }
 
-    function mostrarEmbarcacion() {
-        const visible = tipo.value === bloque.dataset.origenEmbarcacion;
-        datos.hidden = !visible;
-        datos.disabled = !visible;
+    function actualizarOrigen() {
+        const esEmbarcacion = tipo.value === bloque.dataset.origenEmbarcacion;
+        const esComercializadora = tipo.value === bloque.dataset.origenComercializadora;
+        datos.hidden = datos.disabled = !esEmbarcacion;
+        proveedor.hidden = proveedor.disabled = !esComercializadora;
     }
 
     nombre.addEventListener('input', () => {
@@ -47,6 +49,6 @@
         }
         autocompletada = barco || null;
     });
-    tipo.addEventListener('change', mostrarEmbarcacion);
-    mostrarEmbarcacion();
+    tipo.addEventListener('change', actualizarOrigen);
+    actualizarOrigen();
 })();
