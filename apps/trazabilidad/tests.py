@@ -616,6 +616,8 @@ class ValidacionesRecepcionTests(TestCase):
         self.assertEqual(form.cleaned_data, {
             "folio_origen": "FOLIO-123", "tipo_origen": "Desembarque",
             "codigo_agente": "", "proveedor": "Proveedor prueba",
+            "nombre_embarcacion": "", "matricula_embarcacion": "", "rpa_embarcacion": "",
+            "caleta_desembarque": "", "fecha_desembarque": None,
         })
         for folio in ("", "    "):
             form = OrigenRecepcionForm({"folio_origen": folio})
