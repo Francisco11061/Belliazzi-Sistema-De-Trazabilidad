@@ -266,6 +266,54 @@ class RecepcionViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "trazabilidad/recepciones/nueva.html")
 
+    def test_embarcacion_se_recuerda_despues_de_guardar_sin_datos_del_desembarque(self):
+        self.client.force_login(self.jefe)
+        url = reverse("trazabilidad:nueva_recepcion")
+        self.assertEqual(self.client.get(url).context["embarcaciones_guardadas"], [])
+        datos = self.datos_validos() | {
+            "tipo_origen": "Embarcación artesanal",
+            "nombre_embarcacion": "El Gato",
+            "matricula_embarcacion": "Valdivia 123",
+            "rpa_embarcacion": "001234",
+            "caleta_desembarque": "Niebla",
+            "fecha_desembarque": timezone.localdate().isoformat(),
+        }
+        no_guardada = self.client.post(url, datos | {"folio_origen": ""})
+        self.assertEqual(no_guardada.context["embarcaciones_guardadas"], [])
+        creada = self.client.post(url, datos, follow=True)
+        self.assertContains(creada, "El Gato")
+        origen = OrigenSernapesca.objects.get()
+        self.assertEqual(origen.caleta_desembarque, "Niebla")
+        self.assertEqual(origen.fecha_desembarque, timezone.localdate())
+        self.assertEqual(origen.proveedor, self.datos_origen["proveedor"])
+        self.assertEqual(self.client.get(url).context["embarcaciones_guardadas"], [{
+            "nombre_embarcacion": "El Gato", "matricula_embarcacion": "Valdivia 123",
+            "rpa_embarcacion": "001234",
+        }])
+
+    def test_corregir_datos_de_embarcacion_actualiza_sugerencias_y_audita(self):
+        self.client.force_login(self.jefe)
+        nueva = reverse("trazabilidad:nueva_recepcion")
+        datos = self.datos_validos() | {
+            "tipo_origen": "Embarcación artesanal", "nombre_embarcacion": "El Gato",
+            "matricula_embarcacion": "Valdivia 123", "rpa_embarcacion": "001234",
+        }
+        self.assertEqual(self.client.post(nueva, datos).status_code, 302)
+        recepcion = Recepcion.objects.get()
+        corregir = reverse("trazabilidad:corregir_recepcion", args=[recepcion.pk])
+        campos = self.client.get(corregir).context["origen"]
+        self.assertEqual(campos["matricula_embarcacion"].value(), "Valdivia 123")
+        respuesta = self.client.post(corregir, datos | {
+            "especies-INITIAL_FORMS": "1", "especies-0-detalle_id": recepcion.detalles.get().pk,
+            "motivo": "Revisión de la matrícula", "matricula_embarcacion": "Valdivia 124",
+        })
+        self.assertRedirects(respuesta, reverse("trazabilidad:detalle_recepcion", args=[recepcion.pk]))
+        self.assertTrue(Correccion.objects.filter(
+            campo="matricula_embarcacion", valor_anterior="Valdivia 123", valor_nuevo="Valdivia 124",
+        ).exists())
+        nuevas = self.client.get(nueva).context["embarcaciones_guardadas"]
+        self.assertEqual([barco["matricula_embarcacion"] for barco in nuevas], ["Valdivia 124"])
+
     def test_operaria_no_puede_acceder_a_recepciones(self):
         self.client.force_login(self.operaria)
         urls = [

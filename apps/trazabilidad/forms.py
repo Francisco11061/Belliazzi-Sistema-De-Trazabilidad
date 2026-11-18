@@ -11,7 +11,7 @@ from .selectors import SITUACIONES
 from .models import LoteProduccion, ConsumoLote
 from .selectors import partidas_para_lote
 from .models import PresentacionBolsa
-from .constantes import PESO_MAXIMO_CAJA_KG
+from .constantes import CAMPOS_EMBARCACION, PESO_MAXIMO_CAJA_KG, TIPOS_ORIGEN
 
 
 class RecepcionForm(forms.Form):
@@ -43,9 +43,36 @@ class OrigenRecepcionForm(forms.Form):
         max_length=50, strip=True, label="Folio de origen Sernapesca",
         error_messages={"required": "El folio de origen Sernapesca es obligatorio."},
     )
-    tipo_origen = forms.CharField(max_length=80, required=False, label="Tipo de origen")
-    codigo_agente = forms.CharField(max_length=50, required=False, label="Código agente")
+    tipo_origen = forms.CharField(max_length=80, required=False, label="Tipo de origen", widget=forms.Select)
+    codigo_agente = forms.CharField(max_length=50, required=False, label="Código agente de origen")
     proveedor = forms.CharField(max_length=150, required=False, label="Proveedor")
+    nombre_embarcacion = forms.CharField(
+        max_length=150, required=False, label="Nombre de la embarcación",
+        widget=forms.TextInput(attrs={"list": "embarcaciones-guardadas", "autocomplete": "off"}),
+    )
+    matricula_embarcacion = forms.CharField(max_length=50, required=False, label="Matrícula")
+    rpa_embarcacion = forms.CharField(max_length=50, required=False, label="RPA de la embarcación")
+    caleta_desembarque = forms.CharField(max_length=150, required=False, label="Caleta de desembarque")
+    fecha_desembarque = forms.DateField(
+        required=False, label="Fecha de desembarque", input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        tipo = self["tipo_origen"].value()
+        opciones = [("", "Selecciona el tipo de origen"), *((t, t) for t in TIPOS_ORIGEN)]
+        if tipo and tipo not in TIPOS_ORIGEN:
+            opciones.append((tipo, tipo))
+        self.fields["tipo_origen"].widget.choices = opciones
+
+    @property
+    def campos_origen(self):
+        return (self[nombre] for nombre in self.fields if nombre not in CAMPOS_EMBARCACION)
+
+    @property
+    def campos_embarcacion(self):
+        return (self[nombre] for nombre in CAMPOS_EMBARCACION)
 
 
 class EspecieRecibidaForm(forms.Form):

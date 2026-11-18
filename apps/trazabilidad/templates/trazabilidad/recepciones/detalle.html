@@ -37,8 +37,15 @@
             <dl class="grid min-w-0 gap-6 sm:grid-cols-2 {% if not forloop.first %}mt-6 border-t border-slate-200 pt-6{% endif %}">
                 <div><dt class="text-sm text-slate-600">Folio de origen Sernapesca</dt><dd class="mt-1 text-sm font-medium">{{ origen.folio_origen }}</dd></div>
                 <div><dt class="text-sm text-slate-600">Tipo de origen</dt><dd class="mt-1 text-sm">{{ origen.tipo_origen|default:"No informado" }}</dd></div>
-                <div><dt class="text-sm text-slate-600">Código agente</dt><dd class="mt-1 text-sm">{{ origen.codigo_agente|default:"No informado" }}</dd></div>
+                <div><dt class="text-sm text-slate-600">Código agente de origen</dt><dd class="mt-1 text-sm">{{ origen.codigo_agente|default:"No informado" }}</dd></div>
                 <div><dt class="text-sm text-slate-600">Proveedor</dt><dd class="mt-1 text-sm">{{ origen.proveedor|default:"No informado" }}</dd></div>
+                {% if origen.nombre_embarcacion or origen.matricula_embarcacion or origen.rpa_embarcacion or origen.caleta_desembarque or origen.fecha_desembarque %}
+                    <div><dt class="text-sm text-slate-600">Nombre de la embarcación</dt><dd class="mt-1 text-sm">{{ origen.nombre_embarcacion|default:"No informado" }}</dd></div>
+                    <div><dt class="text-sm text-slate-600">Matrícula</dt><dd class="mt-1 text-sm">{{ origen.matricula_embarcacion|default:"No informada" }}</dd></div>
+                    <div><dt class="text-sm text-slate-600">RPA de la embarcación</dt><dd class="mt-1 text-sm">{{ origen.rpa_embarcacion|default:"No informado" }}</dd></div>
+                    <div><dt class="text-sm text-slate-600">Caleta de desembarque</dt><dd class="mt-1 text-sm">{{ origen.caleta_desembarque|default:"No informada" }}</dd></div>
+                    <div><dt class="text-sm text-slate-600">Fecha de desembarque</dt><dd class="mt-1 text-sm">{{ origen.fecha_desembarque|date:"d/m/Y"|default:"No informada" }}</dd></div>
+                {% endif %}
             </dl>
         {% empty %}
             <p class="text-sm text-slate-600">No informado</p>

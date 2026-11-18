@@ -16,7 +16,7 @@ from .models import LoteProduccion, ConsumoLote
 from .selectors import partidas_con_disponibilidad, puede_asignar_lote
 from .models import Caja, ComposicionCaja, PresentacionBolsa
 from .selectors import lotes_con_empaque, puede_crear_caja
-from .constantes import PESO_MAXIMO_CAJA_KG
+from .constantes import CAMPOS_EMBARCACION, ORIGEN_EMBARCACION, PESO_MAXIMO_CAJA_KG
 from .lotes import segmento_folio
 from .selectors import origen_unico_lote
 
@@ -48,6 +48,18 @@ def _validar_datos_recepcion(*, fecha_hora_recepcion, origen, detalles, observac
     observaciones = _normalizar_texto(observaciones, "observaciones")
     if not textos["folio_origen"]:
         raise ValidationError({"folio_origen": "El folio de origen Sernapesca es obligatorio."})
+
+    es_embarcacion = textos["tipo_origen"] == ORIGEN_EMBARCACION
+    textos.update({
+        campo: _normalizar_texto(origen.get(campo, "") if es_embarcacion else "", campo)
+        for campo in CAMPOS_EMBARCACION[:-1]
+    })
+    fecha_desembarque = origen.get("fecha_desembarque") if es_embarcacion else None
+    if fecha_desembarque:
+        fecha_desembarque = OrigenSernapesca._meta.get_field("fecha_desembarque").clean(fecha_desembarque, None)
+        if fecha_desembarque > timezone.localdate(fecha_hora_recepcion):
+            raise ValidationError({"fecha_desembarque": "El desembarque debe ser anterior o del mismo día de la recepción."})
+    textos["fecha_desembarque"] = fecha_desembarque or None
 
     ids = []
     for datos in detalles:
@@ -176,7 +188,8 @@ def corregir_recepcion(
         raise ValidationError("Indica el motivo de la corrección.")
 
     textos, observaciones, pendientes = _validar_datos_recepcion(
-        fecha_hora_recepcion=fecha_hora_recepcion, origen=origen,
+        fecha_hora_recepcion=fecha_hora_recepcion,
+        origen={campo: getattr(origen_actual, campo) for campo in CAMPOS_EMBARCACION} | origen,
         detalles=detalles, observaciones=observaciones,
     )
     por_id = {detalle.pk: detalle for detalle in existentes}
