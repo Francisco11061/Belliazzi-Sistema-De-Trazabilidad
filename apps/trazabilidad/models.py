@@ -32,6 +32,11 @@ class OrigenSernapesca(models.Model):
     tipo_origen = models.CharField(max_length=80, blank=True)
     codigo_agente = models.CharField(max_length=50, blank=True)
     proveedor = models.CharField(max_length=150, blank=True)
+    nombre_embarcacion = models.CharField(max_length=150, blank=True)
+    matricula_embarcacion = models.CharField(max_length=50, blank=True)
+    rpa_embarcacion = models.CharField(max_length=50, blank=True)
+    caleta_desembarque = models.CharField(max_length=150, blank=True)
+    fecha_desembarque = models.DateField(null=True, blank=True)
 
     def __str__(self):
         return self.folio_origen

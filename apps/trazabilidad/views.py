@@ -14,7 +14,7 @@ from apps.usuarios.permisos import jefe_o_encargada_requerido, jefe_requerido, p
 from config.errores import respuesta_error
 
 from .forms import EspecieRecibidaFormSet, OrigenRecepcionForm, RecepcionFiltroForm, RecepcionForm
-from .models import Correccion, EtapaRutaProceso, PartidaProceso, Recepcion
+from .models import Correccion, EtapaRutaProceso, OrigenSernapesca, PartidaProceso, Recepcion
 from .services import registrar_recepcion, corregir_recepcion as corregir_recepcion_service
 from .forms import EspecieCorreccionFormSet, MotivoCorreccionForm, RecepcionCorreccionForm
 from .forms import CantidadPartidaForm, EnviarMantencionForm, PartidaFiltroForm
@@ -32,7 +32,7 @@ from .selectors import partidas_con_disponibilidad, puede_asignar_lote, lotes_co
 from .seguimiento_operativo import CATEGORIAS, seguimientos_operativos
 from .services import crear_lote_produccion, agregar_consumo_lote
 from .forms import ComposicionCajaFormSet, CajaFiltroForm, CajaForm, SeleccionarLoteCajaForm
-from .constantes import PESO_MAXIMO_CAJA_KG
+from .constantes import CAMPOS_EMBARCACION, ORIGEN_EMBARCACION, PESO_MAXIMO_CAJA_KG
 from .models import PresentacionBolsa
 from .selectors import lotes_con_empaque, cajas_con_peso, puede_crear_caja
 from .selectors import cajas_con_trazabilidad
@@ -109,6 +109,15 @@ def lista_recepciones(request):
     )
 
 
+def _contexto_origen_recepcion():
+    embarcaciones = OrigenSernapesca.objects.filter(
+        tipo_origen=ORIGEN_EMBARCACION, detalles_recepcion__isnull=False,
+    ).exclude(nombre_embarcacion="").order_by("nombre_embarcacion").values(
+        "nombre_embarcacion", "matricula_embarcacion", "rpa_embarcacion",
+    ).distinct()
+    return {"tipo_embarcacion": ORIGEN_EMBARCACION, "embarcaciones_guardadas": list(embarcaciones)}
+
+
 @jefe_o_encargada_requerido
 def nueva_recepcion(request):
     if request.method == "POST":
@@ -119,10 +128,6 @@ def nueva_recepcion(request):
         origen_valido = origen.is_valid()
         especies_validas = especies.is_valid()
         if form_valido and origen_valido and especies_validas:
-            datos_origen = {
-                campo: origen.cleaned_data[campo]
-                for campo in ("folio_origen", "tipo_origen", "codigo_agente", "proveedor")
-            }
             datos_detalles = [
                 {
                     "especie": detalle.cleaned_data["especie"],
@@ -136,7 +141,7 @@ def nueva_recepcion(request):
                 recepcion = registrar_recepcion(
                     fecha_hora_recepcion=form.cleaned_data["fecha_hora_recepcion"],
                     registrado_por=request.user,
-                    origen=datos_origen,
+                    origen=origen.cleaned_data,
                     detalles=datos_detalles,
                     observaciones=form.cleaned_data["observaciones"],
                 )
@@ -153,7 +158,7 @@ def nueva_recepcion(request):
     return render(
         request,
         "trazabilidad/recepciones/nueva.html",
-        {"form": form, "origen": origen, "especies": especies},
+        {"form": form, "origen": origen, "especies": especies, **_contexto_origen_recepcion()},
     )
 
 
@@ -180,7 +185,10 @@ def detalle_recepcion(request, pk):
     etiquetas = {
         "fecha_hora_recepcion": "Fecha y hora de recepción", "observaciones": "Observaciones",
         "folio_origen": "Folio de origen Sernapesca", "tipo_origen": "Tipo de origen",
-        "codigo_agente": "Código agente", "proveedor": "Proveedor", "especie": "Especie",
+        "codigo_agente": "Código agente de origen", "proveedor": "Proveedor", "especie": "Especie",
+        "nombre_embarcacion": "Nombre de la embarcación", "matricula_embarcacion": "Matrícula",
+        "rpa_embarcacion": "RPA de la embarcación", "caleta_desembarque": "Caleta de desembarque",
+        "fecha_desembarque": "Fecha de desembarque",
         "peso_origen_kg": "Peso de origen", "peso_recepcion_kg": "Peso en recepción",
     }
     for entrada in historial:
@@ -216,7 +224,7 @@ def corregir_recepcion(request, pk):
     })
     origen = OrigenRecepcionForm(datos, initial={
         campo: getattr(origen_actual, campo)
-        for campo in ("folio_origen", "tipo_origen", "codigo_agente", "proveedor")
+        for campo in ("folio_origen", "tipo_origen", "codigo_agente", "proveedor", *CAMPOS_EMBARCACION)
     })
     especies = EspecieCorreccionFormSet(
         datos, prefix="especies", detalle_ids=[d.pk for d in detalles],
@@ -247,6 +255,7 @@ def corregir_recepcion(request, pk):
     return render(request, "trazabilidad/recepciones/corregir.html", {
         "recepcion": recepcion, "form": form, "origen": origen, "especies": especies,
         "motivo": motivo, "procesada": procesada,
+        **_contexto_origen_recepcion(),
     })
 
 

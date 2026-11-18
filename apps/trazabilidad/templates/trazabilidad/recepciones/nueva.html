@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load formularios %}
+{% extends "base.html" %}{% load formularios static %}
 {% block title %}Registrar recepción | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Registrar recepción{% endblock %}
 {% block content %}
@@ -16,13 +16,7 @@
                 {% for campo in form %}{% include "trazabilidad/recepciones/_campo.html" %}{% endfor %}
             </div>
         </section>
-        <section aria-labelledby="origen-title" class="min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-            <h2 id="origen-title" class="mb-6 text-lg font-semibold">Información de origen</h2>
-            {% if origen.non_field_errors %}<div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">{{ origen.non_field_errors }}</div>{% endif %}
-            <div class="grid min-w-0 gap-6 md:grid-cols-2">
-                {% for campo in origen %}{% include "trazabilidad/recepciones/_campo.html" %}{% endfor %}
-            </div>
-        </section>
+        {% include "trazabilidad/recepciones/_origen.html" %}
         <section aria-labelledby="especies-title" class="min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <h2 id="especies-title" class="mb-6 text-lg font-semibold">Especies recibidas</h2>
             {{ especies.management_form }}
@@ -45,6 +39,7 @@
 </div>
 {% endblock %}
 {% block extra_js %}
+<script src="{% static 'trazabilidad/origen-recepcion.js' %}" defer></script>
 <script>
     (() => {
         const filas = document.getElementById('especies-filas');
