@@ -265,6 +265,16 @@ class RecepcionViewsTests(TestCase):
         response = self.client.get(reverse("trazabilidad:nueva_recepcion"))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "trazabilidad/recepciones/nueva.html")
+        self.assertContains(response, '<fieldset data-datos-proveedor class="min-w-0" hidden disabled>')
+
+    def test_proveedor_visible_para_comercializadora(self):
+        self.client.force_login(self.encargada)
+        url = reverse("trazabilidad:nueva_recepcion")
+        datos = self.datos_validos() | {"tipo_origen": "Comercializadora", "proveedor": "Proveedor web"}
+        respuesta = self.client.post(url, datos | {"folio_origen": ""})
+        self.assertContains(respuesta, '<fieldset data-datos-proveedor class="min-w-0" >')
+        self.assertEqual(self.client.post(url, datos).status_code, 302)
+        self.assertEqual(OrigenSernapesca.objects.get().proveedor, "Proveedor web")
 
     def test_embarcacion_se_recuerda_despues_de_guardar_sin_datos_del_desembarque(self):
         self.client.force_login(self.jefe)
@@ -1191,6 +1201,15 @@ class CorreccionRecepcionTests(TestCase):
         self.assertNotContains(response, "-DELETE")
         valor = timezone.localtime(self.recepcion.fecha_hora_recepcion).strftime("%Y-%m-%dT%H:%M:%S")
         self.assertContains(response, valor)
+
+    def test_correccion_preserva_proveedor_historico_oculto(self):
+        self.client.force_login(self.jefe)
+        datos = self.web(observaciones="Observación corregida")
+        del datos["proveedor"]
+        self.assertEqual(self.client.post(self.url, datos).status_code, 302)
+        self.origen.refresh_from_db()
+        self.assertEqual(self.origen.proveedor, "Proveedor anterior")
+        self.assertFalse(Correccion.objects.filter(campo="proveedor").exists())
 
     def test_superusuario_puede_corregir(self):
         self.client.force_login(self.tecnico)

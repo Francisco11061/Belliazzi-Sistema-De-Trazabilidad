@@ -11,7 +11,7 @@ from .selectors import SITUACIONES
 from .models import LoteProduccion, ConsumoLote
 from .selectors import partidas_para_lote
 from .models import PresentacionBolsa
-from .constantes import CAMPOS_EMBARCACION, PESO_MAXIMO_CAJA_KG, TIPOS_ORIGEN
+from .constantes import CAMPOS_EMBARCACION, ORIGEN_COMERCIALIZADORA, PESO_MAXIMO_CAJA_KG, TIPOS_ORIGEN
 
 
 class RecepcionForm(forms.Form):
@@ -39,6 +39,8 @@ class RecepcionForm(forms.Form):
 
 
 class OrigenRecepcionForm(forms.Form):
+    tipo_comercializadora = ORIGEN_COMERCIALIZADORA
+
     folio_origen = forms.CharField(
         max_length=50, strip=True, label="Folio de origen Sernapesca",
         error_messages={"required": "El folio de origen Sernapesca es obligatorio."},
@@ -68,7 +70,18 @@ class OrigenRecepcionForm(forms.Form):
 
     @property
     def campos_origen(self):
-        return (self[nombre] for nombre in self.fields if nombre not in CAMPOS_EMBARCACION)
+        return (self[nombre] for nombre in self.fields if nombre not in (*CAMPOS_EMBARCACION, "proveedor"))
+
+    @property
+    def mostrar_proveedor(self):
+        return self["tipo_origen"].value() == self.tipo_comercializadora
+
+    def clean_proveedor(self):
+        tipo = self.cleaned_data.get("tipo_origen")
+        if tipo != self.tipo_comercializadora and self.add_prefix("proveedor") not in self.data:
+            if tipo == self.initial.get("tipo_origen"):
+                return self.initial.get("proveedor", "")
+        return self.cleaned_data["proveedor"]
 
     @property
     def campos_embarcacion(self):
