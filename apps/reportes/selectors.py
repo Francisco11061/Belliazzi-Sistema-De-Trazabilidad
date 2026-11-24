@@ -90,10 +90,25 @@ def serie_despachos(periodo, especie=None):
     grupo = Case(*[When(**{campo + "__gte": s["inicio"], campo + "__lt": s["fin"]}, then=Value(i))
                    for i, s in enumerate(periodo["segmentos"])], output_field=IntegerField())
     filas = _en_periodo(_especie(DetalleDespacho.objects.all(), "caja__lote_produccion__especie", especie), campo, periodo).order_by().annotate(
-        grupo=grupo).values("grupo").annotate(**_totales_cajas_relacionadas())
-    por_grupo = {fila["grupo"]: fila for fila in filas}
-    return [dict(etiqueta=s["etiqueta"], **por_grupo.get(i, dict(cajas=0, peso_conocido=Decimal("0.00"), sin_peso=0)))
-            for i, s in enumerate(periodo["segmentos"])]
+        grupo=grupo).values("grupo", "caja__lote_produccion__especie__nombre").annotate(**_totales_cajas_relacionadas())
+    serie = [dict(etiqueta=s["etiqueta"], cajas=0, peso_conocido=Decimal("0.00"), sin_peso=0, por_especie={})
+             for s in periodo["segmentos"]]
+    for fila in filas:
+        tramo = serie[fila["grupo"]]
+        tramo["por_especie"][fila["caja__lote_produccion__especie__nombre"]] = fila
+        for campo in ("peso_conocido", "cajas", "sin_peso"):
+            tramo[campo] += fila[campo]
+    return serie
+
+
+def _series_por_especie(grupos):
+    nombres = sorted({nombre for grupo in grupos for nombre in grupo})
+    resultado = []
+    for nombre in nombres:
+        filas = [grupo.get(nombre, {}) for grupo in grupos]
+        resultado.append(dict(nombre=nombre, valores=[f.get("peso_conocido", 0) for f in filas],
+                              cajas=[f.get("cajas", 0) for f in filas], sin_peso=[f.get("sin_peso", 0) for f in filas]))
+    return resultado
 
 
 def mermas_y_bajas(periodo, especie=None):
@@ -305,6 +320,8 @@ def dashboard_operacional(valor="semana", ahora=None, desde=None, hasta=None, es
             cajas=[f["cajas"] for f in filas], sin_peso=[f["sin_peso"] for f in filas])
     datos["graficos"]["despachos"]["sin_peso"] = [f["sin_peso"] for f in serie]
     datos["graficos"]["despachos"]["cajas"] = [f["cajas"] for f in serie]
+    datos["graficos"]["despachos"]["series"] = _series_por_especie([f["por_especie"] for f in serie])
+    datos["graficos"]["camaras"]["series"] = _series_por_especie([f["por_especie"] for f in control["camaras"]])
     datos["paneles_graficos"] = []
     for clave, titulo, ambito, filas, campo, url in (
         ("especies", "Distribución del stock por especie", "Actual", especies, "lote_produccion__especie__nombre", control["stock_url"]),

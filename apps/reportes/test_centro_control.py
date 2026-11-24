@@ -107,6 +107,12 @@ class CentroControlTests(DatosDashboard, TestCase):
         self.assertEqual(datos["graficos"]["especies"]["cajas"][-1], 3)
         self.assertEqual(datos["graficos"]["especies"]["sin_peso"][-1], 1)
         self.assertEqual(sum(datos["graficos"]["especies"]["valores"]), Decimal("36"))
+        for clave in ("camaras", "despachos"):
+            grafico = datos["graficos"][clave]
+            self.assertEqual(len(grafico["series"]), 8)
+            for campo in ("valores", "cajas", "sin_peso"):
+                sumas = [sum(column) for column in zip(*(s[campo] for s in grafico["series"]))]
+                self.assertEqual(sumas, grafico[campo])
 
     def test_despacho_mixto_enlace_muestra_totales_especie_filtrada(self):
         despacho = self.despacho(("12",))
