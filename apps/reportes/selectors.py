@@ -284,15 +284,20 @@ def dashboard_operacional(valor="semana", ahora=None, desde=None, hasta=None, es
                 mermas=mermas, bajas=bajas, frio=frio, actividad=actividad_reciente(especie=especie),
                 graficos={
                     "despachos": {"labels": [f["etiqueta"] for f in serie], "valores": [f["peso_conocido"] for f in serie]},
-                    "especies": {"labels": [f["lote_produccion__especie__nombre"] for f in especies],
-                                 "valores": [f["peso_conocido"] for f in especies]},
                 })
     datos.update(control)
     datos["recorrido"] = recorrido_producto(control, inventario["stock"], sum(f["cajas"] for f in serie), sum((f["peso_conocido"] for f in serie), Decimal("0.00")), recibido)
     datos["alerta_frio"] = frio["elementos"][0] if frio["total"] else None
+    if otras:
+        dona.append({
+            "lote_produccion__especie__nombre": "Otras",
+            **{campo: sum(f[campo] for f in otras) for campo in ("peso_conocido", "cajas", "sin_peso")},
+        })
     datos["graficos"]["especies"] = {
-        "labels": [f["lote_produccion__especie__nombre"] for f in dona] + (["Otras"] if otras else []),
-        "valores": [f["peso_conocido"] for f in dona] + ([sum(f["peso_conocido"] for f in otras)] if otras else []),
+        "labels": [f["lote_produccion__especie__nombre"] for f in dona],
+        "valores": [f["peso_conocido"] for f in dona],
+        "cajas": [f["cajas"] for f in dona],
+        "sin_peso": [f["sin_peso"] for f in dona],
     }
     for clave, filas, nombre in (("ranking", control["ranking"], "caja__lote_produccion__especie__nombre"),
                                  ("camaras", control["camaras"], "nombre_unidad_abierta")):

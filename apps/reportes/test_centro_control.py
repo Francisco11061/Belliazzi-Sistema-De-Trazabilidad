@@ -94,6 +94,8 @@ class CentroControlTests(DatosDashboard, TestCase):
         for i in range(8):
             especie = type(self.especie).objects.create(nombre=f"Especie adicional {i}")
             caja = self.caja(str(i+1), almacenada=True, especie=especie)
+            if i == 0:
+                self.caja(None, almacenada=True, especie=especie)
             despacho = self.despacho((str(i+1),))
             lote = despacho.detalles.get().caja.lote_produccion
             lote.especie = especie
@@ -102,6 +104,8 @@ class CentroControlTests(DatosDashboard, TestCase):
         self.assertEqual([r["peso_conocido"] for r in datos["ranking"]], list(map(Decimal, [8,7,6,5,4])))
         self.assertEqual(len(datos["especies"]), 8)
         self.assertEqual(datos["graficos"]["especies"]["labels"][-1], "Otras")
+        self.assertEqual(datos["graficos"]["especies"]["cajas"][-1], 3)
+        self.assertEqual(datos["graficos"]["especies"]["sin_peso"][-1], 1)
         self.assertEqual(sum(datos["graficos"]["especies"]["valores"]), Decimal("36"))
 
     def test_despacho_mixto_enlace_muestra_totales_especie_filtrada(self):
