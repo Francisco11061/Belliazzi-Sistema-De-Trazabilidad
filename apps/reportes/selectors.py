@@ -90,10 +90,25 @@ def serie_despachos(periodo, especie=None):
     grupo = Case(*[When(**{campo + "__gte": s["inicio"], campo + "__lt": s["fin"]}, then=Value(i))
                    for i, s in enumerate(periodo["segmentos"])], output_field=IntegerField())
     filas = _en_periodo(_especie(DetalleDespacho.objects.all(), "caja__lote_produccion__especie", especie), campo, periodo).order_by().annotate(
-        grupo=grupo).values("grupo").annotate(**_totales_cajas_relacionadas())
-    por_grupo = {fila["grupo"]: fila for fila in filas}
-    return [dict(etiqueta=s["etiqueta"], **por_grupo.get(i, dict(cajas=0, peso_conocido=Decimal("0.00"), sin_peso=0)))
-            for i, s in enumerate(periodo["segmentos"])]
+        grupo=grupo).values("grupo", "caja__lote_produccion__especie__nombre").annotate(**_totales_cajas_relacionadas())
+    serie = [dict(etiqueta=s["etiqueta"], cajas=0, peso_conocido=Decimal("0.00"), sin_peso=0, por_especie={})
+             for s in periodo["segmentos"]]
+    for fila in filas:
+        tramo = serie[fila["grupo"]]
+        tramo["por_especie"][fila["caja__lote_produccion__especie__nombre"]] = fila
+        for campo in ("peso_conocido", "cajas", "sin_peso"):
+            tramo[campo] += fila[campo]
+    return serie
+
+
+def _series_por_especie(grupos):
+    nombres = sorted({nombre for grupo in grupos for nombre in grupo})
+    resultado = []
+    for nombre in nombres:
+        filas = [grupo.get(nombre, {}) for grupo in grupos]
+        resultado.append(dict(nombre=nombre, valores=[f.get("peso_conocido", 0) for f in filas],
+                              cajas=[f.get("cajas", 0) for f in filas], sin_peso=[f.get("sin_peso", 0) for f in filas]))
+    return resultado
 
 
 def mermas_y_bajas(periodo, especie=None):
@@ -284,15 +299,20 @@ def dashboard_operacional(valor="semana", ahora=None, desde=None, hasta=None, es
                 mermas=mermas, bajas=bajas, frio=frio, actividad=actividad_reciente(especie=especie),
                 graficos={
                     "despachos": {"labels": [f["etiqueta"] for f in serie], "valores": [f["peso_conocido"] for f in serie]},
-                    "especies": {"labels": [f["lote_produccion__especie__nombre"] for f in especies],
-                                 "valores": [f["peso_conocido"] for f in especies]},
                 })
     datos.update(control)
     datos["recorrido"] = recorrido_producto(control, inventario["stock"], sum(f["cajas"] for f in serie), sum((f["peso_conocido"] for f in serie), Decimal("0.00")), recibido)
     datos["alerta_frio"] = frio["elementos"][0] if frio["total"] else None
+    if otras:
+        dona.append({
+            "lote_produccion__especie__nombre": "Otras",
+            **{campo: sum(f[campo] for f in otras) for campo in ("peso_conocido", "cajas", "sin_peso")},
+        })
     datos["graficos"]["especies"] = {
-        "labels": [f["lote_produccion__especie__nombre"] for f in dona] + (["Otras"] if otras else []),
-        "valores": [f["peso_conocido"] for f in dona] + ([sum(f["peso_conocido"] for f in otras)] if otras else []),
+        "labels": [f["lote_produccion__especie__nombre"] for f in dona],
+        "valores": [f["peso_conocido"] for f in dona],
+        "cajas": [f["cajas"] for f in dona],
+        "sin_peso": [f["sin_peso"] for f in dona],
     }
     for clave, filas, nombre in (("ranking", control["ranking"], "caja__lote_produccion__especie__nombre"),
                                  ("camaras", control["camaras"], "nombre_unidad_abierta")):
@@ -300,6 +320,8 @@ def dashboard_operacional(valor="semana", ahora=None, desde=None, hasta=None, es
             cajas=[f["cajas"] for f in filas], sin_peso=[f["sin_peso"] for f in filas])
     datos["graficos"]["despachos"]["sin_peso"] = [f["sin_peso"] for f in serie]
     datos["graficos"]["despachos"]["cajas"] = [f["cajas"] for f in serie]
+    datos["graficos"]["despachos"]["series"] = _series_por_especie([f["por_especie"] for f in serie])
+    datos["graficos"]["camaras"]["series"] = _series_por_especie([f["por_especie"] for f in control["camaras"]])
     datos["paneles_graficos"] = []
     for clave, titulo, ambito, filas, campo, url in (
         ("especies", "Distribución del stock por especie", "Actual", especies, "lote_produccion__especie__nombre", control["stock_url"]),

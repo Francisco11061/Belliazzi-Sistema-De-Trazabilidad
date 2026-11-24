@@ -70,6 +70,13 @@
 .dc-track>span { display: block; height: 100%; background: #0891b2; border-radius: 5px; }
 .dc-track .dc-bar-warning { background: #b45309; }
 .dc-chart { height: 280px; position: relative; width: 100%; }
+.dc-chart-card { display: flex; flex-direction: column; }
+.dc-chart-card .dc-section-head { align-items: flex-start; }
+.dc-chart-card .dc-label { display: inline-block; margin-bottom: .25rem; }
+.dc-chart-card .dc-data { margin-top: auto; }
+.dc-chart-card :is(.dc-chart, .dc-empty) { margin-bottom: 1rem; }
+.dc-chart-card tbody tr:nth-child(even) { background: #f8fafc; }
+.dc-chart-card table :is(th, td):not(:first-child) { text-align: right; white-space: nowrap; }
 .dc-label { text-transform: uppercase; font-size: .625rem; letter-spacing: .1em; color: #64748b; font-weight: 700; }
 .dc-data { margin-top: .8rem; border-top: 1px solid #e2e8f0; }
 .dc-data summary { font-size: .8125rem; }

@@ -49,7 +49,17 @@ def control_operativo(*, cajas, inventario, periodo, ahora, especie, frio):
         dict(nombre="Solicitudes de rutas pendientes", cantidad=solicitudes,
              url=enlace("trazabilidad:solicitudes_ruta", estado="PENDIENTE", especie=especie_id)),
     ]
-    camaras = list(inventario["por_camara"].order_by("-peso_conocido", "nombre_unidad_abierta"))
+    stock = cajas.filter(estado_inventario="ALMACENADA")
+    desglose = stock.order_by().values("unidad_abierta_id", "nombre_unidad_abierta",
+        "lote_produccion__especie__nombre").annotate(**totales_stock())
+    por_camara = {}
+    for fila in desglose:
+        camara = por_camara.setdefault(fila["unidad_abierta_id"], dict(unidad_abierta_id=fila["unidad_abierta_id"],
+            nombre_unidad_abierta=fila["nombre_unidad_abierta"], peso_conocido=0, cajas=0, sin_peso=0, por_especie={}))
+        camara["por_especie"][fila["lote_produccion__especie__nombre"]] = fila
+        for campo in ("peso_conocido", "cajas", "sin_peso"):
+            camara[campo] += fila[campo]
+    camaras = sorted(por_camara.values(), key=lambda c: (-c["peso_conocido"], c["nombre_unidad_abierta"] or ""))
     for fila in camaras:
         fila["url"] = enlace("inventario:lista", estado="ALMACENADA", camara=fila["unidad_abierta_id"], especie=especie_id)
     ranking = list(_en_periodo(_especie(DetalleDespacho.objects.all(), "caja__lote_produccion__especie", especie),
@@ -59,7 +69,6 @@ def control_operativo(*, cajas, inventario, periodo, ahora, especie, frio):
     for fila in ranking:
         fila["url"] = enlace("inventario:lista_despachos", especie=fila["caja__lote_produccion__especie_id"],
                              desde=periodo["desde"], hasta=periodo["hasta"])
-    stock = cajas.filter(estado_inventario="ALMACENADA")
     hoy = timezone.localtime(ahora, timezone.get_default_timezone()).date()
     ventana = max(1, min(365, int(getattr(settings, "DASHBOARD_VENCIMIENTOS_DIAS", 30))))
     limite = hoy + timedelta(days=ventana)
