@@ -5,6 +5,7 @@ from .rutas import validar_etapas_ruta
 from .selectors import cajas_con_peso
 
 from .models import (
+    BodegaSernapesca,
     LoteProduccion,
     ConsumoLote,
     PresentacionBolsa,
@@ -29,9 +30,16 @@ from .models import (
 
 @admin.register(Especie)
 class EspecieAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "codigo_lote", "activo")
-    search_fields = ("nombre", "codigo_lote")
+    list_display = ("nombre", "codigo_lote", "codigo_sernapesca", "activo")
+    search_fields = ("nombre", "codigo_lote", "codigo_sernapesca")
     list_filter = ("activo",)
+
+
+@admin.register(BodegaSernapesca)
+class BodegaSernapescaAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "por_defecto", "activo")
+    search_fields = ("nombre",)
+    list_filter = ("activo", "por_defecto")
 
 
 @admin.register(OrigenSernapesca)
@@ -202,8 +210,8 @@ class EventoProcesoAdmin(admin.ModelAdmin):
 
 @admin.register(UnidadFrio)
 class UnidadFrioAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "tipo", "activo")
-    list_filter = ("tipo", "activo")
+    list_display = ("nombre", "tipo", "bodega_sernapesca", "activo")
+    list_filter = ("tipo", "activo", "bodega_sernapesca")
     search_fields = ("nombre",)
 
     def get_readonly_fields(self, request, obj=None):

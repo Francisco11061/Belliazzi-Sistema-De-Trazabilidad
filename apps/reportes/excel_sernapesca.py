@@ -20,12 +20,20 @@ NOTA_REFERENCIAS = (
     "La cantidad asignada al lote proviene exclusivamente de sus aportes registrados."
 )
 
-# clave, encabezado, ancho. Los cambios de columnas se concentran aquí.
+# clave, encabezado, ancho y, opcionalmente, formato numérico de Excel.
+# Los cambios de columnas se concentran aquí.
 COLUMNAS = {
+    # Orden del formulario de abastecimiento de Sernapesca; el detalle en kg queda como respaldo.
     "Abastecimiento": (
-        ("recepcion", "ID recepción", 14), ("fecha", "Fecha/hora recepción (Chile)", 23),
-        ("folio", "Folio de origen", 28), ("tipo_origen", "Tipo de origen", 22),
-        ("agente", "Código agente", 20), ("proveedor", "Proveedor", 30), ("especie", "Especie", 26),
+        ("recepcion", "ID recepción", 14), ("fecha", "Fecha declaración: recepción en planta (Chile)", 23),
+        ("folio", "Folio origen", 28), ("tipo_origen", "Tipo proveedor", 22),
+        ("agente", "Código agente origen", 20), ("proveedor", "Proveedor", 30),
+        ("codigo_recurso", "Código recurso Sernapesca", 20), ("especie", "Recurso (especie)", 26),
+        ("fecha_desembarque", "Fecha desembarque/captura", 18),
+        ("toneladas_origen", "Toneladas declaradas por el proveedor", 20, "0.000"),
+        ("toneladas_aceptadas", "Toneladas aceptadas (recibidas en planta)", 20, "0.000"),
+        ("porcentaje_diferencia", "% diferencia: recibido vs. proveedor", 18, "0.0"),
+        ("bodega", "Bodega", 24),
         ("peso_origen", "Peso de origen (kg)", 19), ("peso_recibido", "Peso recibido en planta (kg)", 22),
         ("diferencia", "Diferencia: recibido − origen (kg)", 24),
         ("usuario", "Usuario que registró", 30), ("observaciones", "Observaciones", 48),
@@ -58,7 +66,7 @@ COLUMNAS = {
 }
 
 
-def _celda(celda, valor):
+def _celda(celda, valor, formato=None):
     if isinstance(valor, datetime):
         # Excel no admite zona horaria: quitarla solo después de convertir a Chile.
         valor = timezone.localtime(valor, timezone.get_default_timezone()).replace(tzinfo=None)
@@ -69,6 +77,8 @@ def _celda(celda, valor):
         celda.number_format = "0.00"
     elif isinstance(valor, int):
         celda.number_format = "0"
+    if formato and isinstance(valor, (Decimal, int)):
+        celda.number_format = formato
     if isinstance(valor, str):
         # Texto literal: conserva ceros, folios y signos sin ejecutar fórmulas.
         valor = ILLEGAL_CHARACTERS_RE.sub(lambda m: f"\\u{ord(m.group()):04x}", valor)
@@ -88,7 +98,7 @@ def _hoja(wb, nombre, columnas, filas):
     hoja.freeze_panes = "C2" if len(columnas) > 2 else "A2"
     hoja.print_title_rows = "1:1"
     hoja.row_dimensions[1].height = 64 if len(columnas) > 2 else 26
-    for numero, (_, titulo, ancho) in enumerate(columnas, 1):
+    for numero, (_, titulo, ancho, *_) in enumerate(columnas, 1):
         celda = hoja.cell(1, numero, titulo)
         celda.font = Font(name="Arial", size=10, bold=True, color="164E63")
         celda.fill = PatternFill("solid", fgColor="ECFEFF")
@@ -96,9 +106,9 @@ def _hoja(wb, nombre, columnas, filas):
         hoja.column_dimensions[get_column_letter(numero)].width = ancho
     for indice, fila in enumerate(filas, 2):
         lineas = 1
-        for numero, (clave, _, ancho) in enumerate(columnas, 1):
+        for numero, (clave, _, ancho, *formato) in enumerate(columnas, 1):
             valor = fila.get(clave)
-            _celda(hoja.cell(indice, numero), valor)
+            _celda(hoja.cell(indice, numero), valor, formato[0] if formato else None)
             if isinstance(valor, str):
                 lineas = max(lineas, sum(max(1, ceil(len(linea) / max(1, ancho - 3))) for linea in valor.split("\n")))
         hoja.row_dimensions[indice].height = min(409, max(24, lineas * 15 + 8))
@@ -123,20 +133,17 @@ def construir_excel_sernapesca(*, datos, inicio, fin, usuario, generado):
         *[("Filas " + nombre, len(filas)) for nombre, filas in datos.items()],
         ("Tipo de operación", ", ".join(datos)),
         ("Estado", "No hay registros para el período seleccionado." if not any(datos.values()) else "Contiene registros del período seleccionado."),
-        ("Abastecimiento", "Una fila por detalle de recepción. Filtrado por fecha/hora de recepción. Diferencia = recibido en planta menos origen."),
-        ("Producción", "Una fila por lote, filtrado por fecha de elaboración. Incluye todos sus aportes y cajas documentados al generar el reporte, aunque se registraran después del período."),
-        ("Referencias del proceso", NOTA_REFERENCIAS),
-        ("Postproceso incompleto", "Se suman solo seguimientos con un único pesaje postproceso. Sin pesaje o con varios, se excluye su peso y se indica en Información histórica incompleta. Sin pesos conocidos se deja vacío."),
-        ("Mermas", "Sumas de mermas registradas en los seguimientos relacionados, sin filtro temporal adicional. Cero significa que no hay kg registrados de ese tipo. Sin seguimientos documentados queda vacío."),
-        ("Destino", "Una fila por caja despachada, filtrada por fecha/hora del despacho. El folio proviene de las relaciones de origen, nunca se infiere del código de lote."),
-        ("Pesos y campos vacíos", "Solo peso neto real documentado. Campos faltantes quedan vacíos. Los kg conocidos empacados excluyen cajas sin peso, que se cuentan por separado. No se sustituyen por pesos nominales."),
-        ("Orígenes históricos", "Si hay más de un origen se muestran todos con sus identificadores y folios. No se selecciona arbitrariamente un único folio."),
-        ("Texto", "Los identificadores se conservan como texto literal. Los caracteres de control incompatibles con Excel se representan mediante su código Unicode."),
+        ("Abastecimiento", "Una fila por especie recibida, en el orden del formulario de Sernapesca. Toneladas = kg / 1.000. % diferencia = (recibido − proveedor) / proveedor. Bodega: la de la cámara de mantención donde esperó la especie o, si no pasó por una, la bodega por defecto."),
+        ("Producción", "Una fila por lote, según su fecha de elaboración. Solo se suman pesos postproceso documentados."),
+        ("Destino", "Una fila por caja despachada, según la fecha y hora del despacho."),
+        ("Campos vacíos", "Si un dato no fue registrado, la celda queda vacía: nunca se estima."),
     ]
-    _hoja(wb, "Resumen", (("dato", "Dato", 30), ("valor", "Valor", 110)),
-          [dict(dato=k, valor=v) for k, v in resumen])
     for nombre_hoja, filas in datos.items():
         _hoja(wb, nombre_hoja, COLUMNAS[nombre_hoja], filas)
+    # El resumen va al final: al abrir el archivo se ve primero la primera operación.
+    _hoja(wb, "Resumen", (("dato", "Dato", 30), ("valor", "Valor", 110)),
+          [dict(dato=k, valor=v) for k, v in resumen])
+    wb.active = 0
     salida = BytesIO()
     wb.save(salida)
     return salida.getvalue()
@@ -150,10 +157,10 @@ def construir_csv_sernapesca(datos):
     salida = StringIO(newline="")
     writer = csv.writer(salida, delimiter=";")
     columnas = COLUMNAS[nombre]
-    writer.writerow([titulo for _, titulo, _ in columnas])
+    writer.writerow([titulo for _, titulo, *_ in columnas])
     for fila in filas:
         valores = []
-        for clave, _, _ in columnas:
+        for clave, *_ in columnas:
             valor = fila.get(clave)
             if isinstance(valor, datetime):
                 valor = timezone.localtime(valor, timezone.get_default_timezone()).isoformat()

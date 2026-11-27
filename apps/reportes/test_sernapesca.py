@@ -98,7 +98,7 @@ class ReporteSernapescaTests(DatosDashboard, TestCase):
 
     def test_excel_vacio_y_encabezados(self):
         wb, nombre = self.exportar()
-        self.assertEqual(wb.sheetnames, ["Resumen", *COLUMNAS])
+        self.assertEqual(wb.sheetnames, [*COLUMNAS, "Resumen"])
         self.assertEqual(nombre, "reporte_apoyo_sernapesca_desde_inicio_2026-09-30.xlsx")
         for hoja, columnas in COLUMNAS.items():
             self.assertEqual(wb[hoja].max_row, 1)
@@ -113,7 +113,7 @@ class ReporteSernapescaTests(DatosDashboard, TestCase):
         self.assertEqual(response["Content-Type"], "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         self.assertIn("reporte_apoyo_sernapesca_2026-09-01_2026-09-30.xlsx", response["Content-Disposition"])
         self.assertIn("no-store", response["Cache-Control"])
-        self.assertEqual(load_workbook(BytesIO(response.content)).sheetnames, ["Resumen", *COLUMNAS])
+        self.assertEqual(load_workbook(BytesIO(response.content)).sheetnames, [*COLUMNAS, "Resumen"])
 
     def test_abastecimiento_varias_especies_y_pesos(self):
         partida = self.partida()
@@ -237,8 +237,11 @@ class ReporteSernapescaTests(DatosDashboard, TestCase):
         hoja = wb["Abastecimiento"]
         self.assertEqual(hoja["C2"].value, "=1+1")
         self.assertEqual(hoja["C2"].data_type, "s")
-        self.assertEqual(hoja["H2"].data_type, "n")
-        self.assertEqual(hoja["H2"].number_format, "0.00")
+        self.assertEqual(hoja["N2"].data_type, "n")
+        self.assertEqual(hoja["N2"].number_format, "0.00")
+        self.assertEqual(hoja["J2"].data_type, "n")
+        self.assertEqual(hoja["J2"].number_format, "0.000")
+        self.assertEqual(hoja["L2"].number_format, "0.0")
         self.assertEqual(hoja["B2"].value, datetime(2026, 9, 30, 12))
         self.assertEqual(hoja["B2"].data_type, "d")
         self.assertFalse(any(c.data_type == "f" for h in wb for fila in h for c in fila))

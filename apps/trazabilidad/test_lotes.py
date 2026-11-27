@@ -297,7 +297,7 @@ class LotesTests(DatosLotes, TestCase):
         self.crear_partida()
         form = AgregarConsumoLoteForm(lote=lote)
         self.assertEqual([p.pk for p in form.fields["partida"].queryset], [compatible.pk])
-        self.assertIn("40,00 kg disponibles", str(form["partida"]))
+        self.assertIn("40 kg disponibles", str(form["partida"]))
 
     def test_detalle_lote_muestra_origenes(self):
         lote = self.crear_lote()
@@ -305,7 +305,7 @@ class LotesTests(DatosLotes, TestCase):
         self.agregar(lote, otra)
         self.client.force_login(self.jefe)
         respuesta = self.client.get(self.url_lote("detalle_lote", lote.pk))
-        for texto in (lote.codigo_visible, "Origen del producto", "125,00 kg", "2 seguimientos", "100,00 kg", "25,00 kg"):
+        for texto in (lote.codigo_visible, "Origen del producto", "125 kg", "2 seguimientos", "100 kg", "25 kg"):
             self.assertContains(respuesta, texto)
         for partida in (self.partida, otra):
             self.assertContains(respuesta, f"Seguimiento #{partida.pk}")
@@ -318,7 +318,7 @@ class LotesTests(DatosLotes, TestCase):
         self.assertContains(self.client.get(url), "Asignar a lote")
         lote = self.crear_lote()
         respuesta = self.client.get(url)
-        for texto in ("125,00 kg", "100,00 kg", "25,00 kg", lote.codigo_visible, self.url_lote("detalle_lote", lote.pk)):
+        for texto in ("125 kg", "100 kg", "25 kg", lote.codigo_visible, self.url_lote("detalle_lote", lote.pk)):
             self.assertContains(respuesta, texto)
         self.crear_lote(codigo="RESTO", cantidad_kg=Decimal("25"))
         respuesta = self.client.get(url)

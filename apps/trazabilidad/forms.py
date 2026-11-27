@@ -6,6 +6,7 @@ from django.forms import BaseFormSet, formset_factory
 from django.db.models import Prefetch
 from django.utils import timezone
 
+from .formato import formatear_kg
 from .models import Correccion, Especie, UnidadFrio, RutaProceso, EtapaRutaProceso, Pesaje, MermaProceso
 from .selectors import SITUACIONES
 from .models import LoteProduccion, ConsumoLote
@@ -401,8 +402,8 @@ class CrearLoteForm(CantidadLoteForm):
 
 class SeguimientoLoteChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, partida):
-        disponible = format(partida.disponible_lote_kg, ".2f").replace(".", ",")
-        return f"Seguimiento #{partida.pk} · {disponible} kg disponibles"
+        disponible = partida.disponible_lote_kg
+        return f"Seguimiento #{partida.pk} · {formatear_kg(disponible)} disponibles"
 
 
 class AgregarConsumoLoteForm(CantidadLoteForm):
@@ -450,7 +451,7 @@ class BaseComposicionCajaFormSet(BaseFormSet):
             vistas.add(pk)
         teorico = sum((datos["cantidad"] * datos["presentacion"].peso_nominal_kg for datos in filas), Decimal("0"))
         if teorico > PESO_MAXIMO_CAJA_KG:
-            raise forms.ValidationError(f"El peso teórico de la composición no puede superar {PESO_MAXIMO_CAJA_KG} kg.")
+            raise forms.ValidationError(f"El peso teórico de la composición no puede superar {formatear_kg(PESO_MAXIMO_CAJA_KG)}.")
 
 
 ComposicionCajaFormSet = formset_factory(
@@ -469,6 +470,6 @@ class SeleccionarLoteCajaForm(forms.Form):
     def __init__(self, *args, lotes, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["lote"].choices = [("", "Selecciona un lote")] + [
-            (str(lote.pk), f"{lote.codigo_visible} · {lote.especie.nombre} · {lote.disponible_empacar} kg disponibles")
+            (str(lote.pk), f"{lote.codigo_visible} · {lote.especie.nombre} · {formatear_kg(lote.disponible_empacar)} disponibles")
             for lote in lotes
         ]

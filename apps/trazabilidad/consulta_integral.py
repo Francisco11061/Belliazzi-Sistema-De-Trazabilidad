@@ -11,6 +11,8 @@ from django.urls import reverse
 from apps.usuarios.permisos import tiene_rol
 from apps.inventario.models import Despacho, DetalleDespacho, EstanciaCaja, BajaCaja
 from apps.inventario.selectors import cajas_con_inventario
+from .constantes import ETIQUETAS_CAMPOS_RECEPCION
+from .formato import formatear_kg, formatear_valor_correccion
 from .models import (OrigenSernapesca, Recepcion, DetalleRecepcion, PartidaProceso, EventoProceso,
     EstanciaPartida, Pesaje, MermaProceso, ConsumoLote, LoteProduccion, Caja, ComposicionCaja, Correccion)
 from .selectors import cajas_con_peso, lotes_con_empaque, partidas_con_disponibilidad, presentar_partida
@@ -135,7 +137,10 @@ def ficha_integral(usuario, tipo, pk):
     for correccion in correcciones:
         correccion.entidad_visible = nombres.get(correccion.entidad_afectada, "Registro")
         campos = {f.name: str(f.verbose_name).capitalize() for f in entidades[correccion.entidad_afectada]._meta.fields} if correccion.entidad_afectada in entidades else {}
-        correccion.campo_visible = campos.get(correccion.campo, correccion.campo.replace("_", " ").capitalize())
+        correccion.campo_visible = ETIQUETAS_CAMPOS_RECEPCION.get(
+            correccion.campo, campos.get(correccion.campo, correccion.campo.replace("_", " ").capitalize()))
+        correccion.anterior_visible = formatear_valor_correccion(correccion.campo, correccion.valor_anterior)
+        correccion.nuevo_visible = formatear_valor_correccion(correccion.campo, correccion.valor_nuevo)
     for p in partidas:
         p.ejecutadas, p.pesos_documentados, p.mermas_documentadas, p.frio_documentado = [], [], [], []
     for registros, atributo in ((eventos, "ejecutadas"), (pesos, "pesos_documentados"), (mermas, "mermas_documentadas"), (frio, "frio_documentado")):
@@ -170,7 +175,7 @@ def ficha_integral(usuario, tipo, pk):
         evento(r.fecha_hora_recepcion, "Recepción", r.pk, r.registrado_por, r.observaciones, enlace("recepcion", r.pk), 0)
     for p in partidas:
         if p.partida_padre_id:
-            evento(p.creado_en, "División: seguimiento hijo", p.pk, p.creado_por, f"Padre #{p.partida_padre_id}; {p.cantidad_inicial_kg} kg", enlace("seguimiento", p.pk), 1)
+            evento(p.creado_en, "División: seguimiento hijo", p.pk, p.creado_por, f"Padre #{p.partida_padre_id}; {formatear_kg(p.cantidad_inicial_kg)}", enlace("seguimiento", p.pk), 1)
     for e in eventos:
         texto = f"Seguimiento #{e.partida_id}: {e.tipo_proceso.nombre}. {e.observaciones}"
         evento(e.fecha_hora_inicio, "Inicio de operación", e.pk, e.iniciado_por, texto, enlace("seguimiento", e.partida_id), 2)
@@ -185,9 +190,9 @@ def ficha_integral(usuario, tipo, pk):
             evento(e.fecha_hora_ingreso, clase + " / ingreso", e.pk, e.ingresado_por, texto, enlace(tipo_registro, destino_id), 4)
             evento(e.fecha_hora_salida, clase + " / salida", e.pk, e.retirado_por, texto, enlace(tipo_registro, destino_id), 5)
     for e in pesos:
-        evento(e.fecha_hora_evento, "Pesaje", e.pk, e.registrado_por, f"Seguimiento #{e.partida_id}: {e.tipo_visible}, {e.peso_kg} kg", enlace("seguimiento", e.partida_id), 6)
+        evento(e.fecha_hora_evento, "Pesaje", e.pk, e.registrado_por, f"Seguimiento #{e.partida_id}: {e.tipo_visible}, {formatear_kg(e.peso_kg)}", enlace("seguimiento", e.partida_id), 6)
     for e in mermas:
-        evento(e.fecha_hora_evento, e.get_tipo_display(), e.pk, e.registrado_por, f"Seguimiento #{e.partida_id}: {e.cantidad_kg} kg. {e.motivo}", enlace("seguimiento", e.partida_id), 7)
+        evento(e.fecha_hora_evento, e.get_tipo_display(), e.pk, e.registrado_por, f"Seguimiento #{e.partida_id}: {formatear_kg(e.cantidad_kg)}. {e.motivo}", enlace("seguimiento", e.partida_id), 7)
     for e in lotes:
         evento(e.creado_en, "Registro del lote", e.pk, e.registrado_por, e.codigo_visible, enlace("lote", e.pk), 8)
     for e in cajas:

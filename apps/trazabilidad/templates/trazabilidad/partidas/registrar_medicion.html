@@ -11,10 +11,10 @@
     <section class="mt-6 min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-lg font-semibold">{{ titulo }}</h2>
         <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-            <div><dt class="text-slate-600">Cantidad del seguimiento procesado</dt><dd class="mt-1 font-semibold">{{ partida.cantidad_inicial_kg|floatformat:2 }} kg</dd></div>
-            <div><dt class="text-slate-600">Total de pérdidas, descartes y mermas</dt><dd class="mt-1 font-semibold">{{ total_mermas|floatformat:2 }} kg</dd></div>
+            <div><dt class="text-slate-600">Cantidad del seguimiento procesado</dt><dd class="mt-1 font-semibold">{{ partida.cantidad_inicial_kg|num }} kg</dd></div>
+            <div><dt class="text-slate-600">Total de pérdidas, descartes y mermas</dt><dd class="mt-1 font-semibold">{{ total_mermas|num }} kg</dd></div>
         </dl>
-        {% if es_pesaje %}<p class="mt-4 text-sm text-slate-600">Peso recibido en recepción (origen): {{ partida.detalle_recepcion.peso_recepcion_kg|floatformat:2 }} kg</p>{% endif %}
+        {% if es_pesaje %}<p class="mt-4 text-sm text-slate-600">Peso recibido en recepción (origen): {{ partida.detalle_recepcion.peso_recepcion_kg|num }} kg</p>{% endif %}
         {% if form.non_field_errors %}<div role="alert" class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
         {% if compatible %}
         <form method="post" data-loading-text="{% if es_pesaje %}Guardando pesaje{% else %}Registrando merma{% endif %}…" class="mt-6 space-y-5 [&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_textarea]:w-full [&_textarea]:min-w-0 [&_textarea]:max-w-full [&_textarea]:rounded-lg [&_textarea]:border-slate-300 [&_input:focus]:border-cyan-600 [&_input:focus]:ring-cyan-600 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600 [&_textarea:focus]:border-cyan-600 [&_textarea:focus]:ring-cyan-600">

@@ -14,7 +14,7 @@ class MicrocopyAvisosTests(DatosQR, TestCase):
     def test_reportes_conserva_aviso_oficial_y_remite_al_excel(self):
         respuesta = self.client.get(reverse('reportes:sernapesca'))
         self.assertContains(respuesta, 'Reporte de apoyo. No reemplaza las declaraciones oficiales ante Sernapesca.')
-        self.assertContains(respuesta, 'Los criterios de lectura están en la hoja Resumen del Excel.')
+        self.assertContains(respuesta, 'Los criterios de lectura están en la hoja Resumen, al final del Excel.')
         self.assertNotContains(respuesta, 'Cómo interpretar los pesos y datos históricos')
 
     def test_baja_correccion_y_desactivacion_conservan_consecuencias(self):

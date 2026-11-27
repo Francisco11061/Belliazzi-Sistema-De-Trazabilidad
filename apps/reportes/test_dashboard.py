@@ -320,7 +320,7 @@ class AlertasFrioTests(DatosDashboard, TestCase):
         alerta = alertas_frio(AHORA)["elementos"][0]
         self.assertEqual(alerta["duracion"], timedelta(hours=27, minutes=10))
         self.assertEqual(alerta["exceso"], timedelta(hours=3, minutes=10))
-        self.assertEqual(alerta["tiempo"], "27 h 10 min")
+        self.assertEqual(alerta["tiempo"], "1 día 3 h")
         self.assertEqual(alerta["exceso_texto"], "3 h 10 min")
 
     def test_estancia_partida_abierta_genera_enlace(self):
@@ -500,3 +500,19 @@ class ActividadDashboardTests(DatosDashboard, TestCase):
     def test_umbral_inicial_null_sin_alertas_persistentes(self):
         self.assertTrue(all(u.umbral_alerta_horas is None for u in UnidadFrio.objects.all()))
         self.assertEqual(list(apps.get_app_config("reportes").get_models()), [])
+
+
+class UmbralEnDiasTests(TestCase):
+    def test_umbral_se_puede_escribir_en_dias_y_se_guarda_en_horas(self):
+        from apps.usuarios.models import Rol, Usuario
+        jefe = Usuario.objects.create_user(username="jefe_umbral_dias", password="clave-prueba-123",
+                                           rol=Rol.objects.get(codigo="JEFE"))
+        unidad = UnidadFrio.objects.create(nombre="Almacenamiento días", tipo=UnidadFrio.TipoUnidad.ALMACENAMIENTO)
+        self.client.force_login(jefe)
+        self.client.post(reverse("reportes:umbrales"), {
+            "unidad": unidad.pk, f"u{unidad.pk}-umbral_alerta_horas": "30", f"u{unidad.pk}-unidad": "dias"})
+        unidad.refresh_from_db()
+        self.assertEqual(unidad.umbral_alerta_horas, Decimal("720.00"))
+        respuesta = self.client.get(reverse("reportes:umbrales"))
+        self.assertContains(respuesta, 'value="30"')
+        self.assertContains(respuesta, '<option value="dias" selected>')

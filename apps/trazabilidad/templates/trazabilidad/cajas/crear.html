@@ -7,9 +7,9 @@
     <header><h1 class="mt-4 text-2xl font-semibold md:text-3xl">Nueva caja</h1><p class="mt-2 font-medium">Lote {{ lote.codigo_visible }}</p><p class="mt-1 text-sm text-slate-600">{{ lote.especie.nombre }} · {{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p></header>
     <section class="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 sm:p-6">
         <dl class="grid gap-5 text-sm sm:grid-cols-3">
-            <div><dt class="text-slate-600">Total asignado</dt><dd class="mt-1 font-semibold">{{ lote.total_asignado|floatformat:2 }} kg</dd></div>
-            <div><dt class="text-slate-600">Total empacado real</dt><dd class="mt-1 font-semibold">{% if lote.historial_empaque_incompleto %}{% include "components/_badge.html" with estado="FALTAN_PESOS" etiqueta="Faltan pesos de caja" only %}<span class="block mt-1 text-xs whitespace-normal text-slate-600">Alguna caja del lote no tiene peso neto registrado.</span>{% else %}{{ lote.total_empacado|floatformat:2 }} kg{% endif %}</dd></div>
-            <div><dt class="text-slate-600">Disponible para empacar</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{% if lote.historial_empaque_incompleto %}{% include "components/_badge.html" with estado="FALTAN_PESOS" etiqueta="Faltan pesos de caja" only %}<span class="block mt-1 text-xs whitespace-normal text-slate-600">Alguna caja del lote no tiene peso neto registrado.</span>{% else %}{{ lote.disponible_empacar|floatformat:2 }} kg{% endif %}</dd></div>
+            <div><dt class="text-slate-600">Total asignado</dt><dd class="mt-1 font-semibold">{{ lote.total_asignado|num }} kg</dd></div>
+            <div><dt class="text-slate-600">Total empacado real</dt><dd class="mt-1 font-semibold">{% if lote.historial_empaque_incompleto %}{% include "components/_badge.html" with estado="FALTAN_PESOS" etiqueta="Faltan pesos de caja" only %}<span class="block mt-1 text-xs whitespace-normal text-slate-600">Alguna caja del lote no tiene peso neto registrado.</span>{% else %}{{ lote.total_empacado|num }} kg{% endif %}</dd></div>
+            <div><dt class="text-slate-600">Disponible para empacar</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{% if lote.historial_empaque_incompleto %}{% include "components/_badge.html" with estado="FALTAN_PESOS" etiqueta="Faltan pesos de caja" only %}<span class="block mt-1 text-xs whitespace-normal text-slate-600">Alguna caja del lote no tiene peso neto registrado.</span>{% else %}{{ lote.disponible_empacar|num }} kg{% endif %}</dd></div>
             <div><dt class="text-slate-600">Fecha elaboración</dt><dd class="mt-1">{{ lote.fecha_elaboracion|date:"d/m/Y" }}</dd></div>
             <div><dt class="text-slate-600">Fecha vencimiento</dt><dd class="mt-1">{{ lote.fecha_vencimiento|date:"d/m/Y"|default:"No informada" }}</dd></div>
         </dl>
@@ -26,7 +26,7 @@
             <div id="composiciones-filas" class="mt-5 space-y-4">{% for fila in composiciones %}{% include "trazabilidad/cajas/_fila.html" %}{% endfor %}</div>
             <template id="composicion-vacia">{% include "trazabilidad/cajas/_fila.html" with fila=composiciones.empty_form %}</template>
             <button id="agregar-presentacion" type="button" class="mt-5 w-full rounded-lg border border-cyan-700 px-5 py-3 text-sm font-medium text-cyan-700 hover:bg-cyan-50 sm:w-auto">+ Agregar presentación</button>
-            <p class="mt-5 text-sm text-slate-600">Peso máximo por caja: {{ peso_maximo_caja_kg|floatformat:2 }} kg. Se permiten cajas parciales.</p><p class="mt-5 text-lg font-semibold">Peso teórico de la composición: <output id="peso-caja" aria-live="polite">—</output></p>
+            <p class="mt-5 text-sm text-slate-600">Peso máximo por caja: {{ peso_maximo_caja_kg|num }} kg. Se permiten cajas parciales.</p><p class="mt-5 text-lg font-semibold">Peso teórico de la composición: <output id="peso-caja" aria-live="polite">—</output></p>
             <noscript></noscript>
         </section>
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -47,7 +47,11 @@
     const pesos = JSON.parse(document.getElementById('pesos-presentaciones').textContent);
     const totalForms = document.getElementById('id_composiciones-TOTAL_FORMS');
     const agregar = document.getElementById('agregar-presentacion');
-    const formato = centesimas => `${centesimas / 100n},${String(centesimas % 100n).padStart(2, '0')} kg`;
+    // Mismo formato que el resto del sistema: 25 kg, 24,5 kg, 24,82 kg.
+    const formato = centesimas => {
+        const decimales = String(centesimas % 100n).padStart(2, '0').replace(/0+$/, '');
+        return `${centesimas / 100n}${decimales ? ',' + decimales : ''} kg`;
+    };
     function actualizar() {
         let total = 0n;
         filas.querySelectorAll('[data-composicion]').forEach(fila => {

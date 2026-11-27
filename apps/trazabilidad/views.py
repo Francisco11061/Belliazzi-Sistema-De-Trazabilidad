@@ -16,6 +16,9 @@ from config.errores import respuesta_error
 from .forms import EspecieRecibidaFormSet, OrigenRecepcionForm, RecepcionFiltroForm, RecepcionForm
 from .models import Correccion, EtapaRutaProceso, OrigenSernapesca, PartidaProceso, Recepcion
 from .services import registrar_recepcion, corregir_recepcion as corregir_recepcion_service
+from .bodegas import bodega_de_detalle, bodega_por_defecto, prefetch_bodega
+from .constantes import ETIQUETAS_CAMPOS_RECEPCION
+from .formato import formatear_kg, formatear_valor_correccion
 from .forms import EspecieCorreccionFormSet, MotivoCorreccionForm, RecepcionCorreccionForm
 from .forms import CantidadPartidaForm, EnviarMantencionForm, PartidaFiltroForm
 from .selectors import partidas_con_situacion, presentar_partida, recepcion_con_actividad
@@ -168,11 +171,15 @@ def detalle_recepcion(request, pk):
         Recepcion.objects.select_related("registrado_por").prefetch_related(
             "detalles__especie",
             "detalles__origen_sernapesca",
+            *prefetch_bodega("detalles__"),
         ),
         pk=pk,
     )
     # Use the prefetched details; preserve all origins on historical receptions.
     detalles = list(recepcion.detalles.all())
+    defecto = bodega_por_defecto()
+    for detalle in detalles:
+        detalle.bodega_calculada = bodega_de_detalle(detalle, defecto)
     origenes = list({
         detalle.origen_sernapesca_id: detalle.origen_sernapesca
         for detalle in detalles
@@ -182,21 +189,14 @@ def detalle_recepcion(request, pk):
         | Q(entidad_afectada="OrigenSernapesca", identificador_registro__in=[str(o.pk) for o in origenes])
         | Q(entidad_afectada="DetalleRecepcion", identificador_registro__in=[str(d.pk) for d in detalles])
     ).select_related("usuario").order_by("-fecha_hora", "-pk")
-    etiquetas = {
-        "fecha_hora_recepcion": "Fecha y hora de recepción", "observaciones": "Observaciones",
-        "folio_origen": "Folio de origen Sernapesca", "tipo_origen": "Tipo de origen",
-        "codigo_agente": "Código agente de origen", "proveedor": "Proveedor", "especie": "Especie",
-        "nombre_embarcacion": "Nombre de la embarcación", "matricula_embarcacion": "Matrícula",
-        "rpa_embarcacion": "RPA de la embarcación", "caleta_desembarque": "Caleta de desembarque",
-        "fecha_desembarque": "Fecha de desembarque",
-        "peso_origen_kg": "Peso de origen", "peso_recepcion_kg": "Peso en recepción",
-    }
     for entrada in historial:
-        entrada.campo_visible = etiquetas.get(entrada.campo, "Campo corregido")
+        entrada.campo_visible = ETIQUETAS_CAMPOS_RECEPCION.get(entrada.campo, "Campo corregido")
+        entrada.anterior_visible = formatear_valor_correccion(entrada.campo, entrada.valor_anterior)
+        entrada.nuevo_visible = formatear_valor_correccion(entrada.campo, entrada.valor_nuevo)
     return render(
         request,
         "trazabilidad/recepciones/detalle.html",
-        {"recepcion": recepcion, "origenes": origenes, "historial": historial},
+        {"recepcion": recepcion, "detalles": detalles, "origenes": origenes, "historial": historial},
     )
 
 
@@ -359,12 +359,12 @@ def operar_partida(request, pk, operacion):
             form.add_error(None, error.messages)
         else:
             if restante:
-                cantidad = format(seleccionada.cantidad_inicial_kg, ".2f").replace(".", ",")
-                resto = format(restante.cantidad_inicial_kg, ".2f").replace(".", ",")
+                cantidad = seleccionada.cantidad_inicial_kg
+                resto = restante.cantidad_inicial_kg
                 mensaje = {
-                    "mantencion": f"Se enviaron {cantidad} kg a cámara de mantención y quedaron {resto} kg disponibles.",
-                    "retirar": f"Se retiraron {cantidad} kg de la cámara de mantención y quedaron {resto} kg en cámara.",
-                    "procesar": f"Se enviaron {cantidad} kg a procesamiento y quedaron {resto} kg disponibles.",
+                    "mantencion": f"Se enviaron {formatear_kg(cantidad)} a cámara de mantención y quedaron {formatear_kg(resto)} disponibles.",
+                    "retirar": f"Se retiraron {formatear_kg(cantidad)} de la cámara de mantención y quedaron {formatear_kg(resto)} en cámara.",
+                    "procesar": f"Se enviaron {formatear_kg(cantidad)} a procesamiento y quedaron {formatear_kg(resto)} disponibles.",
                 }[operacion]
             messages.success(request, mensaje)
             return redirect("trazabilidad:detalle_partida", pk=seleccionada.pk)

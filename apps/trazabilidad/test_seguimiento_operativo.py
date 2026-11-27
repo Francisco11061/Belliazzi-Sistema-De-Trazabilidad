@@ -63,7 +63,7 @@ class SeguimientoOperativoTests(DatosLotes, TestCase):
         fila = self.fila()
         self.assertEqual(fila.disponible_lote_kg, Decimal("25"))
         self.assertEqual(fila.categoria_operativa, "empaque")
-        self.assertContains(self.pagina(categoria="empaque", vista="tarjetas"), "25,00")
+        self.assertContains(self.pagina(categoria="empaque", vista="tarjetas"), "25")
         self.crear_lote(cantidad_kg=Decimal("25"))
         self.assertEqual(self.fila().categoria_operativa, "historial")
         self.assertEqual(self.fila().estado, "ACTIVA")

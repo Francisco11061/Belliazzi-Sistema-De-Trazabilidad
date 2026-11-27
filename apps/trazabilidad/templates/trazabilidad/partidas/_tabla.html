@@ -8,7 +8,7 @@
                 <th scope="row" class="px-4 py-2 font-semibold"><a data-detail-link aria-label="Consultar historial del seguimiento #{{ partida.pk }}" class="inline-flex min-h-11 items-center text-cyan-700" href="{% url 'trazabilidad:detalle_partida' partida.pk %}">Seguimiento #{{ partida.pk }}</a></th>
                 <td class="max-w-64 break-words px-4 py-2 font-medium">{{ partida.detalle_recepcion.especie.nombre }}</td>
                 <td class="px-4 py-2 text-slate-600">#{{ partida.detalle_recepcion.recepcion_id }}</td>
-                <td class="px-4 py-2 text-right whitespace-nowrap tabular-nums">{% if categoria == 'empaque' %}{{ partida.disponible_lote_kg|floatformat:2 }}{% else %}{{ partida.cantidad_inicial_kg|floatformat:2 }}{% endif %} kg</td>
+                <td class="px-4 py-2 text-right whitespace-nowrap tabular-nums">{% if categoria == 'empaque' %}{{ partida.disponible_lote_kg|num }}{% else %}{{ partida.cantidad_inicial_kg|num }}{% endif %} kg</td>
                 <td class="px-4 py-2">{% include "trazabilidad/partidas/_situacion.html" %}</td>
                 {% if mostrar_ubicacion %}<td class="max-w-48 break-words px-4 py-2 text-slate-600">{% if partida.ubicacion %}{{ partida.ubicacion }}{% else %}<span class="sr-only">Sin ubicación registrada</span>{% endif %}</td>{% endif %}
                 <td class="px-4 py-2 text-xs whitespace-nowrap text-slate-600">{{ partida.creado_en|date:"d/m/Y" }}<br>{{ partida.creado_en|date:"H:i" }}</td>

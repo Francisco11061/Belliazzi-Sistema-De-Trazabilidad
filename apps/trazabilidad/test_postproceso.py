@@ -135,7 +135,7 @@ class PostprocesoTests(DatosPostproceso, TestCase):
         respuesta = self.client.post(self.url("registrar_peso_postproceso"), {"peso_kg": "193"}, follow=True)
         self.assertContains(respuesta, "Peso postproceso registrado correctamente.")
         self.assertContains(respuesta, ADVERTENCIA_PESO_SUPERIOR)
-        self.assertContains(respuesta, "-3,00 kg")
+        self.assertContains(respuesta, "-3 kg")
         self.assertContains(respuesta, "101,58 %")
         self.assertEqual(self.situacion(), "LISTA_PARA_EMPAQUE")
         self.assertNotContains(respuesta, "Registrar peso postproceso</a>")
@@ -261,7 +261,7 @@ class PostprocesoTests(DatosPostproceso, TestCase):
         self.assertEqual(resumen_pesajes_mermas(self.partida)["mermas"], registros)
         self.client.force_login(self.usuario)
         respuesta = self.client.get(self.url("detalle_partida"))
-        for texto in ("Merma", "Descarte", "Pérdida", "Restos de fileteo", self.usuario.username, "24,00 kg"):
+        for texto in ("Merma", "Descarte", "Pérdida", "Restos de fileteo", self.usuario.username, "24 kg"):
             self.assertContains(respuesta, texto)
 
     def test_no_merma_disponible_ni_mantencion(self):
@@ -440,7 +440,7 @@ class PostprocesoTests(DatosPostproceso, TestCase):
         self.assertEqual(MermaProceso.objects.count(), 2)
         self.client.force_login(self.usuario)
         respuesta = self.client.get(self.url("detalle_partida"))
-        for texto in ("190,00 kg", "125,00 kg", "65,00 kg", "65,79 %", "11,00 kg", "Fileteo", "Producto no apto"):
+        for texto in ("190 kg", "125 kg", "65 kg", "65,79 %", "11 kg", "Fileteo", "Producto no apto"):
             self.assertContains(respuesta, texto)
 
 

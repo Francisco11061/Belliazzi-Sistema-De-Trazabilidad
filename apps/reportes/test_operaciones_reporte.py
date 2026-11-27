@@ -21,7 +21,7 @@ class OperacionesReporteTests(DatosDashboard, TestCase):
                 descarga = self.client.get(reverse("reportes:descargar_sernapesca"), params)
                 self.assertEqual(descarga.status_code, 200)
                 libro = load_workbook(BytesIO(descarga.content))
-                self.assertEqual(libro.sheetnames, ["Resumen", nombre])
+                self.assertEqual(libro.sheetnames, [nombre, "Resumen"])
                 if codigo == "abastecimiento":
                     self.assertEqual(libro[nombre].max_row, 2)
                     self.assertContains(respuesta, '>fila</span>')

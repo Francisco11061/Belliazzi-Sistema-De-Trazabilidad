@@ -1,15 +1,13 @@
 from django import template
 from django.utils import timezone
 
+from apps.trazabilidad.formato import formatear_duracion
+
 register = template.Library()
 
 
 def _texto(delta):
-    minutos = max(0, int(delta.total_seconds())) // 60
-    if minutos < 1:
-        return "menos de 1 min"
-    horas, minutos = divmod(minutos, 60)
-    return f"{horas} h {minutos:02d} min"
+    return formatear_duracion(delta)
 
 
 @register.filter

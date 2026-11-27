@@ -255,7 +255,7 @@ class BajaTests(DatosBaja, TestCase):
         qr=reverse('producto_terminado:consulta_caja_qr',args=[self.registro.identificador_qr])
         for url in (detalle,qr):
             respuesta=self.client.get(url)
-            for texto in ('Baja de producto terminado','Daño','Caja dañada durante manipulación.','24,50 kg',self.camara1.nombre,'Historial de almacenamiento'):
+            for texto in ('Baja de producto terminado','Daño','Caja dañada durante manipulación.','24,5 kg',self.camara1.nombre,'Historial de almacenamiento'):
                 self.assertContains(respuesta,texto)
             for texto in ('>Ingresar a almacenamiento</a>','>Mover de cámara</a>','>Registrar baja</a>'):
                 self.assertNotContains(respuesta,texto)

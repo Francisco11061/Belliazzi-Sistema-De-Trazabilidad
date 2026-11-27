@@ -145,7 +145,7 @@ class CajasTests(DatosCajas, TestCase):
         self.client.force_login(self.jefe)
         for url in (self.url_lote("detalle_caja", caja.pk), self.url_lote("lista_cajas")):
             self.assertContains(self.client.get(url), "Sin peso documentado")
-        self.assertContains(self.client.get(self.url_lote("detalle_caja", caja.pk)), "500,00 kg")
+        self.assertContains(self.client.get(self.url_lote("detalle_caja", caja.pk)), "500 kg")
         for url in (self.url_lote("lista_lotes"), self.url_lote("detalle_lote", self.lote.pk), self.url_lote("crear_caja", self.lote.pk)):
             self.assertContains(self.client.get(url), "Faltan pesos de caja")
         caja.refresh_from_db()
@@ -155,7 +155,7 @@ class CajasTests(DatosCajas, TestCase):
         caja = Caja.objects.create(lote_produccion=self.lote, peso_neto_kg=Decimal("500"),
                                   registrado_por=self.usuario, fecha_armado=timezone.now())
         self.client.force_login(self.usuario)
-        self.assertContains(self.client.get(self.url_lote("detalle_caja", caja.pk)), "500,00 kg")
+        self.assertContains(self.client.get(self.url_lote("detalle_caja", caja.pk)), "500 kg")
         self.assertEqual(self.resumen().total_empacado, Decimal("500"))
         with self.assertRaises(ValidationError):
             self.caja()
@@ -164,7 +164,7 @@ class CajasTests(DatosCajas, TestCase):
         caja = self.caja(peso_neto_kg=Decimal("24.82"))
         self.client.force_login(self.jefe)
         detalle = self.client.get(self.url_lote("detalle_caja", caja.pk))
-        for texto in ("24,82 kg", "25,00 kg", "-0,18 kg", "Subtotal nominal"):
+        for texto in ("24,82 kg", "25 kg", "-0,18 kg", "Subtotal nominal"):
             self.assertContains(detalle, texto)
         self.assertContains(self.client.get(self.url_lote("lista_cajas")), "24,82 kg")
         self.assertContains(self.client.get(self.url_lote("detalle_lote", self.lote.pk)), "100,18 kg")
@@ -189,7 +189,7 @@ class CajasTests(DatosCajas, TestCase):
         self.client.force_login(self.usuario)
         respuesta = self.client.get(self.url_lote("detalle_caja", caja.pk))
         self.assertContains(respuesta, "Bolsa 5 kg")
-        self.assertContains(respuesta, "25,00 kg")
+        self.assertContains(respuesta, "25 kg")
         self.assertEqual(self.peso(caja), Decimal("25"))
 
     def test_peso_decimal_presentacion_funciona(self):
@@ -334,7 +334,7 @@ class CajasTests(DatosCajas, TestCase):
         self.client.force_login(self.usuario)
         respuesta = self.client.get(self.url_lote("detalle_caja", caja.pk))
         self.assertContains(respuesta, "HIST-01")
-        self.assertContains(respuesta, "20,00 kg")
+        self.assertContains(respuesta, "20 kg")
         self.assertContains(respuesta, "Sin composición documentada")
         self.assertTrue(self.resumen().historial_empaque_incompleto)
 

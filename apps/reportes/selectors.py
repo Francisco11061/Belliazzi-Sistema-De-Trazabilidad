@@ -11,6 +11,8 @@ from apps.inventario.models import BajaCaja, Despacho, DetalleDespacho, Estancia
 from apps.inventario.selectors import cajas_con_inventario, despachos_con_totales, resumen_inventario, totales_stock
 from apps.trazabilidad.models import (Caja, ConsumoLote, DetalleRecepcion, EstanciaPartida,
                                      EventoProceso, LoteProduccion, MermaProceso, PartidaProceso, Pesaje, Recepcion, UnidadFrio)
+from apps.trazabilidad.formato import formatear_duracion, formatear_kg
+from apps.trazabilidad.bodegas import bodega_de_detalle, bodega_por_defecto, prefetch_bodega
 from apps.trazabilidad.selectors import lotes_con_empaque
 
 PERIODOS = (("semana", "Semana"), ("mes", "Mes"), ("ano", "Año"))
@@ -122,11 +124,7 @@ def mermas_y_bajas(periodo, especie=None):
 
 
 def _duracion_texto(duracion):
-    segundos = max(0, int(duracion.total_seconds()))
-    if segundos < 60:
-        return "Menos de 1 min"
-    horas, minutos = divmod(segundos // 60, 60)
-    return f"{horas} h {minutos:02d} min"
+    return formatear_duracion(duracion, menos_de_un_minuto="Menos de 1 min")
 
 
 def alertas_frio(ahora, limite=10, especie=None):
@@ -253,7 +251,7 @@ def recorrido_producto(control, stock, cajas_despachadas, kg_despachados, recibi
     enlace_proceso = situacion["EN_PROCESO"]["url"]
     return [
         dict(clave="recepcion", nombre="Recepción", cifra=recibido["recepciones"], unidad="recepciones", url=reverse("trazabilidad:lista_recepciones"),
-             detalle=f'{recibido["kg"]:.2f} kg en el período'.replace(".", ",")),
+             detalle=f'{formatear_kg(recibido["kg"])} en el período'),
         dict(clave="planta", nombre="En planta y proceso", cifra=total("DISPONIBLE", "EN_MANTENCION", "EN_PROCESO", "EN_CONGELACION", "PENDIENTE_PESAJE"),
              unidad="seguimientos", url=enlace_proceso, detalle="Disponibles, en cámara, proceso o pesaje"),
         dict(clave="empaque", nombre="Listos para empaque", cifra=situacion["LISTA_PARA_EMPAQUE"]["cantidad"], unidad="seguimientos",
@@ -346,7 +344,7 @@ def _rango_reporte(queryset, campo, inicio, fin, fecha_sin_hora=False):
 def _abastecimiento_reporte(inicio, fin):
     return _rango_reporte(DetalleRecepcion.objects.select_related(
         "recepcion__registrado_por", "origen_sernapesca", "especie"
-    ), "recepcion__fecha_hora_recepcion", inicio, fin).order_by("recepcion__fecha_hora_recepcion", "recepcion_id", "pk")
+    ).prefetch_related(*prefetch_bodega()), "recepcion__fecha_hora_recepcion", inicio, fin).order_by("recepcion__fecha_hora_recepcion", "recepcion_id", "pk")
 
 
 def _produccion_reporte(inicio, fin):
@@ -398,14 +396,34 @@ def _folios_reporte(aportes):
     )
 
 
+TONELADA_KG = Decimal("1000")
+
+
+def _toneladas(kg):
+    """Kilos a toneladas con tres decimales, como se declaran en Sernapesca."""
+    return (kg / TONELADA_KG).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
+
+
+def _porcentaje_diferencia(recibido, origen):
+    if not origen:
+        return None
+    return ((recibido - origen) * 100 / origen).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+
+
 def obtener_abastecimiento_reporte(inicio, fin):
     filas = []
+    defecto = bodega_por_defecto()
     for detalle in _abastecimiento_reporte(inicio, fin):
         recepcion, origen = detalle.recepcion, detalle.origen_sernapesca
         filas.append(dict(recepcion=recepcion.pk, fecha=recepcion.fecha_hora_recepcion, folio=origen.folio_origen,
                           tipo_origen=origen.tipo_origen, agente=origen.codigo_agente, proveedor=origen.proveedor,
-                          especie=detalle.especie.nombre, peso_origen=detalle.peso_origen_kg,
-                          peso_recibido=detalle.peso_recepcion_kg,
+                          codigo_recurso=detalle.especie.codigo_sernapesca, especie=detalle.especie.nombre,
+                          fecha_desembarque=origen.fecha_desembarque,
+                          toneladas_origen=_toneladas(detalle.peso_origen_kg),
+                          toneladas_aceptadas=_toneladas(detalle.peso_recepcion_kg),
+                          porcentaje_diferencia=_porcentaje_diferencia(detalle.peso_recepcion_kg, detalle.peso_origen_kg),
+                          bodega=bodega_de_detalle(detalle, defecto).nombre,
+                          peso_origen=detalle.peso_origen_kg, peso_recibido=detalle.peso_recepcion_kg,
                           diferencia=detalle.peso_recepcion_kg - detalle.peso_origen_kg,
                           usuario=_usuario_reporte(recepcion.registrado_por), observaciones=recepcion.observaciones))
     return filas

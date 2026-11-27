@@ -18,7 +18,7 @@
             <dl>
                 <div><dt>Especie</dt><dd>{{ caja.lote_produccion.especie.nombre }}</dd></div>
                 <div><dt>Lote</dt><dd>{{ caja.lote_produccion.codigo_visible }}</dd></div>
-                <div><dt>Peso neto</dt><dd>{% if caja.peso_neto_kg != None %}{{ caja.peso_neto_kg|floatformat:2 }} kg{% else %}Sin peso documentado{% endif %}</dd></div>
+                <div><dt>Peso neto</dt><dd>{% if caja.peso_neto_kg != None %}{{ caja.peso_neto_kg|num }} kg{% else %}Sin peso documentado{% endif %}</dd></div>
                 <div><dt>Elaboración</dt><dd>{{ caja.lote_produccion.fecha_elaboracion|date:"d/m/Y" }}</dd></div>
                 {% if caja.lote_produccion.fecha_vencimiento %}<div><dt>Vencimiento</dt><dd>{{ caja.lote_produccion.fecha_vencimiento|date:"d/m/Y" }}</dd></div>{% endif %}
             </dl>

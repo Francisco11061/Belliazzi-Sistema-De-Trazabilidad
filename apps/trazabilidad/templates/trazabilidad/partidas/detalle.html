@@ -13,7 +13,7 @@
     </header>
     <section aria-label="Estado actual" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div class="grid gap-5 sm:grid-cols-3">
-            <div><p class="text-sm text-slate-600">Cantidad</p><p class="mt-1 text-2xl font-semibold tabular-nums">{{ partida.cantidad_inicial_kg|floatformat:2 }} kg</p></div>
+            <div><p class="text-sm text-slate-600">Cantidad</p><p class="mt-1 text-2xl font-semibold tabular-nums">{{ partida.cantidad_inicial_kg|num }} kg</p></div>
             <div><p class="text-sm text-slate-600">Situación</p><p class="mt-1 font-medium text-cyan-800">{% include "components/_badge.html" with estado=partida.situacion etiqueta=partida.situacion_visible only %}</p>{% if partida.estado != "ACTIVA" %}<p class="mt-1 text-sm text-slate-600">Estado: {% include "components/_badge.html" with estado=partida.estado etiqueta=partida.get_estado_display only %}</p>{% endif %}</div>
             <div><p class="text-sm text-slate-600">Ubicación</p><p class="mt-1 font-medium">{{ partida.ubicacion|default:"No está en cámara ni túnel" }}</p></div>
         </div>
@@ -31,8 +31,8 @@
             <div><dt class="text-slate-600">Detalle de recepción</dt><dd class="mt-1 font-medium">#{{ detalle.pk }}</dd></div>
             <div><dt class="text-slate-600">Folio Sernapesca</dt><dd class="mt-1 font-medium">{{ detalle.origen_sernapesca.folio_origen }}</dd></div>
             <div><dt class="text-slate-600">Proveedor</dt><dd class="mt-1 font-medium">{{ detalle.origen_sernapesca.proveedor|default:"—" }}</dd></div>
-            <div><dt class="text-slate-600">Peso de origen</dt><dd class="mt-1 font-medium">{{ detalle.peso_origen_kg|floatformat:2 }} kg</dd></div>
-            <div><dt class="text-slate-600">Peso recibido</dt><dd class="mt-1 font-medium">{{ detalle.peso_recepcion_kg|floatformat:2 }} kg</dd></div>
+            <div><dt class="text-slate-600">Peso de origen</dt><dd class="mt-1 font-medium">{{ detalle.peso_origen_kg|num }} kg</dd></div>
+            <div><dt class="text-slate-600">Peso recibido</dt><dd class="mt-1 font-medium">{{ detalle.peso_recepcion_kg|num }} kg</dd></div>
         </dl>
         {% endwith %}
     </section>
@@ -42,7 +42,7 @@
         {% else %}<p class="mt-4 text-sm text-slate-600">Registro inicial de la especie.</p>{% endif %}
         {% if hijas %}{% endif %}
         <ul class="mt-4 space-y-3 text-sm">
-        {% for hija in hijas %}<li class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-4"><a class="font-medium text-cyan-700 underline" href="{% url 'trazabilidad:detalle_partida' hija.pk %}">Seguimiento #{{ hija.pk }}</a><span>{{ hija.cantidad_inicial_kg|floatformat:2 }} kg · {% include "components/_badge.html" with estado=hija.estado etiqueta=hija.get_estado_display only %}</span></li>{% empty %}<li class="text-slate-600">Sin divisiones.</li>{% endfor %}
+        {% for hija in hijas %}<li class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-4"><a class="font-medium text-cyan-700 underline" href="{% url 'trazabilidad:detalle_partida' hija.pk %}">Seguimiento #{{ hija.pk }}</a><span>{{ hija.cantidad_inicial_kg|num }} kg · {% include "components/_badge.html" with estado=hija.estado etiqueta=hija.get_estado_display only %}</span></li>{% empty %}<li class="text-slate-600">Sin divisiones.</li>{% endfor %}
         </ul>
     </section>
     {% if estancias or eventos %}

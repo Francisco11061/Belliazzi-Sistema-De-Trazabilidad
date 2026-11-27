@@ -8,7 +8,7 @@
     <section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-lg font-semibold">{{ lote.especie.nombre }}</h2>
         <p class="mt-2 text-sm text-slate-600">{{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p>
-        <p class="mt-4 text-sm">Total asignado: <strong>{{ lote.total_asignado|floatformat:2 }} kg</strong></p>
+        <p class="mt-4 text-sm">Total asignado: <strong>{{ lote.total_asignado|num }} kg</strong></p>
         {% if form.non_field_errors %}<div role="alert" class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
         {% if hay_seguimientos %}
         <p class="mt-5 text-sm leading-6 text-slate-600">Selecciona un seguimiento de la misma especie, ruta y origen.</p>

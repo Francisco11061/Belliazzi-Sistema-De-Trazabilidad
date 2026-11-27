@@ -317,7 +317,7 @@ class DespachoTests(DatosDespacho, TestCase):
         for filtro in ({'destinatario':'Inexistente'},{'tipo_destino':'EXPORTACION'},{'fecha':'inválida'}):
             self.assertEqual(self.client.get(url,filtro).context['page_obj'].paginator.count,0)
         respuesta=self.client.get(self.url_despacho('detalle_despacho',despacho.pk))
-        for texto in ('Registrado','24,50 kg','GD-001','Guía de despacho','12.345.678-5'):
+        for texto in ('Registrado','24,5 kg','GD-001','Guía de despacho','12.345.678-5'):
             self.assertContains(respuesta,texto)
 
     def test_historicos_incompletos_accesibles_sin_inventar_peso(self):

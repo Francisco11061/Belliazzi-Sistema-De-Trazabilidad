@@ -70,5 +70,5 @@ class TerminologiaSeguimientoTests(DatosProcesamiento, TestCase):
     def test_mensaje_parcial_describe_cantidades_sin_parentesco_tecnico(self):
         respuesta = self.client.post(reverse("trazabilidad:procesar_partida", args=[self.partida.pk]),
                                      {"cantidad_kg": "300", "ruta": self.ruta.pk}, follow=True)
-        self.assertContains(respuesta, "Se enviaron 300,00 kg a procesamiento y quedaron 200,00 kg disponibles.")
+        self.assertContains(respuesta, "Se enviaron 300 kg a procesamiento y quedaron 200 kg disponibles.")
         self.assertNotContains(respuesta, "partida hija")

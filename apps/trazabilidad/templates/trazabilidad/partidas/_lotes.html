@@ -3,9 +3,9 @@
     <h2 class="text-lg font-semibold">Lotes de producción</h2>
     {% if partida.tiene_postproceso %}
     <dl class="mt-5 grid gap-5 text-sm sm:grid-cols-3">
-        <div><dt class="text-slate-600">Peso postproceso</dt><dd class="mt-1 text-lg font-semibold">{{ partida.peso_final_kg|floatformat:2 }} kg</dd></div>
-        <div><dt class="text-slate-600">Asignado a lotes</dt><dd class="mt-1 text-lg font-semibold">{{ partida.asignado_lotes_kg|floatformat:2 }} kg</dd></div>
-        <div><dt class="text-slate-600">Disponible para lote</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{{ partida.disponible_lote_kg|floatformat:2 }} kg</dd></div>
+        <div><dt class="text-slate-600">Peso postproceso</dt><dd class="mt-1 text-lg font-semibold">{{ partida.peso_final_kg|num }} kg</dd></div>
+        <div><dt class="text-slate-600">Asignado a lotes</dt><dd class="mt-1 text-lg font-semibold">{{ partida.asignado_lotes_kg|num }} kg</dd></div>
+        <div><dt class="text-slate-600">Disponible para lote</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{{ partida.disponible_lote_kg|num }} kg</dd></div>
     </dl>
     {% endif %}
     {% if partida.disponible_lote_kg == 0 %}
@@ -16,7 +16,7 @@
     <ul class="mt-5 space-y-3 text-sm">
         {% for consumo in consumos_lotes %}
         <li class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-4">
-            <div><p class="font-semibold">{{ consumo.lote_produccion.codigo_visible }}</p><p class="mt-1 text-slate-600">{{ consumo.cantidad_kg_utilizada|floatformat:2 }} kg</p></div>
+            <div><p class="font-semibold">{{ consumo.lote_produccion.codigo_visible }}</p><p class="mt-1 text-slate-600">{{ consumo.cantidad_kg_utilizada|num }} kg</p></div>
             {% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}<a class="font-medium text-cyan-700 underline" href="{% url 'producto_terminado:detalle_lote' consumo.lote_produccion_id %}">Ver detalle<span class="sr-only"> {{ consumo.lote_produccion.codigo_visible }}</span></a>{% endif %}
         </li>
         {% empty %}<li class="text-slate-600">Sin asignaciones a lotes.</li>{% endfor %}

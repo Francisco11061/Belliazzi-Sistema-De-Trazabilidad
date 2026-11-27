@@ -5,7 +5,7 @@
         <h2 class="mt-2 max-w-full break-words text-lg font-semibold">{{ partida.detalle_recepcion.especie.nombre }}</h2>
         <div class="mt-3 max-w-full">{% include "trazabilidad/partidas/_situacion.html" %}</div>
         <dl class="mt-4 mb-5 w-full space-y-3">
-            <div><dt class="text-xs text-slate-600">{% if categoria == 'empaque' %}Disponible para asignar{% else %}Cantidad inicial{% endif %}</dt><dd class="mt-1 break-words text-xl font-semibold tabular-nums">{% if categoria == 'empaque' %}{{ partida.disponible_lote_kg|floatformat:2 }}{% else %}{{ partida.cantidad_inicial_kg|floatformat:2 }}{% endif %} kg</dd></div>
+            <div><dt class="text-xs text-slate-600">{% if categoria == 'empaque' %}Disponible para asignar{% else %}Cantidad inicial{% endif %}</dt><dd class="mt-1 break-words text-xl font-semibold tabular-nums">{% if categoria == 'empaque' %}{{ partida.disponible_lote_kg|num }}{% else %}{{ partida.cantidad_inicial_kg|num }}{% endif %} kg</dd></div>
             <div class="text-sm"><dt class="inline text-slate-600">Recepción</dt> <dd class="inline font-medium">#{{ partida.detalle_recepcion.recepcion_id }}</dd></div>
             {% if partida.ubicacion %}<div class="text-sm"><dt class="text-slate-600">Ubicación</dt><dd class="mt-1 break-words">{{ partida.ubicacion }}</dd></div>{% endif %}
         </dl>

@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from apps.usuarios.permisos import ROL_ENCARGADA, ROL_JEFE, ROL_OPERARIA, tiene_rol
 
+from .formato import formatear_kg
 from .models import Correccion, DetalleRecepcion, Especie, OrigenSernapesca, PartidaProceso, Recepcion
 from .models import EstanciaPartida, EventoProceso, TipoProceso, UnidadFrio, RutaProceso, Pesaje, MermaProceso
 from .selectors import recepcion_con_actividad, partidas_con_situacion, SITUACIONES_MERMA
@@ -625,7 +626,7 @@ def crear_caja(*, lote, composiciones, peso_neto_kg, usuario):
         raise ValidationError("El lote debe tener ruta documentada, historial de cajas completo y producto disponible para empacar.")
     _validar_decimal_registro(Caja, "peso_neto_kg", peso_neto_kg)
     if peso_neto_kg > PESO_MAXIMO_CAJA_KG:
-        raise ValidationError(f"El peso neto real no puede superar {PESO_MAXIMO_CAJA_KG} kg.")
+        raise ValidationError(f"El peso neto real no puede superar {formatear_kg(PESO_MAXIMO_CAJA_KG)}.")
     if peso_neto_kg > actual.disponible_empacar:
         raise ValidationError("El peso neto real debe no superar el disponible para empacar.")
     composiciones = list(composiciones)
@@ -656,7 +657,7 @@ def crear_caja(*, lote, composiciones, peso_neto_kg, usuario):
         total += linea.subtotal_kg
         lineas.append(linea)
     if total <= 0 or total > PESO_MAXIMO_CAJA_KG:
-        raise ValidationError(f"El peso teórico de la composición debe ser mayor que cero y no superar {PESO_MAXIMO_CAJA_KG} kg.")
+        raise ValidationError(f"El peso teórico de la composición debe ser mayor que cero y no superar {formatear_kg(PESO_MAXIMO_CAJA_KG)}.")
     caja = Caja(lote_produccion=lote, peso_neto_kg=peso_neto_kg, registrado_por=usuario, fecha_armado=timezone.now())
     caja.full_clean()
     caja.save()

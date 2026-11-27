@@ -166,13 +166,13 @@ class QRCajasTests(DatosQR, TestCase):
 
     def test_consulta_caja_pesos_composicion_producto_lote_fechas(self):
         respuesta = self.client.get(self.consulta())
-        for texto in (f"Historial de Caja #{self.registro.pk}", "24,82 kg", "25,00 kg", "-0,18 kg", "Bolsa 5 kg", "5 bolsas", "TEST-QR-001", "Congrio", "Filete IQF", "26/09/2026", "26/10/2026", self.usuario.username):
+        for texto in (f"Historial de Caja #{self.registro.pk}", "24,82 kg", "25 kg", "-0,18 kg", "Bolsa 5 kg", "5 bolsas", "TEST-QR-001", "Congrio", "Filete IQF", "26/09/2026", "26/10/2026", self.usuario.username):
             self.assertContains(respuesta, texto)
 
     def test_origenes_separados_con_aporte_recepcion_folio(self):
         respuesta = self.client.get(self.consulta())
         self.assertContains(respuesta, "data-aporte=", count=2)
-        for texto in (f"Seguimiento #{self.partida.pk}", f"Seguimiento #{self.otra.pk}", "70,00 kg asignados", "30,00 kg asignados", "ABC123", "DEF456", f"#{self.partida.detalle_recepcion.recepcion_id}", f"#{self.otra.detalle_recepcion.recepcion_id}"):
+        for texto in (f"Seguimiento #{self.partida.pk}", f"Seguimiento #{self.otra.pk}", "70 kg asignados", "30 kg asignados", "ABC123", "DEF456", f"#{self.partida.detalle_recepcion.recepcion_id}", f"#{self.otra.detalle_recepcion.recepcion_id}"):
             self.assertContains(respuesta, texto)
         aportes = list(respuesta.context["aportes"])
         self.assertEqual([a.partida.detalle_recepcion.origen_sernapesca.folio_origen for a in aportes], ["ABC123", "DEF456"])
@@ -180,7 +180,7 @@ class QRCajasTests(DatosQR, TestCase):
 
     def test_procesamiento_etapas_frio_postproceso_por_seguimiento(self):
         respuesta = self.client.get(self.consulta())
-        for texto in ("Descabezado", "Fileteo", "Emparrillado", "Mantención origen A", "Túnel de congelado 1", "Ingreso:", "Salida:", "125,00 kg", "40,00 kg"):
+        for texto in ("Descabezado", "Fileteo", "Emparrillado", "Mantención origen A", "Túnel de congelado 1", "Ingreso:", "Salida:", "125 kg", "40 kg"):
             self.assertContains(respuesta, texto)
         self.assertEqual([len(a.partida.postprocesos_qr) for a in respuesta.context["aportes"]], [1, 1])
 
@@ -237,7 +237,7 @@ class QRCajasTests(DatosQR, TestCase):
         ComposicionCaja.objects.create(caja=historica, presentacion=self.bolsa5, cantidad=100, peso_unitario_kg=Decimal("5"))
         PresentacionBolsa.objects.filter(pk=self.bolsa5.pk).update(activo=False)
         respuesta = self.client.get(self.consulta(historica))
-        for texto in ("Sin peso documentado", "500,00 kg", "Sin ruta documentada", "Bolsa 5 kg"):
+        for texto in ("Sin peso documentado", "500 kg", "Sin ruta documentada", "Bolsa 5 kg"):
             self.assertContains(respuesta, texto)
         self.assertEqual(self.client.get(self.png_url(historica)).status_code, 200)
         historica.refresh_from_db()

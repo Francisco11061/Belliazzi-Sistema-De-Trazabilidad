@@ -7,12 +7,12 @@
     <header>
 
         <h1 class="mt-4 text-2xl font-semibold md:text-3xl">Procesamiento de {{ partida.detalle_recepcion.especie.nombre }}</h1>
-        <p class="mt-2 text-sm text-slate-600">Seguimiento #{{ partida.pk }} · {{ partida.cantidad_inicial_kg|floatformat:2 }} kg</p>
+        <p class="mt-2 text-sm text-slate-600">Seguimiento #{{ partida.pk }} · {{ partida.cantidad_inicial_kg|num }} kg</p>
     </header>
     <section aria-label="Resumen de procesamiento" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <dl class="grid gap-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <div><dt class="text-slate-600">Especie</dt><dd class="mt-1 font-medium">{{ partida.detalle_recepcion.especie.nombre }}</dd></div>
-            <div><dt class="text-slate-600">Cantidad</dt><dd class="mt-1 font-medium">{{ partida.cantidad_inicial_kg|floatformat:2 }} kg</dd></div>
+            <div><dt class="text-slate-600">Cantidad</dt><dd class="mt-1 font-medium">{{ partida.cantidad_inicial_kg|num }} kg</dd></div>
             <div><dt class="text-slate-600">Recepción de origen</dt><dd class="mt-1 font-medium">#{{ partida.detalle_recepcion.recepcion_id }}</dd></div>
             <div><dt class="text-slate-600">Ruta seleccionada</dt><dd class="mt-1 font-medium">{{ partida.ruta_proceso.nombre|default:"Sin ruta asignada" }}</dd></div>
             <div><dt class="text-slate-600">Situación</dt><dd class="mt-1 font-medium text-cyan-800">{% include "components/_badge.html" with estado=partida.situacion etiqueta=partida.situacion_visible only %}</dd></div>

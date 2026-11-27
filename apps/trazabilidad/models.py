@@ -14,6 +14,10 @@ class Especie(models.Model):
         help_text="Código estable de dos dígitos para generar lotes. Obligatorio antes de crear un lote.",
     )
     nombre = models.CharField(max_length=80, unique=True)
+    codigo_sernapesca = models.CharField(
+        "código del recurso en Sernapesca", max_length=30, blank=True,
+        help_text="Código con que Sernapesca identifica el recurso. Se usa en el reporte de apoyo.",
+    )
     activo = models.BooleanField(default=True)
 
     class Meta:
@@ -40,6 +44,37 @@ class OrigenSernapesca(models.Model):
 
     def __str__(self):
         return self.folio_origen
+
+
+class BodegaSernapesca(models.Model):
+    """Bodega asignada a la planta en el sistema de trazabilidad de Sernapesca."""
+
+    nombre = models.CharField(max_length=80, unique=True)
+    por_defecto = models.BooleanField(
+        default=False,
+        help_text="Se usa para la materia prima que no pasó por una cámara con bodega asignada.",
+    )
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-por_defecto", "nombre"]
+        verbose_name = "bodega Sernapesca"
+        verbose_name_plural = "bodegas Sernapesca"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["por_defecto"], condition=models.Q(por_defecto=True),
+                name="bodega_sernapesca_unica_por_defecto",
+                violation_error_message="Ya existe una bodega por defecto. Desmárcala antes de elegir otra.",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(por_defecto=False) | models.Q(activo=True),
+                name="bodega_sernapesca_defecto_activa",
+                violation_error_message="La bodega por defecto debe estar activa.",
+            ),
+        ]
+
+    def __str__(self):
+        return self.nombre
 
 
 class Recepcion(models.Model):
@@ -287,6 +322,11 @@ class UnidadFrio(models.Model):
 
     nombre = models.CharField(max_length=80, unique=True)
     tipo = models.CharField(max_length=30, choices=TipoUnidad.choices)
+    bodega_sernapesca = models.ForeignKey(
+        BodegaSernapesca, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="unidades_frio", verbose_name="bodega Sernapesca",
+        help_text="Bodega con que Sernapesca registra lo que se guarda en esta cámara.",
+    )
     activo = models.BooleanField(default=True)
     umbral_alerta_horas = models.DecimalField(
         max_digits=8, decimal_places=2, null=True, blank=True,
