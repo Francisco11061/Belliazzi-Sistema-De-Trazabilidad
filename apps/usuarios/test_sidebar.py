@@ -37,7 +37,7 @@ class SidebarTests(TestCase):
         for usuario, esperado in (
             (self.jefe, [e[0] for e in ENLACES]),
             (self.superusuario, [e[0] for e in ENLACES]),
-            (self.encargada, ['consulta', 'solicitudes', 'recepciones', 'seguimiento', 'lotes', 'cajas', 'inventario', 'despachos']),
+            (self.encargada, ['consulta', 'rutas', 'solicitudes', 'recepciones', 'seguimiento', 'lotes', 'cajas', 'inventario', 'despachos']),
             (self.operaria, ['solicitudes', 'seguimiento', 'cajas', 'inventario']),
             (self.sin_rol, []), (AnonymousUser(), []),
         ):
@@ -58,7 +58,7 @@ class SidebarTests(TestCase):
             self.assertFalse(any(e['activo'] for e in self.enlaces(menu_lateral({'request': self.request(self.jefe, pagina)}))))
 
     def test_contador_respeta_propietario_y_una_consulta_por_request(self):
-        for usuario, esperado in ((self.jefe, 3), (self.superusuario, 3), (self.encargada, 1), (self.operaria, 2)):
+        for usuario, esperado in ((self.jefe, 3), (self.superusuario, 3), (self.encargada, 3), (self.operaria, 2)):
             request = self.request(usuario)
             # Solicitudes + contadores de planta (proceso y cajas por guardar); se calculan una vez por request.
             with self.assertNumQueries(3):

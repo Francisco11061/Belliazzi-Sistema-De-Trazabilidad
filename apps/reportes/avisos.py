@@ -123,9 +123,8 @@ def avisos_para(usuario, conteos=None, ahora=None):
         vencimientos, vencidos = _vencimientos(jefe)
         avisos += frio + vencimientos
         urgentes += total_frio + vencidos
-    if jefe:
-        avisos += _solicitudes_por_aprobar(ahora, conteos.get("solicitudes"))
     if gestion:
+        avisos += _solicitudes_por_aprobar(ahora, conteos.get("solicitudes"))
         avisos += _historial_por_revisar(conteos.get("historial", 0))
         avisos += _ubicacion_por_revisar(conteos.get("ubicacion", 0))
     avisos += _respuestas(usuario, ahora)

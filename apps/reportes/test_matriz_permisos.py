@@ -56,7 +56,8 @@ class MatrizPermisosTests(DatosQR, TestCase):
             ("seleccionar_operaciones", [p], "get"), ("solicitudes_ruta", [], "get")])
         grupo("trazabilidad", ("ENCARGADA", "JEFE"), [
             ("consulta_integral", [], "get"), ("ficha_integral", ["caja", c], "get")])
-        grupo("trazabilidad", ("JEFE",), [
+        # Rutas, operaciones y solicitudes: jefe y encargada. La operaria solo solicita.
+        grupo("trazabilidad", ("ENCARGADA", "JEFE"), [
             ("rutas", [], "get"), ("nueva_ruta", [], "get"), ("operaciones", [], "get"),
             ("editar_ruta", [self.ruta.pk], "get"), ("duplicar_ruta", [self.ruta.pk], "get"),
             ("estado_ruta", [self.ruta.pk], "post"),

@@ -10,7 +10,7 @@ ENLACES = (
     ('dashboard', 'Dashboard', 'reportes:dashboard', ('reportes:dashboard', 'reportes:umbrales'), 'jefe'),
     ('consulta', 'Consulta de trazabilidad', 'trazabilidad:consulta_integral', ('trazabilidad:consulta_integral', 'trazabilidad:ficha_integral'), 'gestion'),
     ('reportes', 'Reportes', 'reportes:sernapesca', ('reportes:sernapesca', 'reportes:descargar_sernapesca'), 'jefe'),
-    ('rutas', 'Rutas de procesamiento', 'trazabilidad:rutas', ('trazabilidad:rutas', 'trazabilidad:nueva_ruta', 'trazabilidad:editar_ruta', 'trazabilidad:duplicar_ruta', 'trazabilidad:estado_ruta', 'trazabilidad:operaciones', 'trazabilidad:editar_operacion'), 'jefe'),
+    ('rutas', 'Rutas de procesamiento', 'trazabilidad:rutas', ('trazabilidad:rutas', 'trazabilidad:nueva_ruta', 'trazabilidad:editar_ruta', 'trazabilidad:duplicar_ruta', 'trazabilidad:estado_ruta', 'trazabilidad:operaciones', 'trazabilidad:editar_operacion'), 'gestion'),
     ('solicitudes', 'Solicitudes de rutas', 'trazabilidad:solicitudes_ruta', ('trazabilidad:solicitudes_ruta', 'trazabilidad:resolver_solicitud'), 'personal'),
     ('usuarios', 'Usuarios', 'usuarios:lista_usuarios', ('usuarios:lista_usuarios', 'usuarios:crear_usuario', 'usuarios:detalle_usuario', 'usuarios:editar_rol', 'usuarios:reset_contrasena', 'usuarios:desactivar_usuario', 'usuarios:reactivar_usuario'), 'jefe'),
     ('recepciones', 'Recepciones', 'trazabilidad:lista_recepciones', ('trazabilidad:lista_recepciones', 'trazabilidad:nueva_recepcion', 'trazabilidad:detalle_recepcion', 'trazabilidad:corregir_recepcion'), 'gestion'),
@@ -61,7 +61,7 @@ def menu_lateral(context):
     if permisos["personal"]:
         if not hasattr(request, "_menu_solicitudes_pendientes"):
             consulta = SolicitudRuta.objects.filter(estado="PENDIENTE")
-            if not permisos["jefe"]:
+            if not permisos["gestion"]:
                 consulta = consulta.filter(solicitante=user)
             request._menu_solicitudes_pendientes = consulta.count()
         pendientes = request._menu_solicitudes_pendientes
@@ -91,7 +91,7 @@ def campana(context):
         if tiene_rol(user, "JEFE", "ENCARGADA"):
             _contadores_planta(request, True)
             conteos.update(request._menu_revisiones)
-        if tiene_rol(user, "JEFE") and hasattr(request, "_menu_solicitudes_pendientes"):
+        if tiene_rol(user, "JEFE", "ENCARGADA") and hasattr(request, "_menu_solicitudes_pendientes"):
             conteos["solicitudes"] = request._menu_solicitudes_pendientes
         request._campana = avisos_para(user, conteos)
     return {"mostrar": True, **request._campana}

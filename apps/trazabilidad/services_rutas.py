@@ -8,8 +8,9 @@ from .models import Especie, RutaProceso, EtapaRutaProceso, TipoProceso, Solicit
 from .rutas import validar_etapas_ruta
 
 
-def exigir_jefe(usuario):
-    if not tiene_rol(usuario, "JEFE"):
+def exigir_gestion(usuario):
+    """Rutas, operaciones y solicitudes las gestionan el jefe y la encargada."""
+    if not tiene_rol(usuario, "JEFE", "ENCARGADA"):
         raise PermissionDenied
 
 
@@ -35,7 +36,7 @@ def rutas_equivalentes(especie, ids, *, excluir=None):
 
 @transaction.atomic
 def guardar_ruta(*, usuario, especie, nombre, descripcion, activo, predeterminada, operaciones, ruta=None):
-    exigir_jefe(usuario)
+    exigir_gestion(usuario)
     especies = {especie.pk}
     if ruta:
         especies.add(RutaProceso.objects.get(pk=ruta.pk).especie_id)
@@ -49,7 +50,9 @@ def guardar_ruta(*, usuario, especie, nombre, descripcion, activo, predeterminad
         raise ValidationError("Ya existe una ruta activa con esta especie y secuencia. Utiliza esa ruta o desactívala antes de reemplazarla.")
     if predeterminada and not activo:
         raise ValidationError("Una ruta predeterminada debe estar activa.")
-    ruta = ruta or RutaProceso()
+    if not ruta and RutaProceso.objects.filter(especie=especie, nombre__iexact=nombre.strip()).exists():
+        raise ValidationError(f"Ya hay una ruta llamada «{nombre.strip()}» para {especie.nombre}. Usa otro nombre.")
+    ruta = ruta or RutaProceso(creado_por=usuario)
     ruta.especie, ruta.nombre, ruta.descripcion = especie, nombre.strip(), descripcion.strip()
     ruta.activo, ruta.predeterminada = activo, predeterminada
     ruta.full_clean()
@@ -65,7 +68,7 @@ def guardar_ruta(*, usuario, especie, nombre, descripcion, activo, predeterminad
 
 @transaction.atomic
 def estado_ruta(*, usuario, ruta, activo, predeterminada=False):
-    exigir_jefe(usuario)
+    exigir_gestion(usuario)
     Especie.objects.select_for_update().get(pk=ruta.especie_id)
     ruta = RutaProceso.objects.select_for_update().get(pk=ruta.pk)
     if activo:
@@ -80,9 +83,21 @@ def estado_ruta(*, usuario, ruta, activo, predeterminada=False):
     return ruta
 
 
+def nombre_para_secuencia(especie, ids):
+    """«Eviscerado y glaseado»; si ya existe para la especie, agrega (2), (3)…"""
+    nombres = dict(TipoProceso.objects.filter(pk__in=ids).values_list("pk", "nombre"))
+    partes = [nombres[pk] for pk in ids]
+    base = partes[0] if len(partes) == 1 else ", ".join(partes[:-1]) + " y " + partes[-1]
+    base = (base[:1].upper() + base[1:].lower())[:110]
+    nombre, n = base, 2
+    while RutaProceso.objects.filter(especie=especie, nombre__iexact=nombre).exists():
+        nombre, n = f"{base} ({n})", n + 1
+    return nombre
+
+
 @transaction.atomic
 def guardar_operacion(*, usuario, codigo, nombre, activo, operacion=None):
-    exigir_jefe(usuario)
+    exigir_gestion(usuario)
     if operacion:
         operacion = TipoProceso.objects.select_for_update().get(pk=operacion.pk)
     if codigo == "PROCESAMIENTO" or (operacion and operacion.codigo == "PROCESAMIENTO"):
@@ -112,7 +127,7 @@ def solicitar_ruta(*, usuario, especie, operaciones, observacion=""):
 
 @transaction.atomic
 def resolver_solicitud(*, usuario, solicitud, aprobar, nombre="", respuesta="", ruta_existente=None):
-    exigir_jefe(usuario)
+    exigir_gestion(usuario)
     Especie.objects.select_for_update().get(pk=solicitud.especie_id)
     solicitud = SolicitudRuta.objects.select_for_update().get(pk=solicitud.pk)
     if solicitud.estado != "PENDIENTE":

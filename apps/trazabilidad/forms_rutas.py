@@ -47,6 +47,7 @@ class SeleccionOperacionesForm(forms.Form):
     cantidad_kg = forms.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal("0.01"), label="Cantidad a procesar (kg)")
     ruta = forms.ModelChoiceField(queryset=RutaProceso.objects.none(), required=False, label="Ruta autorizada coincidente")
     observacion = forms.CharField(required=False, max_length=2000, label="Observación de la solicitud", widget=forms.Textarea(attrs={"rows": 2}))
+    nombre_ruta = forms.CharField(required=False, max_length=120, label="Nombre de la ruta (opcional)")
 
 
 class ResolverSolicitudForm(forms.Form):

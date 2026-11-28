@@ -1,15 +1,16 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
-from apps.usuarios.permisos import jefe_requerido, personal_operativo_requerido, tiene_rol
+from apps.usuarios.permisos import jefe_o_encargada_requerido, personal_operativo_requerido, tiene_rol
 from .models import Especie, RutaProceso, TipoProceso, SolicitudRuta
 from .forms_rutas import RutaGestionForm, OperacionGestionForm, SecuenciaFormSet, SeleccionOperacionesForm, ResolverSolicitudForm
-from .services_rutas import guardar_ruta, guardar_operacion, estado_ruta, rutas_equivalentes, solicitar_ruta, resolver_solicitud
+from .services_rutas import (guardar_ruta, guardar_operacion, estado_ruta, nombre_para_secuencia, rutas_equivalentes,
+    solicitar_ruta, resolver_solicitud)
 from .selectors import partidas_con_situacion, presentar_partida
 from .services import iniciar_procesamiento
 
@@ -19,10 +20,10 @@ def error_form(form, error):
                    else "La configuración cambió o ya existe. Recarga y revisa los datos.")
 
 
-@jefe_requerido
+@jefe_o_encargada_requerido
 @require_http_methods(["GET"])
 def rutas(request):
-    consulta = RutaProceso.objects.select_related("especie").prefetch_related("etapas__tipo_proceso").order_by("especie__nombre", "nombre", "pk")
+    consulta = RutaProceso.objects.select_related("especie", "creado_por").prefetch_related("etapas__tipo_proceso").order_by("especie__nombre", "nombre", "pk")
     if request.GET.get("q"):
         consulta = consulta.filter(nombre__icontains=request.GET["q"][:120])
     if request.GET.get("especie", "").isdecimal():
@@ -32,7 +33,7 @@ def rutas(request):
     return render(request, "trazabilidad/rutas/lista.html", {"page_obj": Paginator(consulta, 20).get_page(request.GET.get("page")), "especies": Especie.objects.all()})
 
 
-@jefe_requerido
+@jefe_o_encargada_requerido
 @require_http_methods(["GET", "POST"])
 def editar_ruta(request, pk=None, duplicar=False):
     ruta = get_object_or_404(RutaProceso, pk=pk) if pk else None
@@ -56,7 +57,7 @@ def editar_ruta(request, pk=None, duplicar=False):
         "bloqueada": bloqueada, "titulo": "Duplicar ruta" if duplicar else "Editar ruta" if ruta else "Nueva ruta"})
 
 
-@jefe_requerido
+@jefe_o_encargada_requerido
 @require_POST
 def cambiar_estado_ruta(request, pk):
     ruta = get_object_or_404(RutaProceso, pk=pk)
@@ -72,7 +73,7 @@ def cambiar_estado_ruta(request, pk):
     return redirect("trazabilidad:rutas")
 
 
-@jefe_requerido
+@jefe_o_encargada_requerido
 @require_http_methods(["GET", "POST"])
 def operaciones(request, pk=None):
     operacion = get_object_or_404(TipoProceso, pk=pk) if pk else None
@@ -96,35 +97,58 @@ def operaciones(request, pk=None):
 @require_http_methods(["GET", "POST"])
 def seleccionar_operaciones(request, pk):
     partida = presentar_partida(get_object_or_404(partidas_con_situacion(), pk=pk))
+    especie = partida.detalle_recepcion.especie
+    # El jefe y la encargada no solicitan rutas: si no existe, la crean aquí mismo.
+    gestion = tiene_rol(request.user, "JEFE", "ENCARGADA")
     form = SeleccionOperacionesForm(request.POST if request.method == "POST" else None, initial={"cantidad_kg": partida.cantidad_inicial_kg})
     secuencia = SecuenciaFormSet(request.POST if request.method == "POST" else None, prefix="etapas")
-    coincidencias = []
-    if request.method == "POST" and secuencia.is_valid():
+    consultado = request.method == "POST" and secuencia.is_valid()
+    coincidencias, ids = [], []
+    if consultado:
         ids = secuencia.operaciones()
-        coincidencias = rutas_equivalentes(partida.detalle_recepcion.especie, ids)
+        coincidencias = rutas_equivalentes(especie, ids)
         form.fields["ruta"].queryset = RutaProceso.objects.filter(pk__in=[r.pk for r in coincidencias])
+    crear = gestion and consultado and not coincidencias
+    if not coincidencias:
+        del form.fields["ruta"]  # Sin rutas que calcen, el selector queda vacío y no sirve.
+    if gestion:
+        del form.fields["observacion"]
+    if crear:
+        form.fields["nombre_ruta"].widget.attrs["placeholder"] = nombre_para_secuencia(especie, ids)
+    else:
+        del form.fields["nombre_ruta"]
+    if consultado:
         if form.is_valid():
             try:
                 if partida.situacion != "DISPONIBLE":
                     raise ValidationError("Este producto ya no está disponible para enviar a proceso.")
                 accion = request.POST.get("accion", "buscar")
                 if accion == "iniciar":
-                    ruta = form.cleaned_data["ruta"]
+                    ruta = form.cleaned_data.get("ruta")
                     if ruta is None and len(coincidencias) == 1:
                         ruta = coincidencias[0]
                     if ruta is None:
                         raise ValidationError("Selecciona una ruta autorizada coincidente; las solicitudes pendientes no permiten iniciar.")
                     seleccionada, _ = iniciar_procesamiento(partida=partida, cantidad_kg=form.cleaned_data["cantidad_kg"], ruta=ruta, usuario=request.user)
                     return redirect("trazabilidad:gestionar_procesamiento", pk=seleccionada.pk)
-                if accion == "solicitar":
-                    solicitar_ruta(usuario=request.user, especie=partida.detalle_recepcion.especie,
+                if accion == "crear" and crear:
+                    with transaction.atomic():
+                        ruta = guardar_ruta(usuario=request.user, especie=especie, descripcion="", activo=True,
+                            predeterminada=False, operaciones=ids,
+                            nombre=form.cleaned_data["nombre_ruta"].strip() or nombre_para_secuencia(especie, ids))
+                        seleccionada, _ = iniciar_procesamiento(partida=partida, cantidad_kg=form.cleaned_data["cantidad_kg"],
+                                                                ruta=ruta, usuario=request.user)
+                    messages.success(request, f"Ruta «{ruta.nombre}» creada.")
+                    return redirect("trazabilidad:gestionar_procesamiento", pk=seleccionada.pk)
+                if accion == "solicitar" and not gestion:
+                    solicitar_ruta(usuario=request.user, especie=especie,
                                    operaciones=ids, observacion=form.cleaned_data["observacion"])
                     messages.success(request, "Solicitud enviada. El procesamiento no se ha iniciado.")
                     return redirect("trazabilidad:solicitudes_ruta")
             except (ValidationError, IntegrityError) as error:
                 error_form(form, error)
     return render(request, "trazabilidad/rutas/seleccionar.html", {"form": form, "secuencia": secuencia,
-        "partida": partida, "coincidencias": coincidencias, "consultado": request.method == "POST" and secuencia.is_valid()})
+        "partida": partida, "coincidencias": coincidencias, "consultado": consultado, "puede_crear": gestion})
 
 
 @personal_operativo_requerido
@@ -133,7 +157,8 @@ def solicitudes(request):
     consulta = SolicitudRuta.objects.select_related("especie", "solicitante", "resuelto_por", "ruta_aprobada").prefetch_related("etapas__tipo_proceso")
     if request.GET.get("especie", "").isdecimal():
         consulta = consulta.filter(especie_id=request.GET["especie"][:18])
-    if not tiene_rol(request.user, "JEFE"):
+    gestion = tiene_rol(request.user, "JEFE", "ENCARGADA")
+    if not gestion:
         consulta = consulta.filter(solicitante=request.user)
     if request.GET.get("estado") in SolicitudRuta.Estado.values:
         consulta = consulta.filter(estado=request.GET["estado"])
@@ -141,10 +166,10 @@ def solicitudes(request):
     # Al entrar aquí la persona ve la respuesta: deja de aparecerle en la campana.
     SolicitudRuta.objects.filter(solicitante=request.user, respuesta_vista_en__isnull=True).exclude(
         estado=SolicitudRuta.Estado.PENDIENTE).update(respuesta_vista_en=timezone.now())
-    return render(request, "trazabilidad/rutas/solicitudes.html", {"page_obj": pagina})
+    return render(request, "trazabilidad/rutas/solicitudes.html", {"page_obj": pagina, "puede_resolver": gestion})
 
 
-@jefe_requerido
+@jefe_o_encargada_requerido
 @require_http_methods(["GET", "POST"])
 def resolver(request, pk):
     solicitud = get_object_or_404(SolicitudRuta.objects.select_related("especie", "solicitante").prefetch_related("etapas__tipo_proceso"), pk=pk)

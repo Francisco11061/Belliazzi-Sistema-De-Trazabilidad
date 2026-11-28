@@ -118,7 +118,7 @@ class GestionRutasTests(DatosGestionRutas, TestCase):
 
     def test_permisos_backend_csrf_y_get_sin_escrituras(self):
         solicitud = self.propuesta()
-        for usuario in (self.usuario, Usuario.objects.create_user(username="encargada_rutas", rol=Rol.objects.get(codigo="ENCARGADA"))):
+        for usuario in (self.usuario,):
             self.client.force_login(usuario)
             for nombre, args in (("rutas", []), ("nueva_ruta", []), ("operaciones", []), ("resolver_solicitud", [solicitud.pk])):
                 self.assertEqual(self.client.get(reverse("trazabilidad:"+nombre, args=args)).status_code, 403)

@@ -270,6 +270,8 @@ class RutaProceso(models.Model):
     predeterminada = models.BooleanField(default=False)
     activo = models.BooleanField(default=True)
     creado_en = models.DateTimeField(auto_now_add=True)
+    creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+                                   related_name="rutas_creadas")
 
     class Meta:
         ordering = ["especie__nombre", "nombre"]

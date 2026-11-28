@@ -51,9 +51,7 @@ class AvisosTests(DatosDashboard, TestCase):
         self.assertIn("Merluza revisión: pasó el tiempo recomendado", jefe)
         self.assertTrue(any("vence el" in t for t in jefe))
         self.assertTrue(any("pidió una ruta para Merluza revisión" in t for t in jefe))
-        encargada = self.titulos(self.encargada)
-        self.assertEqual(len(encargada), 2)
-        self.assertFalse(any("pidió una ruta" in t for t in encargada))
+        self.assertEqual(self.titulos(self.encargada), jefe)
         self.assertEqual(self.titulos(self.operaria), [])
         self.assertTrue(avisos_para(self.jefe, ahora=AHORA)["urgente"])
 
