@@ -6,22 +6,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Iniciar sesión | Pesquera Belliazzi</title>
-    <link rel="stylesheet" href="{% static 'usuarios/css/output.css' %}">
-    <link rel="stylesheet" href="{% static 'usuarios/css/login.css' %}">
+    <link rel="stylesheet" href="{% static 'usuarios/css/output.css' %}?v=marca-1">
+    <link rel="stylesheet" href="{% static 'usuarios/css/login.css' %}?v=marca-1">
 <link rel="stylesheet" href="{% static 'usuarios/css/formularios.css' %}">
 </head>
 <body class="bg-slate-50 font-sans text-slate-900 antialiased">
     <main class="lg-page">
 
         <div class="lg-band">
-            <div class="lg-logo">
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-                    <path d="M4 12c4-4 8 4 12 0s8 4 12 0M4 18c4-4 8 4 12 0s8 4 12 0M4 24c4-4 8 4 12 0s8 4 12 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                    <path d="M22 5h6" stroke="#67e8f9" stroke-width="2" stroke-linecap="round" />
-                </svg>
-            </div>
-            <p class="lg-name">PESQUERA BELLIAZZI</p>
-            <p class="lg-sub">Sistema de Trazabilidad e Inventario</p>
+            {% include 'components/_marca.html' with tam='login' %}
+            <p class="lg-sub">Trazabilidad e inventario</p>
         </div>
 
         <div class="lg-wrap">

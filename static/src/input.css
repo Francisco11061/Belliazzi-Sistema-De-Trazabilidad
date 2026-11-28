@@ -90,3 +90,10 @@
     #page-shell *, [data-tip]::after { transition: none !important; }
     #page-shell :is(button, a, article):active, #main-content article[data-row-link]:hover { transform: none !important; }
 }
+
+/* Nombre de la empresa: «Pesquera» chico y espaciado, «Belliazzi» grande. */
+.marca { display: inline-flex; flex-direction: column; line-height: 1; }
+.marca-pre { font-size: .66rem; font-weight: 600; letter-spacing: .32em; text-transform: uppercase; color: #0e7490; }
+.marca-nombre { margin-top: .25rem; font-size: 1.5rem; font-weight: 700; letter-spacing: -.03em; color: #0f172a; }
+.marca-barra .marca-pre { font-size: .55rem; letter-spacing: .28em; }
+.marca-barra .marca-nombre { margin-top: .15rem; font-size: 1.1rem; }
