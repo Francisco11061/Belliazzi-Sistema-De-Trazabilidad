@@ -703,6 +703,8 @@ class SolicitudRuta(models.Model):
     resuelto_en = models.DateTimeField(null=True, blank=True)
     respuesta = models.TextField(blank=True)
     ruta_aprobada = models.ForeignKey(RutaProceso, on_delete=models.PROTECT, null=True, blank=True, related_name="solicitudes_aprobadas")
+    # Cuándo quien la pidió vio la respuesta; mientras esté vacío, le aparece en la campana.
+    respuesta_vista_en = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["creado_en", "pk"]

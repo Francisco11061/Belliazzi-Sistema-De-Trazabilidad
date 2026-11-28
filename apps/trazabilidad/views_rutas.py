@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.db.models import Q
+from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 from apps.usuarios.permisos import jefe_requerido, personal_operativo_requerido, tiene_rol
@@ -136,7 +137,11 @@ def solicitudes(request):
         consulta = consulta.filter(solicitante=request.user)
     if request.GET.get("estado") in SolicitudRuta.Estado.values:
         consulta = consulta.filter(estado=request.GET["estado"])
-    return render(request, "trazabilidad/rutas/solicitudes.html", {"page_obj": Paginator(consulta, 20).get_page(request.GET.get("page"))})
+    pagina = Paginator(consulta, 20).get_page(request.GET.get("page"))
+    # Al entrar aquí la persona ve la respuesta: deja de aparecerle en la campana.
+    SolicitudRuta.objects.filter(solicitante=request.user, respuesta_vista_en__isnull=True).exclude(
+        estado=SolicitudRuta.Estado.PENDIENTE).update(respuesta_vista_en=timezone.now())
+    return render(request, "trazabilidad/rutas/solicitudes.html", {"page_obj": pagina})
 
 
 @jefe_requerido

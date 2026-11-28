@@ -1,0 +1,26 @@
+{% if mostrar %}<details data-action-menu data-campana class="group relative shrink-0 open:z-40">
+    <summary aria-label="Avisos{% if total %}: {{ total }}{% else %}: ninguno{% endif %}" class="relative flex size-11 cursor-pointer list-none items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-600/40 [&::-webkit-details-marker]:hidden group-open:bg-slate-100 group-open:text-slate-900">
+        <svg width="22" height="22" class="size-[22px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 9.5a6 6 0 0 0-12 0c0 6.5-2.5 8.5-2.5 8.5h17S18 16 18 9.5Z"/><path d="M10 21.2a2.2 2.2 0 0 0 4 0"/></svg>
+        {% if total %}<span class="absolute top-1 right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-semibold leading-none text-white ring-2 ring-white {% if urgente %}bg-red-600{% else %}bg-cyan-700{% endif %}" aria-hidden="true">{% if total > 9 %}9+{% else %}{{ total }}{% endif %}</span>{% endif %}
+    </summary>
+    <div class="fixed inset-x-3 top-[5.5rem] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:w-[23rem]">
+        <p class="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">Avisos</p>
+        {% if avisos %}
+        <ul class="max-h-[min(70vh,32rem)] divide-y divide-slate-100 overflow-y-auto overscroll-contain">
+            {% for aviso in avisos %}<li>{% if aviso.nivel == 'mas' %}
+                <a href="{{ aviso.url }}" class="block px-4 py-2.5 pl-9 text-sm font-medium text-cyan-700 hover:bg-slate-50 hover:underline focus-visible:bg-slate-50 focus-visible:outline-none">{{ aviso.titulo }}</a>
+            {% else %}
+                <a href="{{ aviso.url }}" class="flex gap-3 px-4 py-3 hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none">
+                    <span class="mt-1.5 size-2 shrink-0 rounded-full {% if aviso.nivel == 'urgente' %}bg-red-500{% elif aviso.nivel == 'atencion' %}bg-amber-500{% elif aviso.nivel == 'listo' %}bg-emerald-500{% else %}bg-slate-400{% endif %}" aria-hidden="true"></span>
+                    <span class="min-w-0">
+                        <span class="block text-sm font-medium text-slate-900">{{ aviso.titulo }}</span>
+                        {% if aviso.detalle %}<span class="mt-0.5 line-clamp-2 block text-xs text-slate-600">{{ aviso.detalle }}</span>{% endif %}
+                    </span>
+                </a>
+            {% endif %}</li>{% endfor %}
+        </ul>
+        {% else %}
+        <p class="px-4 py-6 text-center text-sm text-slate-600">No hay avisos.</p>
+        {% endif %}
+    </div>
+</details>{% endif %}

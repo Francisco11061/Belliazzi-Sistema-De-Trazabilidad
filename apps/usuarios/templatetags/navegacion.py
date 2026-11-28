@@ -31,16 +31,21 @@ def _contadores_planta(request, gestion):
 
         # Se cuenta en Python: un aggregate condicional sobre estas anotaciones es muy lento en PostgreSQL.
         filas = seguimientos_operativos().filter(estado=PartidaProceso.Estado.ACTIVA).values_list(
-            "categoria_operativa", "disponible_lote_kg")
-        atender = empaque = 0
-        for categoria, disponible in filas:
+            "categoria_operativa", "disponible_lote_kg", "situacion")
+        atender = empaque = historial = 0
+        for categoria, disponible, situacion in filas:
             atender += categoria == "atender"
             empaque += categoria == "empaque" and disponible >= SALDO_MINIMO_KG
+            historial += situacion == "NO_OPERABLE"
+        estados = list(cajas_con_inventario().filter(estado_inventario__in=("PENDIENTE", "REVISION")).values_list(
+            "estado_inventario", flat=True))
         request._menu_contadores = {
             "seguimiento": (atender, "productos por atender"),
             "lotes": (empaque if gestion else 0, "productos listos para asignar a lote"),
-            "inventario": (cajas_con_inventario().filter(estado_inventario="PENDIENTE").count(), "cajas por guardar en cámara"),
+            "inventario": (estados.count("PENDIENTE"), "cajas por guardar en cámara"),
         }
+        # Para la campana: así no repite estas consultas.
+        request._menu_revisiones = {"historial": historial, "ubicacion": estados.count("REVISION")}
     return request._menu_contadores
 
 
@@ -72,3 +77,21 @@ def menu_lateral(context):
             grupos.append(dict(titulo=titulo, enlaces=visibles))
     return {"grupos": grupos, "mostrar_inicio": user.is_authenticated and not permisos["jefe"],
             "inicio_activo": actual == "usuarios:inicio"}
+
+
+@register.inclusion_tag("components/_campana.html", takes_context=True)
+def campana(context):
+    request = context["request"]
+    user = request.user
+    if not tiene_rol(user, "JEFE", "ENCARGADA", "OPERARIA"):
+        return {"mostrar": False}
+    if not hasattr(request, "_campana"):
+        from apps.reportes.avisos import avisos_para
+        conteos = {}
+        if tiene_rol(user, "JEFE", "ENCARGADA"):
+            _contadores_planta(request, True)
+            conteos.update(request._menu_revisiones)
+        if tiene_rol(user, "JEFE") and hasattr(request, "_menu_solicitudes_pendientes"):
+            conteos["solicitudes"] = request._menu_solicitudes_pendientes
+        request._campana = avisos_para(user, conteos)
+    return {"mostrar": True, **request._campana}

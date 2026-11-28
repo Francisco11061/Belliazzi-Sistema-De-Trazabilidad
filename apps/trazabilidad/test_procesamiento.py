@@ -545,7 +545,7 @@ class ProcesamientoTests(DatosProcesamiento, TestCase):
         gestionar = reverse("trazabilidad:gestionar_procesamiento", args=[self.partida.pk])
         with CaptureQueriesContext(connection) as consultas:
             self.client.get(gestionar)
-        self.assertLessEqual(len(consultas), 11)  # Incluye los contadores del sidebar.
+        self.assertLessEqual(len(consultas), 12)  # Incluye los contadores del sidebar y la campana.
 
 
 class ConcurrenciaProcesamientoTests(DatosProcesamiento, TransactionTestCase):

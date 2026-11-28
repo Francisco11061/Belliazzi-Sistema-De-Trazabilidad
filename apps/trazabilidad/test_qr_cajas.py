@@ -260,7 +260,7 @@ class QRCajasTests(DatosQR, TestCase):
         with CaptureQueriesContext(connection) as despues:
             respuesta = self.client.get(self.consulta())
         self.assertEqual(len(antes), len(despues))
-        self.assertLessEqual(len(despues), 13)  # Incluye los contadores del menú lateral.
+        self.assertLessEqual(len(despues), 14)  # Incluye los contadores del menú lateral y la campana.
         self.assertContains(respuesta, "data-aporte=", count=3)
 
 
