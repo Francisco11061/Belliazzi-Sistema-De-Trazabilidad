@@ -67,7 +67,6 @@ class GestionRutasTests(DatosGestionRutas, TestCase):
         primera = self.nueva()
         self.crear_ruta(nombre="Legado equivalente", codigos=["FILETEO"])
         self.assertEqual(len(rutas_equivalentes(self.especie, [self.tipos["FILETEO"].pk])), 2)
-        self.client.force_login(self.usuario)
         url = reverse("trazabilidad:seleccionar_operaciones", args=[self.partida.pk])
         datos = self.secuencia_post(cantidad_kg="500", accion="iniciar")
         self.assertContains(self.client.post(url, datos), "Selecciona una de las rutas que calzan")
@@ -105,11 +104,10 @@ class GestionRutasTests(DatosGestionRutas, TestCase):
         cliente.force_login(self.jefe)
         self.assertEqual(cliente.post(reverse("trazabilidad:nueva_ruta"), {}).status_code, 403)
 
-    def test_formularios_creacion_y_uso_por_operaria(self):
+    def test_formularios_creacion_y_uso(self):
         respuesta = self.client.post(reverse("trazabilidad:nueva_ruta"), self.secuencia_post(
             nombre="Web", especie=self.especie.pk, activo="on"))
         self.assertEqual(respuesta.status_code, 302)
-        self.client.force_login(self.usuario)
         datos = self.secuencia_post(cantidad_kg="50", accion="iniciar")
         self.assertEqual(self.client.post(reverse("trazabilidad:seleccionar_operaciones", args=[self.partida.pk]), datos).status_code, 302)
         self.assertEqual(PartidaProceso.objects.filter(partida_padre=self.partida).count(), 2)
@@ -124,15 +122,17 @@ class GestionRutasTests(DatosGestionRutas, TestCase):
         datos["etapas-0-ORDER"] = "0"
         self.assertContains(self.client.post(reverse("trazabilidad:nueva_ruta"), datos), "orden positivo")
 
-    def test_operaria_sin_ruta_le_avisa_a_la_encargada(self):
-        self.client.force_login(self.usuario)
+    def test_operaria_solo_usa_rutas_habituales(self):
         url = reverse("trazabilidad:seleccionar_operaciones", args=[self.partida.pk])
-        self.assertEqual(self.client.get(url).status_code, 200)
-        datos = self.secuencia_post(cantidad_kg="100", accion="buscar")
-        respuesta = self.client.post(url, datos)
-        self.assertContains(respuesta, "Avísale a la encargada para que la cree.")
-        self.assertNotContains(respuesta, "Crear ruta y empezar")
-        self.assertEqual(self.client.post(url, {**datos, "accion": "crear"}).status_code, 200)
+        procesar = reverse("trazabilidad:procesar_partida", args=[self.partida.pk])
+        self.assertContains(self.client.get(procesar), url)
+        self.client.force_login(self.usuario)
+        respuesta = self.client.get(procesar)
+        self.assertContains(respuesta, "Filete IQF")
+        self.assertNotContains(respuesta, url)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        datos = self.secuencia_post(cantidad_kg="100", accion="crear")
+        self.assertEqual(self.client.post(url, datos).status_code, 403)
         self.assertEqual(RutaProceso.objects.count(), 1)
         self.assertFalse(EventoProceso.objects.exists())
 

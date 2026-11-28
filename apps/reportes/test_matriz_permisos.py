@@ -49,13 +49,12 @@ class MatrizPermisosTests(DatosQR, TestCase):
             *[(n, [self.cuenta.pk], "get") for n in ("detalle_usuario", "editar_rol", "reset_contrasena")],
             *[(n, [self.cuenta.pk], "post") for n in ("desactivar_usuario", "reactivar_usuario")]])
         grupo("usuarios", ("OPERARIA", "ENCARGADA", "JEFE"), [(n, [], "get") for n in ("inicio", "cambiar_contrasena")])
-        grupo("trazabilidad", ("OPERARIA", "ENCARGADA", "JEFE"), [
-            ("seleccionar_operaciones", [p], "get")])
+
         grupo("trazabilidad", ("ENCARGADA", "JEFE"), [
             ("consulta_integral", [], "get"), ("ficha_integral", ["caja", c], "get")])
-        # Rutas y operaciones: jefe y encargada.
+        # Rutas y operaciones: jefe y encargada. La operaria usa las rutas habituales.
         grupo("trazabilidad", ("ENCARGADA", "JEFE"), [
-            ("rutas", [], "get"), ("nueva_ruta", [], "get"), ("operaciones", [], "get"),
+            ("seleccionar_operaciones", [p], "get"), ("rutas", [], "get"), ("nueva_ruta", [], "get"), ("operaciones", [], "get"),
             ("editar_ruta", [self.ruta.pk], "get"), ("duplicar_ruta", [self.ruta.pk], "get"),
             ("estado_ruta", [self.ruta.pk], "post"),
             ("editar_operacion", [self.tipos["FILETEO"].pk], "get")])

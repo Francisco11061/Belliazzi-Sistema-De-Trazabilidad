@@ -2,7 +2,7 @@
 
 Entrega local del 23 de octubre de 2026. No se realizaron commits, push, merge ni despliegues. No se aplicaron migraciones ni se escribieron datos en la base de trabajo; las pruebas utilizaron la base temporal de Django.
 
-> **Cambio del 28 de noviembre de 2026 (marcha blanca).** La encargada administra rutas y operaciones igual que el jefe. Las solicitudes de rutas se eliminaron: en «Seleccionar operaciones», si la secuencia no calza con ninguna ruta, el jefe o la encargada la crean ahí mismo con «Crear ruta y empezar»; la operaria ve que debe avisar a la encargada. Cada ruta registra quién la creó. Las migraciones `0019_ruta_creado_por` y `0020_quitar_solicitudes_ruta` aplican estos cambios; la segunda borra las tablas de solicitudes. Las secciones siguientes se actualizaron; las menciones a solicitudes en los archivos quedan como historial.
+> **Cambio del 28 de noviembre de 2026 (marcha blanca).** La encargada administra rutas y operaciones igual que el jefe. Las solicitudes de rutas se eliminaron: en «Seleccionar operaciones», si la secuencia no calza con ninguna ruta, el jefe o la encargada la crean ahí mismo con «Crear ruta y empezar». La operaria trabaja solo con las rutas habituales y no accede a «Seleccionar operaciones». Cada ruta registra quién la creó. Las migraciones `0019_ruta_creado_por` y `0020_quitar_solicitudes_ruta` aplican estos cambios; la segunda borra las tablas de solicitudes. Las secciones siguientes se actualizaron; las menciones a solicitudes en los archivos quedan como historial.
 
 ## Funcionalidades y pantallas
 
@@ -30,7 +30,7 @@ La ficha muestra los aportes registrados al lote. No calcula qué parte de cada 
 | Función | Jefe / superusuario | Encargada | Operario |
 | --- | --- | --- | --- |
 | Administrar rutas y operaciones | Sí | Sí | No |
-| Crear una ruta desde «Seleccionar operaciones» | Sí | Sí | No |
+| «Seleccionar operaciones» y crear ahí una ruta | Sí | Sí | No |
 | Usar rutas existentes | Sí | Sí | Sí |
 | Consulta integral | Sí | Sí | No |
 
@@ -105,6 +105,6 @@ La migración es necesaria antes de usar las pantallas nuevas o el contador del 
 
 1. Como jefe, abrir `/trazabilidad/rutas/`, crear una ruta, agregar y reordenar operaciones. Revisar `/trazabilidad/operaciones/`.
 2. Desde un seguimiento disponible, iniciar por ruta habitual o «Seleccionar operaciones».
-3. Como encargada, elegir una combinación inexistente y usar «Crear ruta y empezar». Como operario, comprobar que la misma combinación muestra el aviso para la encargada y no crea nada.
+3. Como encargada, elegir una combinación inexistente y usar «Crear ruta y empezar». Como operario, comprobar que solo aparecen las rutas habituales y que «Seleccionar operaciones» responde 403.
 4. Consultar `/trazabilidad/consulta/` con un folio, lote o QR. Revisar aportes, ramas, cajas, conciliación y cronología; comprobar la misma procedencia desde el despacho.
 5. Como operario, verificar el rechazo de la URL de consulta integral.

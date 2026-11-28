@@ -5,7 +5,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
-from apps.usuarios.permisos import jefe_o_encargada_requerido, personal_operativo_requerido, tiene_rol
+from apps.usuarios.permisos import jefe_o_encargada_requerido
 from .models import Especie, RutaProceso, TipoProceso
 from .forms_rutas import RutaGestionForm, OperacionGestionForm, SecuenciaFormSet, SeleccionOperacionesForm
 from .services_rutas import guardar_ruta, guardar_operacion, estado_ruta, nombre_para_secuencia, rutas_equivalentes
@@ -91,13 +91,12 @@ def operaciones(request, pk=None):
         "page_obj": Paginator(TipoProceso.objects.exclude(codigo="PROCESAMIENTO").order_by("nombre", "pk"), 20).get_page(request.GET.get("page"))})
 
 
-@personal_operativo_requerido
+@jefe_o_encargada_requerido
 @require_http_methods(["GET", "POST"])
 def seleccionar_operaciones(request, pk):
+    """Elegir operaciones y, si ninguna ruta calza, crearla aquí mismo. La operaria usa las rutas habituales."""
     partida = presentar_partida(get_object_or_404(partidas_con_situacion(), pk=pk))
     especie = partida.detalle_recepcion.especie
-    # Si no hay una ruta con la secuencia, el jefe o la encargada la crean aquí mismo.
-    gestion = tiene_rol(request.user, "JEFE", "ENCARGADA")
     form = SeleccionOperacionesForm(request.POST if request.method == "POST" else None, initial={"cantidad_kg": partida.cantidad_inicial_kg})
     secuencia = SecuenciaFormSet(request.POST if request.method == "POST" else None, prefix="etapas")
     consultado = request.method == "POST" and secuencia.is_valid()
@@ -106,7 +105,7 @@ def seleccionar_operaciones(request, pk):
         ids = secuencia.operaciones()
         coincidencias = rutas_equivalentes(especie, ids)
         form.fields["ruta"].queryset = RutaProceso.objects.filter(pk__in=[r.pk for r in coincidencias])
-    crear = gestion and consultado and not coincidencias
+    crear = consultado and not coincidencias
     if not coincidencias:
         del form.fields["ruta"]  # Sin rutas que calcen, el selector queda vacío y no sirve.
     if crear:
@@ -139,4 +138,4 @@ def seleccionar_operaciones(request, pk):
             except (ValidationError, IntegrityError) as error:
                 error_form(form, error)
     return render(request, "trazabilidad/rutas/seleccionar.html", {"form": form, "secuencia": secuencia,
-        "partida": partida, "coincidencias": coincidencias, "consultado": consultado, "puede_crear": gestion})
+        "partida": partida, "coincidencias": coincidencias, "consultado": consultado})
