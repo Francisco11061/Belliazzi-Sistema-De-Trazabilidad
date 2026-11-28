@@ -22,7 +22,7 @@
         <div><h2 class="text-xl font-semibold">Origen del producto</h2></div>
         {% for aporte in aportes %}{% with partida=aporte.partida detalle=aporte.partida.detalle_recepcion %}
         <article data-aporte="{{ aporte.pk }}" class="min-w-0 space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <header><h3 class="text-lg font-semibold">{{ partida.especie_nombre }} · {{ partida.procedencia }}</h3><p class="mt-2 font-medium text-cyan-800">{{ aporte.cantidad_kg_utilizada|num }} kg asignados al lote</p></header>
+            <header><h3 class="text-lg font-semibold">{{ partida.especie_nombre }} · {% procedencia partida %}</h3><p class="mt-2 font-medium text-cyan-800">{{ aporte.cantidad_kg_utilizada|num }} kg asignados al lote</p></header>
             <dl class="grid gap-4 text-sm sm:grid-cols-2">
                 <div><dt class="text-slate-600">Llegó</dt><dd class="mt-1 font-medium">{{ detalle.recepcion.fecha_hora_recepcion|date:"d/m/Y H:i" }}</dd></div>
                 <div><dt class="text-slate-600">Folio Sernapesca</dt><dd class="mt-1 font-medium">{{ detalle.origen_sernapesca.folio_origen|default:"No documentado" }}</dd></div>

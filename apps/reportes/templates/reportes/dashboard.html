@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load static i18n %}
-{% block title %}Dashboard operacional | Pesquera Belliazzi{% endblock %}
+{% block title %}{% if asuntos %}({{ asuntos }}) {% endif %}Dashboard operacional | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Centro de control{% endblock %}
 {% block breadcrumbs %}{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'reportes/dashboard.css' %}">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'reportes/dashboard.css' %}?v=pulido-1">{% endblock %}
 {% block content %}{% language "es" %}
 <div class="dc-dashboard">
     <header class="dc-heading"><div><h1>Dashboard operacional</h1><p class="dc-muted">Stock, producción y asuntos pendientes · <time datetime="{{ actualizado|date:'c' }}">Actualizado {{ actualizado|date:'d/m/Y H:i' }} (horario de Chile)</time></p></div><a href="{% querystring %}" class="dc-button dc-button-light" aria-label="Actualizar dashboard">↻ Actualizar</a></header>
@@ -34,4 +34,4 @@
 </div>
 {{ graficos|json_script:"dashboard-datos" }}
 {% endlanguage %}{% endblock %}
-{% block extra_js %}<script src="{% static 'reportes/vendor/chart.umd.min.js' %}" defer></script><script src="{% static 'reportes/dashboard.js' %}" defer></script>{% endblock %}
+{% block extra_js %}<script src="{% static 'reportes/vendor/chart.umd.min.js' %}" defer></script><script src="{% static 'reportes/dashboard.js' %}?v=pulido-1" defer></script>{% endblock %}

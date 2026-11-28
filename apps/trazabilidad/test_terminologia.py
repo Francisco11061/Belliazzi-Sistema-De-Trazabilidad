@@ -30,7 +30,7 @@ class TerminologiaSeguimientoTests(DatosProcesamiento, TestCase):
         respuesta = self.pagina("lista_partidas")
         self.assertEqual(self.titulo(respuesta), "Seguimiento de proceso")
         self.assertContains(respuesta, "Especie, proveedor o folio Sernapesca")
-        self.assertContains(respuesta, self.partida.procedencia)
+        self.assertContains(respuesta, f"{self.partida.proveedor} · <time")
         self.assertNotContains(respuesta, f"Seguimiento #{self.partida.pk}")
         self.assertNotContains(respuesta, "Partidas")
         self.assertNotContains(respuesta, "ID de partida")
@@ -38,7 +38,7 @@ class TerminologiaSeguimientoTests(DatosProcesamiento, TestCase):
     def test_detalle_nombra_por_especie_y_procedencia_sin_numeros_internos(self):
         respuesta = self.pagina("detalle_partida")
         self.assertTrue(self.titulo(respuesta).startswith(self.especie.nombre))
-        self.assertContains(respuesta, self.partida.procedencia)
+        self.assertContains(respuesta, f"{self.partida.proveedor} · <time")
         self.assertContains(respuesta, "De dónde viene")
         enlace_recepcion = reverse("trazabilidad:detalle_recepcion", args=[self.partida.detalle_recepcion.recepcion_id])
         self.assertNotContains(respuesta, enlace_recepcion)  # La operaria no entra a recepciones.
@@ -52,7 +52,7 @@ class TerminologiaSeguimientoTests(DatosProcesamiento, TestCase):
     def test_formulario_camara_muestra_especie_y_seguimiento(self):
         respuesta = self.pagina("enviar_partida_mantencion")
         self.assertContains(respuesta, self.especie.nombre)
-        self.assertContains(respuesta, self.partida.procedencia)
+        self.assertContains(respuesta, f"{self.partida.proveedor} · <time")
         self.assertNotContains(respuesta, "Partida #")
         self.assertContains(respuesta, reverse("trazabilidad:detalle_partida", args=[self.partida.pk]))
         self.assertContains(respuesta, 'aria-label="Ruta de navegación"')
@@ -61,7 +61,7 @@ class TerminologiaSeguimientoTests(DatosProcesamiento, TestCase):
         self.iniciar()
         respuesta = self.pagina("gestionar_procesamiento")
         self.assertEqual(self.titulo(respuesta), f"Procesamiento de {self.especie.nombre}")
-        self.assertContains(respuesta, self.partida.procedencia)
+        self.assertContains(respuesta, f"{self.partida.proveedor} · <time")
         self.assertContains(respuesta, "Ruta de procesamiento")
         self.assertNotContains(respuesta, "Procesamiento de partida")
 
@@ -70,7 +70,7 @@ class TerminologiaSeguimientoTests(DatosProcesamiento, TestCase):
         self.completar()
         respuesta = self.pagina("enviar_partida_tunel")
         self.assertContains(respuesta, self.especie.nombre)
-        self.assertContains(respuesta, self.partida.procedencia)
+        self.assertContains(respuesta, f"{self.partida.proveedor} · <time")
         self.assertNotContains(respuesta, "Partida #")
 
     def test_mensaje_parcial_describe_cantidades_sin_parentesco_tecnico(self):

@@ -60,7 +60,8 @@ class SidebarTests(TestCase):
     def test_contador_respeta_propietario_y_una_consulta_por_request(self):
         for usuario, esperado in ((self.jefe, 3), (self.superusuario, 3), (self.encargada, 1), (self.operaria, 2)):
             request = self.request(usuario)
-            with self.assertNumQueries(1):
+            # Solicitudes + contadores de planta (proceso y cajas por guardar); se calculan una vez por request.
+            with self.assertNumQueries(3):
                 datos = menu_lateral({'request': request})
                 menu_lateral({'request': request})
             solicitud = next(e for e in self.enlaces(datos) if e['clave'] == 'solicitudes')

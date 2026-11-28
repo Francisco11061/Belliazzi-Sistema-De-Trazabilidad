@@ -22,7 +22,7 @@ class RecorridosQRTests(DatosQR, TestCase):
                 respuesta = self.client.get(self.consulta())
             self.assertEqual(respuesta.status_code, 200)
             # Operario conserva la consulta operativa; gestión abre el historial completo.
-            self.assertLessEqual(len(antes), 11 if usuario == self.usuario else 40)
+            self.assertLessEqual(len(antes), 13 if usuario == self.usuario else 42)
             cantidades.append(len(antes))
         tercera = self.otra_lista("10")
         ConsumoLote.objects.create(lote_produccion=self.lote, partida=tercera, cantidad_kg_utilizada=Decimal("10"))

@@ -7,7 +7,7 @@
             <tbody class="divide-y divide-slate-100">{% for partida in page_obj %}<tr data-row-link class="cursor-pointer hover:bg-slate-50">
                 <th scope="row" class="px-4 py-3 align-top font-normal">
                     <a data-detail-link class="inline-flex min-h-8 items-center font-semibold text-cyan-700" href="{% url 'trazabilidad:detalle_partida' partida.pk %}">{{ partida.especie_nombre }}</a>
-                    <p class="text-slate-600">{{ partida.procedencia }}</p>
+                    <p class="text-slate-600">{% procedencia partida %}</p>
                 </th>
                 <td class="px-4 py-3 text-right align-top whitespace-nowrap tabular-nums font-medium">{% if categoria == 'empaque' %}{{ partida.disponible_lote_kg|num }}{% else %}{{ partida.cantidad_inicial_kg|num }}{% endif %} kg</td>
                 <td class="px-4 py-3 align-top">{% include "trazabilidad/partidas/_situacion.html" %}{% if partida.ubicacion %}<p class="mt-1 text-slate-600">{{ partida.ubicacion }}</p>{% endif %}</td>

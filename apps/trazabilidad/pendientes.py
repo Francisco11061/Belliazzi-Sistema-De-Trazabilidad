@@ -8,7 +8,7 @@ from apps.inventario.selectors import cajas_con_inventario
 from apps.usuarios.permisos import tiene_rol
 
 from .formato import formatear_kg, hace
-from .models import UnidadFrio
+from .models import PartidaProceso, UnidadFrio
 from .selectors import lotes_con_empaque, presentar_partida, puede_asignar_lote, puede_crear_caja
 from .seguimiento_operativo import seguimientos_operativos
 
@@ -62,8 +62,18 @@ def _contexto_partida(partida, ahora, umbrales):
     if partida.categoria_operativa == "empaque":
         return f"{formatear_kg(partida.disponible_lote_kg)} sin asignar", False
     if situacion == "DISPONIBLE":
-        return f"Llegó {hace(partida.llegada, ahora)}", False
+        tiempo = hace(partida.llegada, ahora)
+        return ("Recién llegado" if tiempo == "recién" else f"Lleva {tiempo.removeprefix('hace ')} esperando"), False
     return "", False
+
+
+def _fecha_contexto(partida):
+    """La fecha exacta detrás de «hace…», para mostrarla al pasar el mouse."""
+    if partida.revision_operativa or partida.categoria_operativa == "empaque":
+        return None
+    return {"EN_CONGELACION": partida.ingreso_actual, "EN_MANTENCION": partida.ingreso_actual,
+            "EN_PROCESO": partida.ultima_operacion, "PENDIENTE_PESAJE": partida.ultima_salida,
+            "DISPONIBLE": partida.llegada}.get(partida.situacion)
 
 
 def _enlace_lista(clave):
@@ -83,7 +93,10 @@ def pendientes_de_planta(usuario, ahora=None):
     items = {clave: [] for clave, *_ in GRUPOS}
     saldos = {"empaque": 0, "encajar": 0}
 
-    for partida in seguimientos_operativos().filter(categoria_operativa__in=["atender", "empaque"]):
+    # Filtrar por estado y no por categoría en SQL: es mucho más rápido con estas anotaciones.
+    for partida in seguimientos_operativos().filter(estado=PartidaProceso.Estado.ACTIVA):
+        if partida.categoria_operativa == "historial":
+            continue
         clave = _grupo_partida(partida)
         if clave not in items or (clave == "empaque" and not gestion):
             continue
@@ -95,6 +108,7 @@ def pendientes_de_planta(usuario, ahora=None):
             saldos["empaque"] += 1
             continue
         partida.contexto, partida.alerta = _contexto_partida(partida, ahora, umbrales)
+        partida.contexto_fecha = _fecha_contexto(partida)
         items[clave].append(partida)
 
     for lote in lotes_con_empaque().order_by("fecha_elaboracion", "pk"):

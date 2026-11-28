@@ -7,7 +7,7 @@
         <h2 id="menu-grupo-{{ forloop.counter }}" class="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ grupo.titulo }}</h2>
         <ul class="space-y-1">
         {% for enlace in grupo.enlaces %}
-            <li>{% include 'components/_sidebar_enlace.html' with destino=enlace.destino nombre=enlace.nombre icono=enlace.clave activo=enlace.activo pendientes=enlace.pendientes only %}</li>
+            <li>{% include 'components/_sidebar_enlace.html' with destino=enlace.destino nombre=enlace.nombre icono=enlace.clave activo=enlace.activo pendientes=enlace.pendientes pendientes_texto=enlace.pendientes_texto only %}</li>
         {% endfor %}
         </ul>
     </section>

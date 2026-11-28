@@ -5,7 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Pesquera Belliazzi{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'usuarios/css/output.css' %}?v=sidebar-3">
+    {% include 'components/_iconos_head.html' %}
+    <link rel="stylesheet" href="{% static 'usuarios/css/output.css' %}?v=pulido-1">
     {% block extra_css %}{% endblock %}
 <link rel="stylesheet" href="{% static 'usuarios/css/formularios.css' %}">
 </head>

@@ -42,3 +42,51 @@
         @apply outline-none ring-2 ring-inset ring-cyan-600/40;
     }
 }
+
+/* Pulido: la misma respuesta al mouse, al clic y al desplegar en todo el sistema.
+   Fuera de @layer para ganar sobre las utilidades de cada tarjeta. */
+#main-content ::placeholder { color: #94a3b8; opacity: 1; }
+
+#page-shell :is(button, input[type=submit], a.inline-flex.rounded-lg, a.flex.rounded-lg) {
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+#page-shell :is(button, input[type=submit], a.inline-flex.rounded-lg):not(:disabled):active {
+    transform: translateY(1px) scale(.98);
+}
+
+/* Tarjetas y filas que abren un detalle. */
+#main-content article[data-row-link], #main-content li[data-row-link] {
+    cursor: pointer;
+    transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease, background-color .15s ease;
+}
+#main-content article[data-row-link]:hover {
+    transform: translateY(-2px);
+    border-color: #a5f3fc;
+    box-shadow: 0 6px 16px -6px rgb(15 23 42 / .18);
+}
+#main-content li[data-row-link]:hover { background-color: #f8fafc; }
+
+/* Un solo chevron para todo lo que se despliega. */
+#page-shell details > summary { list-style: none; cursor: pointer; }
+#page-shell details > summary::-webkit-details-marker { display: none; }
+#page-shell details:not([data-action-menu]) > summary::after {
+    content: ""; display: inline-block; flex: none; width: .45em; height: .45em; margin-left: .55em;
+    border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+    vertical-align: .2em; transform: rotate(45deg); transition: transform .15s ease;
+}
+#page-shell details[open]:not([data-action-menu]) > summary::after { transform: translateY(.2em) rotate(-135deg); }
+
+/* Fecha exacta al pasar el mouse. */
+[data-tip] { position: relative; text-decoration: underline dotted #94a3b8; text-underline-offset: 3px; cursor: help; }
+[data-tip]::after {
+    content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 6px); z-index: 40;
+    transform: translate(-50%, 4px); padding: .35rem .55rem; border-radius: .375rem;
+    background: #0f172a; color: #fff; font-size: .75rem; font-weight: 500; line-height: 1.1; white-space: nowrap;
+    opacity: 0; pointer-events: none; transition: opacity .15s ease, transform .15s ease;
+}
+[data-tip]:hover::after { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+    #page-shell *, [data-tip]::after { transition: none !important; }
+    #page-shell :is(button, a, article):active, #main-content article[data-row-link]:hover { transform: none !important; }
+}

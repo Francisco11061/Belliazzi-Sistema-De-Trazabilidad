@@ -8,6 +8,17 @@
     const palette = ['#0072b2', '#d97706', '#008066', '#a85595', '#6552aa', '#b54d35'];
     const speciesOptions = Array.from(document.querySelectorAll('#id_especie option'))
         .filter(option => option.value).sort((a, b) => Number(a.value) - Number(b.value));
+    const partirEtiqueta = (texto, ancho = 18) => {
+        if (texto.length <= ancho) return texto;
+        const lineas = [''];
+        texto.split(' ').forEach(palabra => {
+            const actual = lineas[lineas.length - 1];
+            if (actual && (actual + ' ' + palabra).length > ancho) lineas.push(palabra);
+            else lineas[lineas.length - 1] = actual ? actual + ' ' + palabra : palabra;
+        });
+        if (lineas.length > 2) lineas.splice(1, lineas.length, lineas.slice(1).join(' ').slice(0, ancho - 1) + '…');
+        return lineas;
+    };
     const labels = new Set([...speciesOptions.map(option => option.textContent.trim()),
         ...(data.especies?.labels ?? []), ...(data.ranking?.labels ?? []),
         ...(data.camaras?.series ?? []).map(s => s.nombre), ...(data.despachos?.series ?? []).map(s => s.nombre)]);
@@ -87,7 +98,7 @@
                                 callback: horizontal ? value => number.format(value) : function(value) { return this.getLabelForValue(value); } } },
                         y: { stacked, beginAtZero: true, grid: { display: !horizontal, color: '#f1f5f9' }, border: { display: false },
                             ticks: { color: '#475569', font: { size: 11 },
-                                callback: horizontal ? function(value) { const text = this.getLabelForValue(value); return text.length > 23 ? text.slice(0, 21) + '…' : text; } : value => number.format(value) } }
+                                callback: horizontal ? function(value) { return partirEtiqueta(this.getLabelForValue(value)); } : value => number.format(value) } }
                     }
                 }
             });

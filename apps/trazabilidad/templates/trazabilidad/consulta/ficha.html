@@ -6,7 +6,7 @@
 {% block content %}{% language "es" %}
 <div class="hp-history">
 <header class="hp-header"><div><p class="hp-eyebrow">Historial del producto</p>
-<h1>{% if caja %}Caja #{{ caja.pk }} — {{ caja.lote_produccion.especie.nombre }}{% elif tipo == 'lote' %}{{ raiz.especie.nombre }} — Lote {{ raiz.codigo_visible }}{% elif tipo == 'origen' %}Folio Sernapesca {{ raiz.folio_origen }}{% elif tipo == 'recepcion' %}Recepción del {{ raiz.fecha_hora_recepcion|date:'d/m/Y H:i' }}{% elif tipo == 'seguimiento' %}{{ raiz.especie_nombre }} · {{ raiz.procedencia }}{% else %}Despacho #{{ raiz.pk }}{% endif %}</h1>
+<h1>{% if caja %}Caja #{{ caja.pk }} — {{ caja.lote_produccion.especie.nombre }}{% elif tipo == 'lote' %}{{ raiz.especie.nombre }} — Lote {{ raiz.codigo_visible }}{% elif tipo == 'origen' %}Folio Sernapesca {{ raiz.folio_origen }}{% elif tipo == 'recepcion' %}Recepción del {{ raiz.fecha_hora_recepcion|date:'d/m/Y H:i' }}{% elif tipo == 'seguimiento' %}{{ raiz.especie_nombre }} · {% procedencia raiz %}{% else %}Despacho #{{ raiz.pk }}{% endif %}</h1>
 {% if caja %}<p class="hp-muted">Lote <a href="{% url 'trazabilidad:ficha_integral' 'lote' caja.lote_produccion_id %}">{{ caja.lote_produccion.codigo_visible }}</a></p>{% endif %}</div><a class="hp-button" href="{% url 'trazabilidad:consulta_integral' %}">Nueva consulta</a></header>
 <section id="resumen" aria-label="Resumen del producto">
 {% if caja %}{% include 'trazabilidad/consulta/_resumen_caja.html' %}{% else %}<p class="hp-muted">{{ lotes|length }} lote{{ lotes|length|pluralize }} de producción · {{ cajas|length }} caja{{ cajas|length|pluralize }} · {{ partidas|length }} seguimiento{{ partidas|length|pluralize }}</p>{% endif %}

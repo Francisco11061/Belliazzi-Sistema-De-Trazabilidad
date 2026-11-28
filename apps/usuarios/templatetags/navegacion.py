@@ -21,6 +21,29 @@ ENLACES = (
     ('despachos', 'Despachos', 'inventario:lista_despachos', ('inventario:lista_despachos', 'inventario:crear_despacho', 'inventario:detalle_despacho'), 'gestion'),
  )
 
+def _contadores_planta(request, gestion):
+    """Lo que espera en cada sección, con dos consultas por página como máximo."""
+    if not hasattr(request, "_menu_contadores"):
+        from apps.inventario.selectors import cajas_con_inventario
+        from apps.trazabilidad.models import PartidaProceso
+        from apps.trazabilidad.pendientes import SALDO_MINIMO_KG
+        from apps.trazabilidad.seguimiento_operativo import seguimientos_operativos
+
+        # Se cuenta en Python: un aggregate condicional sobre estas anotaciones es muy lento en PostgreSQL.
+        filas = seguimientos_operativos().filter(estado=PartidaProceso.Estado.ACTIVA).values_list(
+            "categoria_operativa", "disponible_lote_kg")
+        atender = empaque = 0
+        for categoria, disponible in filas:
+            atender += categoria == "atender"
+            empaque += categoria == "empaque" and disponible >= SALDO_MINIMO_KG
+        request._menu_contadores = {
+            "seguimiento": (atender, "productos por atender"),
+            "lotes": (empaque if gestion else 0, "productos listos para asignar a lote"),
+            "inventario": (cajas_con_inventario().filter(estado_inventario="PENDIENTE").count(), "cajas por guardar en cámara"),
+        }
+    return request._menu_contadores
+
+
 @register.inclusion_tag("components/_sidebar.html", takes_context=True)
 def menu_lateral(context):
     request = context["request"]
@@ -37,10 +60,13 @@ def menu_lateral(context):
                 consulta = consulta.filter(solicitante=user)
             request._menu_solicitudes_pendientes = consulta.count()
         pendientes = request._menu_solicitudes_pendientes
+    contadores = {"solicitudes": (pendientes, "solicitudes pendientes")}
+    if permisos["personal"]:
+        contadores.update(_contadores_planta(request, permisos["gestion"]))
     grupos = []
     for titulo, enlaces in (("Control y administración", ENLACES[:6]), ("Flujo productivo", ENLACES[6:])):
         visibles = [dict(clave=clave, nombre=nombre, destino=destino, activo=actual in paginas,
-                         pendientes=pendientes if clave == "solicitudes" else 0)
+                         pendientes=contadores.get(clave, (0, ""))[0], pendientes_texto=contadores.get(clave, (0, ""))[1])
                     for clave, nombre, destino, paginas, permiso in enlaces if permisos[permiso]]
         if visibles:
             grupos.append(dict(titulo=titulo, enlaces=visibles))

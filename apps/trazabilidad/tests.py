@@ -554,8 +554,8 @@ class RecepcionViewsTests(TestCase):
                 especie=self.especie, peso_origen_kg=10, peso_recepcion_kg=11)
         request = RequestFactory().get(reverse("trazabilidad:detalle_recepcion", args=[recepcion.pk]))
         request.user = self.jefe
-        # Historial, contador único del sidebar, partidas precargadas y bodega por defecto.
-        with self.assertNumQueries(8):
+        # Historial, contadores del sidebar, partidas precargadas y bodega por defecto.
+        with self.assertNumQueries(10):
             response = detalle_recepcion(request, recepcion.pk)
         for indice in range(3):
             self.assertContains(response, f"HISTORICO-{indice}")
@@ -946,7 +946,7 @@ class ListadoRecepcionesFiltrosTests(TestCase):
             self.crear("2025-09-15T12:00:00", f"PERF-{i}", "Otro", self.jefe, [self.merluza, self.sierra])
         muchas = consultas()
         self.assertEqual(pocas, muchas)
-        self.assertLessEqual(muchas, 8)
+        self.assertLessEqual(muchas, 10)
 
     def test_operaria_sigue_sin_acceso(self):
         self.client.force_login(self.operaria)

@@ -48,7 +48,7 @@ class PendientesDePlantaTests(DatosProcesamiento, TestCase):
         self.assertContains(respuesta, "Hay 1 pendiente en planta")
         self.assertContains(respuesta, "En el túnel")
         self.assertContains(respuesta, "Sacar del túnel")
-        self.assertContains(respuesta, self.partida.procedencia)
+        self.assertContains(respuesta, f"{self.partida.proveedor} · <time")
         self.assertNotContains(respuesta, f"Seguimiento #{self.partida.pk}")
 
     def test_avisa_cuando_se_pasa_el_tiempo_recomendado_en_el_tunel(self):

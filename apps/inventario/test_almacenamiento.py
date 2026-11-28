@@ -262,7 +262,7 @@ class InventarioTests(DatosInventario, TestCase):
             respuesta = self.client.get(url)
             for texto in ('Almacenada', self.camara1.nombre, self.camara2.nombre, 'Historial de almacenamiento', self.lote.codigo_lote):
                 self.assertContains(respuesta, texto)
-        self.assertContains(self.client.get(qr), self.partida.procedencia)
+        self.assertContains(self.client.get(qr), f"{self.partida.proveedor} · <time")
         self.assertEqual(self.client.get(self.url_lote('caja_qr_png', self.registro.pk))['Content-Type'], 'image/png')
 
     def test_filtros_especie_lote_camara_estado(self):

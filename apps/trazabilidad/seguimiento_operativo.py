@@ -3,7 +3,7 @@ from django.db.models import Case, CharField, Count, DateTimeField, F, OuterRef,
 from django.db.models.functions import Coalesce
 
 from .models import EstanciaPartida, EventoProceso, Pesaje
-from .selectors import partidas_con_disponibilidad, partidas_para_lote
+from .selectors import partidas_con_disponibilidad
 
 CATEGORIAS = (
     ("atender", "Por atender"),
@@ -24,8 +24,10 @@ def seguimientos_operativos():
         ultima_salida=Subquery(salidas.order_by("-fecha_hora_salida", "-pk").values("fecha_hora_salida")[:1]),
         ultimo_pesaje=Subquery(pesos.order_by("-fecha_hora_evento", "-pk").values("fecha_hora_evento")[:1]),
     )
-    # Reutiliza el selector de asignación; no basta con terminar una etapa.
-    listos = Q(pk__in=partidas_para_lote().values("pk"))
+    # Mismas condiciones que partidas_para_lote(), evaluadas sobre la misma fila: una subconsulta
+    # «pk IN (todas las partidas anotadas)» hacía la lista varias veces más lenta.
+    listos = Q(situacion="LISTA_PARA_EMPAQUE", numero_postprocesos=1,
+               disponible_lote_kg__gt=0, ruta_proceso__isnull=False)
     asignados = Q(situacion="LISTA_PARA_EMPAQUE", numero_postprocesos=1,
                   ruta_proceso__isnull=False, peso_final_kg__gt=0,
                   tiene_consumos=True, disponible_lote_kg=0)

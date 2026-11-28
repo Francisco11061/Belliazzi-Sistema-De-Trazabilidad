@@ -308,7 +308,7 @@ class LotesTests(DatosLotes, TestCase):
         for texto in (lote.codigo_visible, "Origen del producto", "125 kg", "2 procesos", "100 kg", "25 kg"):
             self.assertContains(respuesta, texto)
         for partida in (self.partida, otra):
-            self.assertContains(respuesta, partida.procedencia)
+            self.assertContains(respuesta, f"{partida.proveedor} · <time")
             self.assertContains(respuesta, reverse("trazabilidad:detalle_partida", args=[partida.pk]))
 
     def test_detalle_seguimiento_muestra_lotes_y_oculta_accion_sin_saldo(self):

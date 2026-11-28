@@ -172,7 +172,7 @@ class QRCajasTests(DatosQR, TestCase):
     def test_origenes_separados_con_aporte_recepcion_folio(self):
         respuesta = self.client.get(self.consulta())
         self.assertContains(respuesta, "data-aporte=", count=2)
-        for texto in (self.partida.procedencia, self.otra.procedencia, "70 kg asignados", "30 kg asignados", "ABC123", "DEF456"):
+        for texto in (self.partida.proveedor, self.otra.proveedor, f"llegó el {self.partida.llegada:%d/%m}</time>", "70 kg asignados", "30 kg asignados", "ABC123", "DEF456"):
             self.assertContains(respuesta, texto)
         aportes = list(respuesta.context["aportes"])
         self.assertEqual([a.partida.detalle_recepcion.origen_sernapesca.folio_origen for a in aportes], ["ABC123", "DEF456"])
@@ -260,7 +260,7 @@ class QRCajasTests(DatosQR, TestCase):
         with CaptureQueriesContext(connection) as despues:
             respuesta = self.client.get(self.consulta())
         self.assertEqual(len(antes), len(despues))
-        self.assertLessEqual(len(despues), 11)  # Incluye el contador del menú lateral.
+        self.assertLessEqual(len(despues), 13)  # Incluye los contadores del menú lateral.
         self.assertContains(respuesta, "data-aporte=", count=3)
 
 

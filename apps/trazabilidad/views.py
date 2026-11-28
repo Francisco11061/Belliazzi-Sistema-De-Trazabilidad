@@ -1,3 +1,4 @@
+from collections import Counter
 from decimal import Decimal
 from datetime import datetime, time
 
@@ -298,7 +299,11 @@ def lista_partidas(request):
                 partidas = partidas.filter(**{lookup: filtro.cleaned_data[campo]})
     else:
         partidas = partidas.none()
-    cantidades = dict(partidas.order_by().values_list("categoria_operativa").annotate(total=Count("pk")))
+    # Contar en Python sobre las activas: agrupar o filtrar por estas anotaciones en SQL es muy lento.
+    # Una partida dividida, consumida o cerrada siempre está en el historial.
+    cantidades = Counter(partidas.filter(estado=PartidaProceso.Estado.ACTIVA).order_by()
+                         .values_list("categoria_operativa", flat=True))
+    cantidades["historial"] += partidas.exclude(estado=PartidaProceso.Estado.ACTIVA).count()
     categorias = []
     for codigo, nombre in CATEGORIAS:
         parametros = request.GET.copy()
@@ -309,7 +314,10 @@ def lista_partidas(request):
     seleccion = partidas.filter(estado="ACTIVA", tiene_hijas=False) if categoria == "todos" else partidas.filter(categoria_operativa=categoria)
     if categoria == "todos":
         categorias.append({"codigo": "todos", "nombre": "Situación actual", "cantidad": seleccion.count(), "url": "?" + request.GET.urlencode(), "activa": True})
-    pagina = Paginator(seleccion, 10).get_page(request.GET.get("page"))
+    paginador = Paginator(seleccion, 10)
+    if categoria != "todos":
+        paginador.count = cantidades.get(categoria, 0)  # Ya contado arriba; evita otro COUNT lento.
+    pagina = paginador.get_page(request.GET.get("page"))
     pagina.object_list = [presentar_partida(p) for p in pagina.object_list]
     for partida in pagina.object_list:
         partida.puede_asignar_lote = puede_asignar_lote(partida)
