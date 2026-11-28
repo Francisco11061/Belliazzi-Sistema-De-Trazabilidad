@@ -1,10 +1,10 @@
 {% extends "base.html" %}{% load formularios static %}
-{% block title %}Corregir recepción #{{ recepcion.pk }} | Pesquera Belliazzi{% endblock %}
+{% block title %}Corregir recepción del {{ recepcion.fecha_hora_recepcion|date:'d/m/Y H:i' }} | Pesquera Belliazzi{% endblock %}
 {% block page_title %}Corregir recepción{% endblock %}
 {% block content %}
 <div class="w-full min-w-0 w-full">
     <header class="mb-8">
-        <h1 class="text-2xl font-semibold tracking-tight md:text-3xl">Corregir recepción #{{ recepcion.pk }}</h1>
+        <h1 class="text-2xl font-semibold tracking-tight md:text-3xl">Corregir recepción del {{ recepcion.fecha_hora_recepcion|date:'d/m/Y H:i' }}</h1>
         <p class="mt-2 text-sm leading-6 text-slate-600">Los cambios quedarán registrados en el historial.</p>
     </header>
     {% if error_estructura %}

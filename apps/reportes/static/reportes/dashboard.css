@@ -79,7 +79,13 @@
 .dc-chart-card table :is(th, td):not(:first-child) { text-align: right; white-space: nowrap; }
 .dc-label { text-transform: uppercase; font-size: .625rem; letter-spacing: .1em; color: #64748b; font-weight: 700; }
 .dc-data { margin-top: .8rem; border-top: 1px solid #e2e8f0; }
-.dc-data summary { font-size: .8125rem; }
+.dc-data summary { font-size: .8125rem; list-style: none; display: inline-flex; align-items: center; gap: .45rem; }
+.dc-data summary::-webkit-details-marker { display: none; }
+.dc-data summary::after { content: ""; width: .4rem; height: .4rem; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); transition: transform .15s ease; }
+.dc-data[open] summary::after { transform: translateY(2px) rotate(-135deg); }
+.dc-data[open] .dc-abrir, .dc-data:not([open]) .dc-cerrar { display: none; }
+.dc-kpi-link::after, .dc-text-link::after { content: "›"; margin-left: .3rem; font-size: 1.1em; line-height: 1; }
+.dc-pending strong::after { content: "›"; margin-left: .5rem; color: #94a3b8; font-weight: 400; }
 .dc-table-scroll { overflow-x: auto; max-width: 100%; border-radius: .5rem; }
 .dc-table-scroll:focus-visible { outline: 2px solid #0891b2; outline-offset: 2px; }
 .dc-dashboard table { border-collapse: collapse; width: 100%; font-size: .75rem; }

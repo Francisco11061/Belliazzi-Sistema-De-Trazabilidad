@@ -35,23 +35,23 @@ class SeguimientoOperativoTests(DatosLotes, TestCase):
         camara = UnidadFrio.objects.create(nombre="Mantención operativa", tipo="MANTENCION")
         enviar_a_mantencion(partida=self.partida, cantidad_kg=Decimal("500"), unidad=camara, usuario=self.usuario)
         self.assertEqual(self.fila().situacion, "EN_MANTENCION")
-        self.assertContains(self.pagina(), "Retirar de cámara")
+        self.assertContains(self.pagina(), "Sacar de la cámara")
         retirar_de_mantencion(partida=self.partida, cantidad_kg=Decimal("500"), usuario=self.usuario)
         self.iniciar()
         self.empezar()
         self.terminar()
         self.assertEqual(self.fila().categoria_operativa, "atender")
         self.assertEqual(self.pagina(categoria="empaque").context["page_obj"].paginator.count, 0)
-        self.assertContains(self.pagina(), "Gestionar procesamiento")
+        self.assertContains(self.pagina(), "Continuar proceso")
         for indice in range(1, len(self.etapas)):
             self.empezar(indice)
             self.terminar(indice)
         self.enviar()
         self.assertEqual(self.fila().situacion, "EN_CONGELACION")
-        self.assertContains(self.pagina(), "Revisar retiro del túnel")
+        self.assertContains(self.pagina(), "Sacar del túnel")
         retirar_de_tunel(partida=self.partida, usuario=self.usuario)
         self.assertEqual(self.fila().categoria_operativa, "atender")
-        self.assertContains(self.pagina(), "Registrar peso postproceso")
+        self.assertContains(self.pagina(), "Registrar peso final")
         self.pesar()
         self.assertEqual(self.fila().categoria_operativa, "empaque")
         self.assertContains(self.pagina(categoria="empaque"), "Asignar a lote")
@@ -97,7 +97,7 @@ class SeguimientoOperativoTests(DatosLotes, TestCase):
         PartidaProceso.objects.filter(pk=self.partida.pk).update(ruta_proceso=self.ruta)
         self.assertEqual(self.fila().situacion, "NO_OPERABLE")
         respuesta = self.pagina(situacion="NO_OPERABLE")
-        self.assertContains(respuesta, "Revisar seguimiento")
+        self.assertContains(respuesta, ">Revisar<")
         self.assertContains(respuesta, "El historial está incompleto")
         self.assertNotContains(respuesta, ">Enviar a proceso")
         PartidaProceso.objects.filter(pk=self.partida.pk).update(ruta_proceso=None)
@@ -114,7 +114,7 @@ class SeguimientoOperativoTests(DatosLotes, TestCase):
                 self.assertEqual(self.pagina().context["page_obj"].paginator.count, 0)
                 respuesta = self.pagina(categoria="historial", situacion=estado)
                 self.assertEqual(respuesta.context["page_obj"].paginator.count, 1)
-                for accion in (">Enviar a proceso", ">Enviar a cámara", ">Asignar a lote", ">Registrar pérdida"):
+                for accion in (">Enviar a proceso", ">Guardar en cámara", ">Asignar a lote", ">Registrar merma"):
                     self.assertNotContains(respuesta, accion)
                 self.assertEqual(self.client.get(reverse("trazabilidad:detalle_partida", args=[self.partida.pk])).status_code, 200)
 
@@ -124,9 +124,9 @@ class SeguimientoOperativoTests(DatosLotes, TestCase):
                 fecha_hora_ingreso=timezone.now(), ingresado_por=self.usuario)
         respuesta = self.pagina()
         self.assertEqual(self.fila().categoria_operativa, "atender")
-        self.assertContains(respuesta, "Revisar seguimiento")
-        self.assertNotContains(respuesta, "Revisar retiro del túnel")
-        self.assertNotContains(respuesta, ">Registrar pérdida")
+        self.assertContains(respuesta, ">Revisar<")
+        self.assertNotContains(respuesta, "Sacar del túnel")
+        self.assertNotContains(respuesta, ">Registrar merma")
 
     def test_busqueda_filtros_contadores_y_paginacion_conservan_estado(self):
         for _ in range(12):
@@ -149,8 +149,8 @@ class SeguimientoOperativoTests(DatosLotes, TestCase):
         self.assertEqual(self.pagina(q=ultima.pk, categoria="historial").context["page_obj"].paginator.count, 1)
         self.assertEqual(self.pagina(recepcion=self.partida.detalle_recepcion.recepcion_id,
             partida=ultima.pk, categoria="historial", situacion="CERRADA").context["page_obj"].paginator.count, 1)
-        self.assertContains(self.pagina(q="no-es-numero"), "Revisa los filtros indicados")
-        self.assertContains(self.pagina(categoria="empaque"), "No hay seguimientos con producto disponible")
+        self.assertContains(self.pagina(q="no-es-numero"), "No hay productos que coincidan con la búsqueda.")
+        self.assertContains(self.pagina(categoria="empaque"), "No hay producto pendiente de asignar a lote")
         self.assertEqual(self.pagina(categoria="invalida").context["categoria"], "atender")
 
     def test_orden_por_operacion_real_y_desempate_pk(self):

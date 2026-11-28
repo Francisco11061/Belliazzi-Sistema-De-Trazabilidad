@@ -1,3 +1,4 @@
+from decimal import Decimal
 from datetime import datetime, time
 
 from django.contrib import messages
@@ -91,6 +92,12 @@ def lista_recepciones(request):
 
     recepciones = recepciones.distinct().order_by("-fecha_hora_recepcion", "-pk")
     page_obj = Paginator(recepciones, 10).get_page(request.GET.get("page"))
+    for recepcion in page_obj.object_list:
+        detalles = list(recepcion.detalles.all())
+        recepcion.proveedores = ", ".join(dict.fromkeys(
+            d.origen_sernapesca.proveedor for d in detalles if d.origen_sernapesca.proveedor)) or "Sin proveedor registrado"
+        recepcion.especies = ", ".join(dict.fromkeys(d.especie.nombre for d in detalles))
+        recepcion.kg_recibidos = sum((d.peso_recepcion_kg for d in detalles), Decimal("0"))
     parametros = request.GET.copy()
     parametros.pop("page", None)
 
@@ -274,9 +281,15 @@ def lista_partidas(request):
     partidas = seguimientos_operativos()
     filtro = PartidaFiltroForm(request.GET)
     if filtro.is_valid():
-        if filtro.cleaned_data["q"]:
-            numero = filtro.cleaned_data["q"]
-            partidas = partidas.filter(Q(pk=numero) | Q(detalle_recepcion__recepcion_id=numero))
+        texto = filtro.cleaned_data["q"].strip()
+        if texto:
+            busqueda = (Q(detalle_recepcion__especie__nombre__icontains=texto)
+                        | Q(detalle_recepcion__origen_sernapesca__proveedor__icontains=texto)
+                        | Q(detalle_recepcion__origen_sernapesca__folio_origen__icontains=texto))
+            if texto.isdecimal() and len(texto) < 19:
+                # Quien conoce el número interno puede seguir usándolo.
+                busqueda |= Q(pk=int(texto)) | Q(detalle_recepcion__recepcion_id=int(texto))
+            partidas = partidas.filter(busqueda)
         for campo, lookup in (
             ("partida", "pk"), ("recepcion", "detalle_recepcion__recepcion_id"),
             ("especie", "detalle_recepcion__especie"), ("situacion", "situacion"),
@@ -329,14 +342,28 @@ def lista_partidas(request):
 @personal_operativo_requerido
 def detalle_partida(request, pk):
     partida = presentar_partida(get_object_or_404(partidas_con_disponibilidad(), pk=pk))
+    if partida.situacion == "LISTA_PARA_EMPAQUE" and partida.tiene_consumos and partida.disponible_lote_kg == 0:
+        partida.situacion_visible = "Asignado por completo"
+    estancias = list(partida.estancias_frio.select_related("unidad_frio", "ingresado_por", "retirado_por").order_by("fecha_hora_ingreso", "pk"))
+    eventos = list(partida.eventos.select_related("tipo_proceso", "iniciado_por", "finalizado_por").order_by("fecha_hora_inicio", "pk"))
+    # Una sola línea de tiempo: proceso, etapas y frío en el orden en que ocurrieron.
+    actividad = sorted([("evento", e.fecha_hora_inicio, e) for e in eventos]
+                       + [("frio", e.fecha_hora_ingreso, e) for e in estancias], key=lambda item: item[1])
+    padre = None
+    if partida.partida_padre_id:
+        padre = PartidaProceso.objects.select_related(
+            "detalle_recepcion__especie", "detalle_recepcion__recepcion", "detalle_recepcion__origen_sernapesca",
+        ).get(pk=partida.partida_padre_id)
     return render(request, "trazabilidad/partidas/detalle.html", {
         "partida": partida,
         **resumen_pesajes_mermas(partida),
         "puede_asignar_lote": puede_asignar_lote(partida),
         "consumos_lotes": partida.consumos_lote.select_related("lote_produccion").order_by("pk"),
+        "padre": padre,
         "hijas": partida.subpartidas.order_by("pk"),
-        "estancias": partida.estancias_frio.select_related("unidad_frio", "ingresado_por", "retirado_por").order_by("fecha_hora_ingreso", "pk"),
-        "eventos": partida.eventos.select_related("tipo_proceso", "iniciado_por", "finalizado_por").order_by("fecha_hora_inicio", "pk"),
+        "estancias": estancias,
+        "eventos": eventos,
+        "actividad": [dict(tipo=tipo, registro=registro) for tipo, _, registro in actividad],
     })
 
 
@@ -345,11 +372,11 @@ def detalle_partida(request, pk):
 def operar_partida(request, pk, operacion):
     partida = presentar_partida(get_object_or_404(partidas_con_situacion(), pk=pk))
     opciones = {
-        "mantencion": ("Enviar a cámara", "DISPONIBLE", EnviarMantencionForm, enviar_a_mantencion,
+        "mantencion": ("Guardar en cámara", "DISPONIBLE", EnviarMantencionForm, enviar_a_mantencion,
                        "Producto enviado a cámara de mantención correctamente."),
-        "retirar": ("Retirar de cámara", "EN_MANTENCION", CantidadPartidaForm, retirar_de_mantencion,
+        "retirar": ("Sacar de la cámara", "EN_MANTENCION", CantidadPartidaForm, retirar_de_mantencion,
                     "Producto retirado de la cámara de mantención correctamente."),
-        "procesar": ("Iniciar procesamiento", "DISPONIBLE", IniciarProcesamientoForm, iniciar_procesamiento,
+        "procesar": ("Enviar a proceso", "DISPONIBLE", IniciarProcesamientoForm, iniciar_procesamiento,
                      "Procesamiento iniciado correctamente."),
     }
     titulo, situacion, clase, servicio, mensaje = opciones[operacion]
@@ -442,7 +469,7 @@ def retirar_partida_tunel(request, pk):
     except ValidationError as error:
         messages.error(request, " ".join(error.messages))
     else:
-        messages.success(request, "Producto retirado del túnel. Pendiente de pesaje postproceso.")
+        messages.success(request, "Producto fuera del túnel. Falta registrar el peso final.")
     return redirect("trazabilidad:detalle_partida", pk=pk)
 
 
@@ -463,7 +490,7 @@ def _registrar_medicion(request, pk, *, es_pesaje):
             return redirect("trazabilidad:detalle_partida", pk=pk)
     return render(request, "trazabilidad/partidas/registrar_medicion.html", {
         "partida": partida, "form": form, "es_pesaje": es_pesaje,
-        "titulo": "Registrar peso postproceso" if es_pesaje else "Registrar pérdida o merma",
+        "titulo": "Registrar peso final" if es_pesaje else "Registrar merma, pérdida o descarte",
         "compatible": partida.situacion == "PENDIENTE_PESAJE" if es_pesaje else partida.puede_registrar_merma,
         **resumen_pesajes_mermas(partida),
     })
@@ -513,7 +540,9 @@ def detalle_lote(request, pk):
         "puede_crear_caja": puede_crear_caja(lote),
         "puede_agregar_producto": bool(lote.ruta_proceso_id and origen_unico_lote(lote) is not None),
         "cajas": cajas_con_peso().filter(lote_produccion=lote).order_by("pk"),
-        "consumos": lote.consumos.select_related("partida__detalle_recepcion__especie").order_by("pk"),
+        "consumos": lote.consumos.select_related(
+            "partida__detalle_recepcion__especie", "partida__detalle_recepcion__recepcion",
+            "partida__detalle_recepcion__origen_sernapesca").order_by("pk"),
     })
 
 

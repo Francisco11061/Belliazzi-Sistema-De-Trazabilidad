@@ -82,7 +82,7 @@ class ConsultaIntegralTests(DatosDespacho, TestCase):
         self.assertEqual({p.pk for p in datos["partidas"]}, {padre.pk, seleccionada.pk, restante.pk})
         self.assertEqual(datos["conciliacion"]["hojas"], Decimal("500"))
         self.assertEqual(datos["conciliacion"]["recepcion"], Decimal("500"))
-        divisiones = [e for e in datos["timeline"] if e["clase"] == "División: seguimiento hijo"]
+        divisiones = [e for e in datos["timeline"] if e["clase"] == "División"]
         self.assertEqual(len(divisiones), 2)
         self.assertIsNone(datos["conciliacion"]["postproceso"])
 

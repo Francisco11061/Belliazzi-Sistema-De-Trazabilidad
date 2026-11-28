@@ -55,7 +55,7 @@
                         ctx.fillText(number.format(visible), arc.x, arc.y - 1, width);
                         ctx.fillStyle = '#475569';
                         ctx.font = '12px system-ui';
-                        ctx.fillText('kg visibles', arc.x, arc.y + 17, width);
+                        ctx.fillText('kg en stock', arc.x, arc.y + 17, width);
                         ctx.restore();
                     }
                 }] : [],

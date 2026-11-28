@@ -157,7 +157,7 @@ EspecieRecibidaFormSet = formset_factory(
 class RecepcionFiltroForm(forms.Form):
     q = forms.CharField(
         required=False, label="",
-        widget=forms.TextInput(attrs={"placeholder": "Buscar por ID, folio o proveedor..."}),
+        widget=forms.TextInput(attrs={"placeholder": "Proveedor o folio Sernapesca"}),
     )
     especie = forms.ModelChoiceField(
         queryset=Especie.objects.filter(activo=True), required=False,
@@ -262,9 +262,8 @@ class RecepcionCorreccionForm(RecepcionForm):
 
 
 class PartidaFiltroForm(forms.Form):
-    q = forms.IntegerField(required=False, min_value=1, max_value=9223372036854775807,
-                           label="N.º de seguimiento o recepción",
-                           widget=forms.NumberInput(attrs={"placeholder": "Ej. 125", "inputmode": "numeric"}))
+    q = forms.CharField(required=False, max_length=100, label="Buscar",
+                        widget=forms.TextInput(attrs={"placeholder": "Especie, proveedor o folio Sernapesca"}))
     partida = forms.IntegerField(required=False, min_value=1, max_value=9223372036854775807, label="ID de seguimiento")
     recepcion = forms.IntegerField(required=False, min_value=1, max_value=9223372036854775807, label="ID de recepción")
     especie = forms.ModelChoiceField(
@@ -292,7 +291,7 @@ class CantidadPartidaForm(forms.Form):
     def clean_cantidad_kg(self):
         cantidad = self.cleaned_data["cantidad_kg"]
         if cantidad > self.partida.cantidad_inicial_kg:
-            raise forms.ValidationError("La cantidad no puede superar la cantidad de este seguimiento.")
+            raise forms.ValidationError("La cantidad no puede superar los kilos de este producto.")
         return cantidad
 
 
@@ -364,7 +363,7 @@ class TunelPartidaForm(forms.Form):
 
 
 class PesoPostprocesoForm(forms.Form):
-    peso_kg = Pesaje._meta.get_field("peso_kg").formfield(label="Peso postproceso (kg)", min_value=Decimal("0.01"))
+    peso_kg = Pesaje._meta.get_field("peso_kg").formfield(label="Peso final (kg)", min_value=Decimal("0.01"))
 
 
 class MermaProcesoForm(forms.Form):
@@ -403,11 +402,11 @@ class CrearLoteForm(CantidadLoteForm):
 class SeguimientoLoteChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, partida):
         disponible = partida.disponible_lote_kg
-        return f"Seguimiento #{partida.pk} · {formatear_kg(disponible)} disponibles"
+        return f"{partida.especie_nombre} · {partida.procedencia} · {formatear_kg(disponible)} disponibles"
 
 
 class AgregarConsumoLoteForm(CantidadLoteForm):
-    partida = SeguimientoLoteChoiceField(queryset=partidas_para_lote(), label="Seguimiento")
+    partida = SeguimientoLoteChoiceField(queryset=partidas_para_lote(), label="Producto")
     field_order = ["partida", "cantidad_kg"]
 
     def __init__(self, *args, lote, **kwargs):
@@ -461,7 +460,7 @@ ComposicionCajaFormSet = formset_factory(
 
 
 class CajaFiltroForm(forms.Form):
-    q = forms.CharField(required=False, max_length=200, label="Buscar por ID de caja, código de lote o especie")
+    q = forms.CharField(required=False, max_length=200, label="Buscar por número de caja, código de lote o especie")
 
 
 class SeleccionarLoteCajaForm(forms.Form):

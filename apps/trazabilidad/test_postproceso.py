@@ -47,8 +47,8 @@ class PostprocesoTests(DatosPostproceso, TestCase):
         self.enviar()
         self.client.force_login(self.usuario)
         respuesta = self.client.post(self.url("retirar_partida_tunel"), follow=True)
-        self.assertContains(respuesta, "Producto retirado del túnel. Pendiente de pesaje postproceso.")
-        self.assertContains(respuesta, "Registrar peso postproceso")
+        self.assertContains(respuesta, "Producto fuera del túnel. Falta registrar el peso final.")
+        self.assertContains(respuesta, "Registrar peso final")
         self.assertEqual(self.situacion(), "PENDIENTE_PESAJE")
 
     def test_pendiente_pesaje_sin_postproceso(self):
@@ -138,7 +138,7 @@ class PostprocesoTests(DatosPostproceso, TestCase):
         self.assertContains(respuesta, "-3 kg")
         self.assertContains(respuesta, "101,58 %")
         self.assertEqual(self.situacion(), "LISTA_PARA_EMPAQUE")
-        self.assertNotContains(respuesta, "Registrar peso postproceso</a>")
+        self.assertNotContains(respuesta, "Registrar peso final</a>")
         self.assertContains(self.client.get(self.url("detalle_partida")), ADVERTENCIA_PESO_SUPERIOR)
 
     def test_diferencia_y_rendimiento_correctos(self):
@@ -366,19 +366,19 @@ class PostprocesoTests(DatosPostproceso, TestCase):
 
     def test_acciones_visibles_segun_situacion(self):
         self.client.force_login(self.usuario)
-        self.assertNotContains(self.client.get(self.url("detalle_partida")), "Registrar pérdida o merma")
+        self.assertNotContains(self.client.get(self.url("detalle_partida")), "Registrar merma")
         self.iniciar()
-        self.assertContains(self.client.get(self.url("detalle_partida")), "Registrar pérdida o merma")
-        self.assertContains(self.client.get(self.url("gestionar_procesamiento")), "Registrar pérdida o merma")
+        self.assertContains(self.client.get(self.url("detalle_partida")), "Registrar merma")
+        self.assertContains(self.client.get(self.url("gestionar_procesamiento")), "Registrar merma")
         self.completar()
         self.enviar()
-        self.assertContains(self.client.get(self.url("detalle_partida")), "Registrar pérdida o merma")
+        self.assertContains(self.client.get(self.url("detalle_partida")), "Registrar merma")
         retirar_de_tunel(partida=self.partida, usuario=self.usuario)
-        self.assertContains(self.client.get(self.url("detalle_partida")), "Registrar peso postproceso")
+        self.assertContains(self.client.get(self.url("detalle_partida")), "Registrar peso final")
         self.pesar()
         respuesta = self.client.get(self.url("detalle_partida"))
-        self.assertNotContains(respuesta, "Registrar pérdida o merma")
-        self.assertNotContains(respuesta, "Registrar peso postproceso")
+        self.assertNotContains(respuesta, "Registrar merma")
+        self.assertNotContains(respuesta, "Registrar peso final")
 
     def test_filtros_paginacion_y_consultas_constantes(self):
         self.pendiente()

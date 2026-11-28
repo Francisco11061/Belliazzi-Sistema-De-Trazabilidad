@@ -1,15 +1,14 @@
 {% if partida.tiene_postproceso or consumos_lotes %}
 <section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-    <h2 class="text-lg font-semibold">Lotes de producción</h2>
+    <h2 class="text-lg font-semibold">Asignación a lotes</h2>
     {% if partida.tiene_postproceso %}
-    <dl class="mt-5 grid gap-5 text-sm sm:grid-cols-3">
-        <div><dt class="text-slate-600">Peso postproceso</dt><dd class="mt-1 text-lg font-semibold">{{ partida.peso_final_kg|num }} kg</dd></div>
+    <dl class="mt-5 grid gap-5 text-sm sm:grid-cols-2">
         <div><dt class="text-slate-600">Asignado a lotes</dt><dd class="mt-1 text-lg font-semibold">{{ partida.asignado_lotes_kg|num }} kg</dd></div>
-        <div><dt class="text-slate-600">Disponible para lote</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{{ partida.disponible_lote_kg|num }} kg</dd></div>
+        <div><dt class="text-slate-600">Sin asignar</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{{ partida.disponible_lote_kg|num }} kg</dd></div>
     </dl>
     {% endif %}
     {% if partida.disponible_lote_kg == 0 %}
-    <p class="mt-5 rounded-lg border border-cyan-100 bg-cyan-50 p-4 text-sm text-cyan-800">Todo el producto fue asignado a lotes.</p>
+    <p class="mt-5 rounded-lg border border-cyan-100 bg-cyan-50 p-4 text-sm text-cyan-800">Todo el peso final ya está asignado a lotes.</p>
     {% elif partida.situacion == 'LISTA_PARA_EMPAQUE' and not partida.ruta_proceso_id %}
     <p class="mt-5 text-sm text-slate-600">Revisa la ruta antes de asignar producto a un lote.</p>
     {% endif %}

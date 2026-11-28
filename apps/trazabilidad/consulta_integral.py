@@ -172,31 +172,37 @@ def ficha_integral(usuario, tipo, pk):
     timeline = []
     def evento(fecha, clase, registro, responsable, texto, destino, orden):
         if fecha is not None:
-            titulo = f"{clase} #{registro}" if clase in ("Recepción", "Registro del lote", "Armado de caja", "Despacho") else clase
+            titulo = f"{clase} #{registro}" if clase in ("Armado de caja", "Despacho") else clase
             timeline.append(dict(fecha=fecha, clase=clase, titulo=titulo, identificador=registro, responsable=responsable,
                                  texto=texto, url=destino, orden=orden))
+    nombres_partida = {p.pk: p.nombre_corto for p in partidas}
+
+    def producto(partida_id):
+        return nombres_partida.get(partida_id, "Producto en proceso")
+
     for r in recepciones.values():
         evento(r.fecha_hora_recepcion, "Recepción", r.pk, r.registrado_por, r.observaciones, enlace("recepcion", r.pk), 0)
     for p in partidas:
         if p.partida_padre_id:
-            evento(p.creado_en, "División: seguimiento hijo", p.pk, p.creado_por, f"Padre #{p.partida_padre_id}; {formatear_kg(p.cantidad_inicial_kg)}", enlace("seguimiento", p.pk), 1)
+            evento(p.creado_en, "División", p.pk, p.creado_por, f"Se separó de {producto(p.partida_padre_id)}; {formatear_kg(p.cantidad_inicial_kg)}", enlace("seguimiento", p.pk), 1)
     for e in eventos:
-        texto = f"Seguimiento #{e.partida_id}: {e.tipo_proceso.nombre}. {e.observaciones}"
+        texto = f"{producto(e.partida_id)}: {e.tipo_proceso.nombre}. {e.observaciones}"
         evento(e.fecha_hora_inicio, "Inicio de operación", e.pk, e.iniciado_por, texto, enlace("seguimiento", e.partida_id), 2)
-        timeline[-1]["titulo"] = f"Inicio de {e.tipo_proceso.nombre.lower()} — Seguimiento #{e.partida_id}"
+        timeline[-1]["titulo"] = f"Inicio de {e.tipo_proceso.nombre.lower()} — {producto(e.partida_id)}"
         evento(e.fecha_hora_termino, "Fin de operación", e.pk, e.finalizado_por, texto, enlace("seguimiento", e.partida_id), 3)
         if e.fecha_hora_termino:
-            timeline[-1]["titulo"] = f"Fin de {e.tipo_proceso.nombre.lower()} — Seguimiento #{e.partida_id}"
+            timeline[-1]["titulo"] = f"Fin de {e.tipo_proceso.nombre.lower()} — {producto(e.partida_id)}"
     for lista, tipo_registro, clase in ((frio, "seguimiento", "Frío de proceso"), (almacenamiento, "caja", "Almacenamiento de caja")):
         for e in lista:
             destino_id = e.partida_id if tipo_registro == "seguimiento" else e.caja_id
-            texto = f"{tipo_registro.title()} #{destino_id}: {e.unidad_frio.nombre} ({e.unidad_frio.get_tipo_display()})"
+            quien = producto(destino_id) if tipo_registro == "seguimiento" else f"Caja #{destino_id}"
+            texto = f"{quien}: {e.unidad_frio.nombre} ({e.unidad_frio.get_tipo_display()})"
             evento(e.fecha_hora_ingreso, clase + " / ingreso", e.pk, e.ingresado_por, texto, enlace(tipo_registro, destino_id), 4)
             evento(e.fecha_hora_salida, clase + " / salida", e.pk, e.retirado_por, texto, enlace(tipo_registro, destino_id), 5)
     for e in pesos:
-        evento(e.fecha_hora_evento, "Pesaje", e.pk, e.registrado_por, f"Seguimiento #{e.partida_id}: {e.tipo_visible}, {formatear_kg(e.peso_kg)}", enlace("seguimiento", e.partida_id), 6)
+        evento(e.fecha_hora_evento, "Pesaje", e.pk, e.registrado_por, f"{producto(e.partida_id)}: {e.tipo_visible}, {formatear_kg(e.peso_kg)}", enlace("seguimiento", e.partida_id), 6)
     for e in mermas:
-        evento(e.fecha_hora_evento, e.get_tipo_display(), e.pk, e.registrado_por, f"Seguimiento #{e.partida_id}: {formatear_kg(e.cantidad_kg)}. {e.motivo}", enlace("seguimiento", e.partida_id), 7)
+        evento(e.fecha_hora_evento, e.get_tipo_display(), e.pk, e.registrado_por, f"{producto(e.partida_id)}: {formatear_kg(e.cantidad_kg)}. {e.motivo}", enlace("seguimiento", e.partida_id), 7)
     for e in lotes:
         evento(e.creado_en, "Registro del lote", e.pk, e.registrado_por, e.codigo_visible, enlace("lote", e.pk), 8)
     for e in cajas:

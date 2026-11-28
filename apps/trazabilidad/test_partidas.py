@@ -121,7 +121,7 @@ class PartidasTests(TestCase):
         self.retirar()
         self.procesar()
         response = self.client.get(url, {"vista": "tarjetas"})
-        self.assertContains(response, 'Gestionar procesamiento')
+        self.assertContains(response, 'Continuar proceso')
         self.assertContains(response, f'href="{reverse("trazabilidad:gestionar_procesamiento", args=[self.partida.pk])}"')
 
     def corregir(self, **cambios):
@@ -268,11 +268,11 @@ class PartidasTests(TestCase):
         self.client.force_login(self.operaria)
         url = reverse("trazabilidad:detalle_partida", args=[self.partida.pk])
         EstanciaPartida.objects.update(fecha_hora_ingreso=timezone.now() - timedelta(hours=5, minutes=30))
-        self.assertContains(self.client.get(url), "Permanencia: 5 h 30 min (en curso)")
+        self.assertContains(self.client.get(url), "Tiempo adentro: 5 h 30 min (en curso)")
         EstanciaPartida.objects.update(
             fecha_hora_ingreso=timezone.now() - timedelta(hours=3),
             fecha_hora_salida=timezone.now() - timedelta(hours=1), retirado_por=self.operaria)
-        self.assertContains(self.client.get(url), "Permanencia: 2 h 00 min")
+        self.assertContains(self.client.get(url), "Tiempo adentro: 2 h 00 min")
         self.assertNotContains(self.client.get(url), "2 h 00 min (en curso)")
 
     def test_detalle_muestra_duracion_de_etapa_de_proceso(self):
@@ -471,18 +471,18 @@ class PartidasTests(TestCase):
         url = reverse("trazabilidad:detalle_partida", args=[self.partida.pk])
         respuesta = self.client.get(url)
         self.assertContains(respuesta, "Enviar a proceso")
-        self.assertContains(respuesta, "Enviar a cámara")
+        self.assertContains(respuesta, "Guardar en cámara")
         self.enviar()
         respuesta = self.client.get(url)
-        self.assertContains(respuesta, "Retirar de cámara")
+        self.assertContains(respuesta, "Sacar de la cámara")
         self.assertNotContains(respuesta, "Enviar a proceso")
         self.client.post(reverse("trazabilidad:procesar_partida", args=[self.partida.pk]), {"cantidad_kg": "500"})
         self.assertFalse(EventoProceso.objects.exists())
         self.retirar()
         self.procesar()
         respuesta = self.client.get(url)
-        self.assertContains(respuesta, "Gestionar procesamiento")
-        for texto in ("Enviar a cámara", "Enviar a proceso", "Retirar de cámara"):
+        self.assertContains(respuesta, "Continuar proceso")
+        for texto in ("Guardar en cámara", "Enviar a proceso", "Sacar de la cámara"):
             self.assertNotContains(respuesta, texto)
 
     def test_filtros_paginacion_y_queries_constantes(self):
@@ -521,7 +521,7 @@ class PartidasTests(TestCase):
         self.assertContains(respuesta, "Dividida")
         self.assertNotContains(respuesta, "Enviar a proceso")
         respuesta = self.client.get(reverse("trazabilidad:detalle_partida", args=[seleccionada.pk]))
-        self.assertContains(respuesta, "Proviene del")
+        self.assertContains(respuesta, "Se separó de")
         self.assertContains(respuesta, "FOLIO-PARTIDAS")
 
     def test_flujo_completo_dos_especies(self):

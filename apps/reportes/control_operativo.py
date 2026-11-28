@@ -44,7 +44,7 @@ def control_operativo(*, cajas, inventario, periodo, ahora, especie, frio):
              url=enlace("inventario:lista", estado="REVISION", especie=especie_id)),
         dict(nombre="Cajas almacenadas sin peso documentado", cantidad=inventario["stock"]["sin_peso"],
              url=enlace("inventario:lista", estado="ALMACENADA", sin_peso="on", especie=especie_id)),
-        dict(nombre="Seguimientos que requieren revisión", cantidad=cantidades.get("NO_OPERABLE", 0),
+        dict(nombre="Productos que requieren revisión", cantidad=cantidades.get("NO_OPERABLE", 0),
              url=produccion[-1]["url"]),
         dict(nombre="Solicitudes de rutas pendientes", cantidad=solicitudes,
              url=enlace("trazabilidad:solicitudes_ruta", estado="PENDIENTE", especie=especie_id)),

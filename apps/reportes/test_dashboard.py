@@ -183,7 +183,7 @@ class DashboardPermisosTests(DatosDashboard, TestCase):
         self.assertNotContains(response, self.especie.nombre)
         self.assertContains(response, r'\u003C/script\u003E')
         self.assertContains(response, 'type="application/json"')
-        self.assertContains(response, 'Ver datos por especie')
+        self.assertContains(response, 'Ver tabla')
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])

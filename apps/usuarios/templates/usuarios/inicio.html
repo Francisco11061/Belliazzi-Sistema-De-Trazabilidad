@@ -1,38 +1,76 @@
 {% extends "base.html" %}
-
+{% load i18n %}
 {% block title %}Inicio | Pesquera Belliazzi{% endblock %}
 
 {% block page_title %}Inicio{% endblock %}
 
-{% block content %}
-    <header class="mb-8">
-        <h1 class="text-2xl font-semibold tracking-tight break-words md:text-3xl">Bienvenido, {{ user.first_name|default:user.username }}</h1>
-
+{% block content %}{% language "es" %}
+<div class="w-full min-w-0 max-w-5xl space-y-6">
+    <header>
+        <p class="text-sm text-slate-500 first-letter:uppercase">{% now "l j \d\e F" %}</p>
+        <h1 class="mt-1 text-2xl font-semibold tracking-tight break-words md:text-3xl">Hola, {{ user.first_name|default:user.username }}</h1>
+        {% if grupos is not None %}
+        <p class="mt-2 text-slate-600">{% if total %}Hay {{ total }} pendiente{{ total|pluralize }} en planta. Primero lo más urgente.{% else %}Todo al día: no hay nada pendiente en planta.{% endif %}</p>
+        {% endif %}
     </header>
-    {% if user.is_superuser or user.rol.codigo == 'OPERARIA' or user.rol.codigo == 'ENCARGADA' or user.rol.codigo == 'JEFE' %}
-    <nav aria-label="Registrar operaciones" class="mb-6 flex min-w-0 flex-wrap gap-3">
-        {% url 'producto_terminado:seleccionar_lote_caja' as destino %}{% include 'components/_accion.html' with texto='Registrar caja' %}
-        {% if user.is_superuser or user.rol.codigo != 'OPERARIA' %}
-            {% url 'trazabilidad:lista_partidas' as destino %}{% include 'components/_accion.html' with texto='Seguimiento de proceso' secundaria=True %}
-            {% url 'inventario:lista' as destino %}{% include 'components/_accion.html' with texto='Inventario y bajas' secundaria=True %}
+
+    {% if user.is_superuser or user.rol.codigo == 'OPERARIA' or user.rol.codigo == 'ENCARGADA' %}
+    <nav aria-label="Registrar" class="flex min-w-0 flex-wrap gap-3">
+        {% if user.is_superuser or user.rol.codigo == 'ENCARGADA' %}
+            {% url 'trazabilidad:nueva_recepcion' as destino %}{% include 'components/_accion.html' with texto='Registrar recepción' %}
+            {% url 'producto_terminado:seleccionar_lote_caja' as destino %}{% include 'components/_accion.html' with texto='Registrar caja' secundaria=True %}
             {% url 'inventario:crear_despacho' as destino %}{% include 'components/_accion.html' with texto='Registrar despacho' secundaria=True %}
+        {% else %}
+            {% url 'producto_terminado:seleccionar_lote_caja' as destino %}{% include 'components/_accion.html' with texto='Registrar caja' %}
+            {% url 'trazabilidad:lista_partidas' as destino %}{% include 'components/_accion.html' with texto='Ver todo el proceso' secundaria=True %}
         {% endif %}
     </nav>
     {% endif %}
-    {% if not user.is_superuser and user.rol.codigo == "OPERARIA" %}
-        {% include "usuarios/_inicio_operario.html" %}
-    {% endif %}
-    {% if user.is_superuser or user.rol.codigo == "JEFE" %}
-        <a href="{% url 'reportes:dashboard' %}" class="mb-6 inline-flex rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white hover:bg-cyan-800">Ver dashboard operacional</a>
-    {% endif %}
-    {% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}
-        <section aria-labelledby="recepciones-title" class="w-full max-w-lg min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-            <div class="mb-5 flex size-12 shrink-0 items-center justify-center rounded-xl border border-cyan-100 bg-cyan-50 text-cyan-700">
-                <svg class="h-6 w-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16l2 10v6H2v-6L4 4ZM2 14h6l2 3h4l2-3h6M12 6v6m-3-3 3 3 3-3" /></svg>
-            </div>
-            <h2 id="recepciones-title" class="text-lg font-semibold">Recepciones</h2>
 
-            <a href="{% url 'trazabilidad:lista_recepciones' %}" class="mt-6 inline-flex items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600">Ir a recepciones</a>
-        </section>
-    {% endif %}
-{% endblock %}
+    {% for grupo in grupos %}
+    <section aria-labelledby="grupo-{{ grupo.clave }}" class="min-w-0 rounded-2xl border {% if grupo.urgente %}border-amber-200{% else %}border-slate-200{% endif %} bg-white shadow-sm">
+        <header class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-slate-100 px-5 py-4 sm:px-6">
+            <div class="min-w-0">
+                <h2 id="grupo-{{ grupo.clave }}" class="text-lg font-semibold">{{ grupo.titulo }} <span class="ml-1 rounded-full {% if grupo.urgente %}bg-amber-100 text-amber-800{% else %}bg-slate-100 text-slate-700{% endif %} px-2 py-0.5 align-middle text-sm font-medium">{{ grupo.total }}</span></h2>
+                <p class="mt-1 text-sm text-slate-600">{{ grupo.ayuda }}</p>
+            </div>
+            {% if grupo.enlace_todos %}<a href="{{ grupo.enlace_todos }}" class="inline-flex min-h-11 items-center text-sm font-medium text-cyan-700 hover:underline">Ver todos</a>{% endif %}
+        </header>
+        <ul class="divide-y divide-slate-100">
+        {% for item in grupo.items %}
+            <li class="flex min-w-0 flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            {% if grupo.clave == 'encajar' %}
+                <div class="min-w-0">
+                    <p class="font-semibold">{{ item.especie.nombre }} <span class="font-normal text-slate-600">· lote {{ item.codigo_visible }}</span></p>
+                    <p class="mt-1 text-sm text-slate-600">{{ item.disponible_empacar|num }} kg por encajar · {{ item.numero_cajas }} caja{{ item.numero_cajas|pluralize }} hasta ahora</p>
+                </div>
+                <div class="shrink-0">{% url 'producto_terminado:crear_caja' item.pk as destino %}{% include 'components/_accion.html' with texto='Registrar caja' %}</div>
+            {% elif grupo.clave == 'guardar' %}
+                <div class="min-w-0">
+                    <p class="font-semibold">Caja #{{ item.pk }} <span class="font-normal text-slate-600">· {{ item.lote_produccion.especie.nombre }}{% if item.peso_neto_kg %} · {{ item.peso_neto_kg|num }} kg{% endif %}</span></p>
+                    <p class="mt-1 text-sm text-slate-600">Lote {{ item.lote_produccion.codigo_visible }} · armada el {{ item.fecha_armado|date:"d/m H:i" }}</p>
+                </div>
+                <div class="shrink-0">{% url 'inventario:ingresar' item.pk as destino %}{% include 'components/_accion.html' with texto='Guardar en cámara' %}</div>
+            {% else %}
+                <div class="min-w-0">
+                    <p class="font-semibold"><a href="{% url 'trazabilidad:detalle_partida' item.pk %}" class="hover:underline">{{ item.especie_nombre }}</a> <span class="font-normal text-slate-600">· {{ item.cantidad_inicial_kg|num }} kg</span></p>
+                    <p class="mt-1 text-sm text-slate-600">{{ item.procedencia }}</p>
+                    {% if item.contexto %}<p class="mt-1 text-sm {% if item.alerta %}font-medium text-amber-800{% else %}text-slate-600{% endif %}">{{ item.contexto }}</p>{% endif %}
+                </div>
+                <div class="shrink-0 sm:max-w-xs">{% include "trazabilidad/partidas/_siguiente_paso.html" with partida=item compacto=True %}</div>
+            {% endif %}
+            </li>
+        {% endfor %}
+        </ul>
+        {% if grupo.saldos %}<p class="border-t border-slate-100 px-5 py-3 text-sm text-slate-600 sm:px-6">Además hay {{ grupo.saldos }} con menos de 5 kg{% if grupo.clave == 'encajar' %} por encajar{% else %} sin asignar{% endif %}; suelen ser restos.</p>{% endif %}
+    </section>
+    {% empty %}
+        {% if grupos is not None %}
+        <div role="status" class="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-600">
+            <p class="font-medium text-slate-900">Nada pendiente por ahora</p>
+            <p class="mt-1 text-sm">Cuando llegue pescado nuevo o haya algo en proceso, aparecerá aquí.</p>
+        </div>
+        {% endif %}
+    {% endfor %}
+</div>
+{% endlanguage %}{% endblock %}

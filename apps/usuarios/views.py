@@ -40,7 +40,11 @@ class LogoutUsuarioView(LogoutView):
 def inicio(request):
     if tiene_rol(request.user, "JEFE"):
         return redirect("reportes:dashboard")
-    return render(request, "usuarios/inicio.html")
+    contexto = {}
+    if tiene_rol(request.user, "ENCARGADA", "OPERARIA"):
+        from apps.trazabilidad.pendientes import pendientes_de_planta
+        contexto = pendientes_de_planta(request.user)
+    return render(request, "usuarios/inicio.html", contexto)
 
 
 @jefe_requerido

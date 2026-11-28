@@ -105,7 +105,7 @@ def seleccionar_operaciones(request, pk):
         if form.is_valid():
             try:
                 if partida.situacion != "DISPONIBLE":
-                    raise ValidationError("Este seguimiento ya no está disponible para iniciar procesamiento.")
+                    raise ValidationError("Este producto ya no está disponible para enviar a proceso.")
                 accion = request.POST.get("accion", "buscar")
                 if accion == "iniciar":
                     ruta = form.cleaned_data["ruta"]

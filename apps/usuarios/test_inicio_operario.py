@@ -13,16 +13,15 @@ class InicioOperarioTests(TestCase):
         cls.encargada = Usuario.objects.create_user(username="encargada_inicio", rol=Rol.objects.get(codigo="ENCARGADA"))
         cls.tecnico = Usuario.objects.create_superuser(username="tecnico_inicio")
 
-    def test_inicio_operario_tarjetas_y_destinos_existentes(self):
+    def test_inicio_operario_saluda_y_ofrece_lo_que_puede_hacer(self):
         self.client.force_login(self.operario)
         response = self.client.get(reverse("usuarios:inicio"))
-        self.assertContains(response, "Bienvenido, Francisco")
-        self.assertNotContains(response, "¿Qué necesitas hacer?")
-        for texto in ("Seguimiento de proceso", "Cajas", "Inventario", "Bajas"):
-            self.assertContains(response, texto)
-        for destino in ("trazabilidad:lista_partidas", "producto_terminado:lista_cajas", "inventario:lista", "inventario:lista_bajas"):
+        self.assertContains(response, "Hola, Francisco")
+        self.assertContains(response, "Nada pendiente por ahora")
+        for destino in ("producto_terminado:seleccionar_lote_caja", "trazabilidad:lista_partidas"):
             self.assertContains(response, f'href="{reverse(destino)}"')
             self.assertEqual(self.client.get(reverse(destino)).status_code, 200)
+        self.assertNotContains(response, f'href="{reverse("trazabilidad:nueva_recepcion")}"')
 
     def test_sidebar_sin_enlaces_administrativos_ni_despachos(self):
         self.client.force_login(self.operario)
@@ -60,8 +59,8 @@ class InicioOperarioTests(TestCase):
             if usuario != self.encargada:
                 self.assertRedirects(response, reverse("reportes:dashboard"))
                 continue
-            self.assertContains(response, "Ir a recepciones")
-            self.assertNotContains(response, 'aria-label="Accesos rápidos de planta"')
-            self.assertContains(response, f'href="{reverse("inventario:lista_despachos")}"')
+            self.assertContains(response, "Registrar recepción")
+            for destino in ("trazabilidad:nueva_recepcion", "inventario:crear_despacho", "inventario:lista_despachos"):
+                self.assertContains(response, f'href="{reverse(destino)}"')
         self.assertEqual(self.encargada.rol.nombre_visible, self.encargada.rol.nombre)
         self.assertEqual(self.jefe.rol.nombre_visible, self.jefe.rol.nombre)

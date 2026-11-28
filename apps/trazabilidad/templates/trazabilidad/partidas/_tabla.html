@@ -1,18 +1,17 @@
-<section aria-label="Seguimientos de la categoría" class="min-w-0 rounded-xl border border-slate-200 bg-white">
+<section aria-label="Productos de la categoría" class="min-w-0 rounded-xl border border-slate-200 bg-white">
     <div class="relative overflow-x-auto rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-700" tabindex="0" role="region" aria-label="Tabla de seguimiento de proceso">
         <table class="w-full min-w-[48rem] text-left text-sm">
             <thead class="border-b border-slate-200 bg-slate-50 text-xs text-slate-600"><tr>
-                <th scope="col" class="px-4 py-3 font-medium">Seguimiento</th><th scope="col" class="px-4 py-3 font-medium">Especie</th><th scope="col" class="px-4 py-3 font-medium whitespace-nowrap">Recepción</th><th scope="col" class="px-4 py-3 text-right font-medium">{% if categoria == 'empaque' %}Disponible{% else %}Cantidad inicial{% endif %}</th><th scope="col" class="px-4 py-3 font-medium">Situación</th>{% if mostrar_ubicacion %}<th scope="col" class="px-4 py-3 font-medium">Ubicación</th>{% endif %}<th scope="col" class="px-4 py-3 font-medium">Creación</th><th scope="col" class="px-4 py-3 font-medium">Acciones</th>
+                <th scope="col" class="px-4 py-3 font-medium">Producto</th><th scope="col" class="px-4 py-3 text-right font-medium whitespace-nowrap">{% if categoria == 'empaque' %}Sin asignar{% else %}Kilos{% endif %}</th><th scope="col" class="px-4 py-3 font-medium">Dónde está</th><th scope="col" class="px-4 py-3 font-medium"><span class="sr-only">Acciones</span></th>
             </tr></thead>
             <tbody class="divide-y divide-slate-100">{% for partida in page_obj %}<tr data-row-link class="cursor-pointer hover:bg-slate-50">
-                <th scope="row" class="px-4 py-2 font-semibold"><a data-detail-link aria-label="Consultar historial del seguimiento #{{ partida.pk }}" class="inline-flex min-h-11 items-center text-cyan-700" href="{% url 'trazabilidad:detalle_partida' partida.pk %}">Seguimiento #{{ partida.pk }}</a></th>
-                <td class="max-w-64 break-words px-4 py-2 font-medium">{{ partida.detalle_recepcion.especie.nombre }}</td>
-                <td class="px-4 py-2 text-slate-600">#{{ partida.detalle_recepcion.recepcion_id }}</td>
-                <td class="px-4 py-2 text-right whitespace-nowrap tabular-nums">{% if categoria == 'empaque' %}{{ partida.disponible_lote_kg|num }}{% else %}{{ partida.cantidad_inicial_kg|num }}{% endif %} kg</td>
-                <td class="px-4 py-2">{% include "trazabilidad/partidas/_situacion.html" %}</td>
-                {% if mostrar_ubicacion %}<td class="max-w-48 break-words px-4 py-2 text-slate-600">{% if partida.ubicacion %}{{ partida.ubicacion }}{% else %}<span class="sr-only">Sin ubicación registrada</span>{% endif %}</td>{% endif %}
-                <td class="px-4 py-2 text-xs whitespace-nowrap text-slate-600">{{ partida.creado_en|date:"d/m/Y" }}<br>{{ partida.creado_en|date:"H:i" }}</td>
-                <td class="px-4 py-2">{% include "trazabilidad/partidas/_acciones_listado.html" with compacto=True %}<div class="mt-2">{% include 'trazabilidad/partidas/_accion_merma.html' %}</div></td>
+                <th scope="row" class="px-4 py-3 align-top font-normal">
+                    <a data-detail-link class="inline-flex min-h-8 items-center font-semibold text-cyan-700" href="{% url 'trazabilidad:detalle_partida' partida.pk %}">{{ partida.especie_nombre }}</a>
+                    <p class="text-slate-600">{{ partida.procedencia }}</p>
+                </th>
+                <td class="px-4 py-3 text-right align-top whitespace-nowrap tabular-nums font-medium">{% if categoria == 'empaque' %}{{ partida.disponible_lote_kg|num }}{% else %}{{ partida.cantidad_inicial_kg|num }}{% endif %} kg</td>
+                <td class="px-4 py-3 align-top">{% include "trazabilidad/partidas/_situacion.html" %}{% if partida.ubicacion %}<p class="mt-1 text-slate-600">{{ partida.ubicacion }}</p>{% endif %}</td>
+                <td class="w-60 px-4 py-3 align-top">{% include "trazabilidad/partidas/_acciones_listado.html" with compacto=True %}<div class="mt-2">{% include 'trazabilidad/partidas/_accion_merma.html' %}</div></td>
             </tr>{% endfor %}</tbody>
         </table>
     </div>

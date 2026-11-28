@@ -79,3 +79,18 @@ def formatear_valor_correccion(campo, valor):
     except (TypeError, ValueError):
         return valor
     return valor
+
+
+def hace(fecha, ahora=None):
+    """«hace 5 min», «hace 3 h», «hace 2 días»: lo justo para saber qué va primero."""
+    if not fecha:
+        return ""
+    from django.utils import timezone
+    minutos = max(0, int(((ahora or timezone.now()) - fecha).total_seconds())) // 60
+    if minutos < 1:
+        return "recién"
+    if minutos < 60:
+        return f"hace {minutos} min"
+    if minutos < MINUTOS_DIA:
+        return f"hace {minutos // 60} h"
+    return f"hace {_dias(minutos // MINUTOS_DIA)}"

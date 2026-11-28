@@ -143,7 +143,7 @@ class QRCajasTests(DatosQR, TestCase):
         html = respuesta.content.decode()
         self.assertContains(respuesta, f'href="{self.imprimir_url()}"')
         self.assertLess(html.index(self.png_url()), html.index(self.imprimir_url()))
-        self.assertLess(html.index(self.imprimir_url()), html.index("Ver historial del producto"))
+        self.assertLess(html.index(self.imprimir_url()), html.index("Ver lo que muestra el QR"))
 
     def test_etiqueta_imprimible_muestra_qr_y_datos_de_la_caja(self):
         respuesta = self.client.get(self.imprimir_url())
@@ -172,7 +172,7 @@ class QRCajasTests(DatosQR, TestCase):
     def test_origenes_separados_con_aporte_recepcion_folio(self):
         respuesta = self.client.get(self.consulta())
         self.assertContains(respuesta, "data-aporte=", count=2)
-        for texto in (f"Seguimiento #{self.partida.pk}", f"Seguimiento #{self.otra.pk}", "70 kg asignados", "30 kg asignados", "ABC123", "DEF456", f"#{self.partida.detalle_recepcion.recepcion_id}", f"#{self.otra.detalle_recepcion.recepcion_id}"):
+        for texto in (self.partida.procedencia, self.otra.procedencia, "70 kg asignados", "30 kg asignados", "ABC123", "DEF456"):
             self.assertContains(respuesta, texto)
         aportes = list(respuesta.context["aportes"])
         self.assertEqual([a.partida.detalle_recepcion.origen_sernapesca.folio_origen for a in aportes], ["ABC123", "DEF456"])
@@ -206,7 +206,7 @@ class QRCajasTests(DatosQR, TestCase):
 
     def test_detalle_muestra_uuid_qr_y_enlace_sin_regenerar(self):
         respuesta = self.client.get(self.url_lote("detalle_caja", self.registro.pk))
-        for texto in (str(self.registro.identificador_qr), self.png_url(), self.consulta(), "Ver historial del producto"):
+        for texto in (self.png_url(), self.consulta(), "Ver lo que muestra el QR"):
             self.assertContains(respuesta, texto)
         self.assertNotContains(respuesta, "Regenerar")
         self.assertContains(self.client.get(self.consulta()), 'aria-current="page"', count=1)
@@ -247,7 +247,7 @@ class QRCajasTests(DatosQR, TestCase):
     def test_historicos_sin_aportes_y_sin_actividad(self):
         self.partida.eventos.all().update(fecha_hora_termino=None)
         self.otra.pesajes.all().delete()
-        self.assertContains(self.client.get(self.consulta()), "Peso postproceso no documentado")
+        self.assertContains(self.client.get(self.consulta()), "Peso final no registrado")
         self.assertContains(self.client.get(self.consulta()), "En curso")
         self.lote.consumos.all().delete()
         self.assertContains(self.client.get(self.consulta()), "Sin producto asignado registrado.")

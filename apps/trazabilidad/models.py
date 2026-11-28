@@ -5,6 +5,9 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models, transaction
+from django.utils import timezone
+
+from .formato import formatear_kg
 
 
 class Especie(models.Model):
@@ -167,6 +170,27 @@ class PartidaProceso(models.Model):
 
     def __str__(self):
         return f"Partida {self.pk} - {self.detalle_recepcion.especie.nombre}"
+
+    # Cómo se nombra en planta: por especie, kilos y procedencia, no por número interno.
+    @property
+    def especie_nombre(self):
+        return self.detalle_recepcion.especie.nombre
+
+    @property
+    def nombre_corto(self):
+        return f"{self.especie_nombre} · {formatear_kg(self.cantidad_inicial_kg)}"
+
+    @property
+    def proveedor(self):
+        return self.detalle_recepcion.origen_sernapesca.proveedor or "Proveedor sin registrar"
+
+    @property
+    def llegada(self):
+        return timezone.localtime(self.detalle_recepcion.recepcion.fecha_hora_recepcion)
+
+    @property
+    def procedencia(self):
+        return f"{self.proveedor} · llegó el {self.llegada:%d/%m}"
 
 
 class TipoProceso(models.Model):
@@ -391,7 +415,7 @@ class Pesaje(models.Model):
 
     @property
     def tipo_visible(self):
-        return "Peso postproceso" if self.tipo == self.POSTPROCESO else self.tipo
+        return "Peso final" if self.tipo == self.POSTPROCESO else self.tipo
 
     partida = models.ForeignKey(
         PartidaProceso,

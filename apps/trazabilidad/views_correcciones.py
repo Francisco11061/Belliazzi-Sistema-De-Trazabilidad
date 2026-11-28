@@ -65,7 +65,7 @@ PANTALLAS = {
     ),
     "pesaje": dict(
         form=CorreccionPesajeForm,
-        titulo=lambda r: "Corregir peso postproceso",
+        titulo=lambda r: "Corregir peso final",
         volver=_volver_seguimiento,
         inicial=lambda r: {"peso_kg": r.peso_kg},
         fijo="Los kilos ya asignados a lotes no cambian: el peso no puede quedar por debajo de ellos.",
@@ -76,7 +76,7 @@ PANTALLAS = {
         titulo=lambda r: f"Corregir {r.get_tipo_display().lower()}",
         volver=_volver_seguimiento,
         inicial=lambda r: {"tipo": r.tipo, "cantidad_kg": r.cantidad_kg, "detalle": r.motivo},
-        fijo="El total de mermas no puede superar la cantidad del seguimiento.",
+        fijo="El total de mermas no puede superar los kilos del producto.",
         guardar=lambda r, u, d, m: corregir_merma(merma=r, usuario=u, tipo=d["tipo"], cantidad_kg=d["cantidad_kg"],
                                                   detalle=d["detalle"], motivo=m),
     ),

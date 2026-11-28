@@ -151,13 +151,14 @@ def alertas_frio(ahora, limite=10, especie=None):
             padres = PartidaProceso.objects.filter(partida_padre__isnull=False).values("partida_padre_id")
             abiertas = abiertas.filter(partida__estado="ACTIVA").exclude(partida_id__in=padres)
         total += abiertas.count()
-        for estancia in abiertas.select_related("unidad_frio", relacion).order_by("fecha_hora_ingreso", "pk")[:limite]:
+        extra = ("partida__detalle_recepcion__recepcion", "partida__detalle_recepcion__origen_sernapesca") if tipo == "seguimiento" else ()
+        for estancia in abiertas.select_related("unidad_frio", relacion, *extra).order_by("fecha_hora_ingreso", "pk")[:limite]:
             unidad = estancia.unidad_frio
             duracion = ahora - estancia.fecha_hora_ingreso.astimezone(dt_timezone.utc)
             exceso = duracion - timedelta(seconds=int(unidad.umbral_alerta_horas * 3600))
             if tipo == "seguimiento":
                 nombre_especie = estancia.partida.detalle_recepcion.especie.nombre
-                titulo = f"Seguimiento #{estancia.partida_id}"
+                titulo = estancia.partida.procedencia
                 url = reverse("trazabilidad:detalle_partida", args=[estancia.partida_id])
             else:
                 nombre_especie = estancia.caja.lote_produccion.especie.nombre
@@ -173,7 +174,7 @@ def alertas_frio(ahora, limite=10, especie=None):
 def actividad_reciente(limite=8, especie=None):
     actividades = []
     for recepcion in _especie(Recepcion.objects.all(), "detalles__especie", especie).distinct().order_by("-creado_en", "-pk")[:limite]:
-        actividades.append(dict(fecha=recepcion.creado_en, titulo=f"Recepción #{recepcion.pk} registrada",
+        actividades.append(dict(fecha=recepcion.creado_en, titulo=f"Recepción del {timezone.localtime(recepcion.fecha_hora_recepcion):%d/%m %H:%M} registrada",
                                 url=reverse("trazabilidad:detalle_recepcion", args=[recepcion.pk])))
     for lote in _especie(LoteProduccion.objects.all(), "especie", especie).order_by("-creado_en", "-pk")[:limite]:
         actividades.append(dict(fecha=lote.creado_en, titulo=f"Lote {lote.codigo_visible} creado",
@@ -253,8 +254,8 @@ def recorrido_producto(control, stock, cajas_despachadas, kg_despachados, recibi
         dict(clave="recepcion", nombre="Recepción", cifra=recibido["recepciones"], unidad="recepciones", url=reverse("trazabilidad:lista_recepciones"),
              detalle=f'{formatear_kg(recibido["kg"])} en el período'),
         dict(clave="planta", nombre="En planta y proceso", cifra=total("DISPONIBLE", "EN_MANTENCION", "EN_PROCESO", "EN_CONGELACION", "PENDIENTE_PESAJE"),
-             unidad="seguimientos", url=enlace_proceso, detalle="Disponibles, en cámara, proceso o pesaje"),
-        dict(clave="empaque", nombre="Listos para empaque", cifra=situacion["LISTA_PARA_EMPAQUE"]["cantidad"], unidad="seguimientos",
+             unidad="productos", url=enlace_proceso, detalle="Disponibles, en cámara, proceso o pesaje"),
+        dict(clave="empaque", nombre="Listos para empaque", cifra=situacion["LISTA_PARA_EMPAQUE"]["cantidad"], unidad="productos",
              url=control["empaque_url"], detalle="Esperan armarse en cajas", atencion=bool(situacion["LISTA_PARA_EMPAQUE"]["cantidad"])),
         dict(clave="almacen", nombre="Almacenadas", cifra=stock["cajas"], unidad="cajas", url=control["stock_url"],
              detalle="Stock en cámaras" if stock["cajas"] else "Sin cajas almacenadas"),

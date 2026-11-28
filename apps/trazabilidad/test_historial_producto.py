@@ -96,13 +96,13 @@ class HistorialProductoTests(DatosDespacho, TestCase):
         self.assertEqual(datos['conciliacion'], lote['conciliacion'])
 
     def test_aviso_solo_con_varios_aportes_y_sin_proporciones(self):
-        aviso = 'Esta caja pertenece a un lote elaborado con producto de varios seguimientos.'
+        aviso = 'Esta caja pertenece a un lote que junta producto de más de un proceso.'
         self.assertNotContains(self.client.get(self.qr()), aviso)
         otra = self.otra_lista(peso='40')
         self.agregar(self.lote, partida=otra, cantidad='20', usuario=self.jefe)
         respuesta = self.client.get(self.qr())
         self.assertContains(respuesta, aviso)
-        self.assertContains(respuesta, 'No se registró qué cantidad de cada seguimiento')
+        self.assertContains(respuesta, 'No se registró cuántos kilos de cada proceso')
         self.assertEqual({a.partida_id for a in respuesta.context['aportes']}, {self.partida.pk, otra.pk})
         self.assertNotContains(self.client.get(reverse('trazabilidad:ficha_integral', args=['lote',self.lote.pk])), aviso)
 
@@ -114,7 +114,7 @@ class HistorialProductoTests(DatosDespacho, TestCase):
             self.assertNotContains(respuesta, texto)
         lote = respuesta.context['lotes'][0]
         self.assertEqual(lote.disponible_empacar, lote.total_asignado-lote.total_empacado)
-        self.assertTrue(any(e['titulo'].startswith('Inicio de ') and 'Seguimiento #' in e['titulo'] for e in respuesta.context['timeline']))
+        self.assertTrue(any(e['titulo'].startswith('Inicio de ') and ' — ' in e['titulo'] and ' kg' in e['titulo'] for e in respuesta.context['timeline']))
 
     def test_get_no_modifica_registros_ni_identificadores(self):
         modelos = [m for m in apps.get_models() if m._meta.app_label in ('trazabilidad','inventario')]

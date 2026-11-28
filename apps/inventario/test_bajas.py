@@ -259,7 +259,7 @@ class BajaTests(DatosBaja, TestCase):
                 self.assertContains(respuesta,texto)
             for texto in ('>Ingresar a almacenamiento</a>','>Mover de cámara</a>','>Registrar baja</a>'):
                 self.assertNotContains(respuesta,texto)
-        self.assertContains(self.client.get(qr),f'Seguimiento #{self.partida.pk}')
+        self.assertContains(self.client.get(qr), self.partida.procedencia)
         self.assertEqual(self.client.get(self.url_lote('caja_qr_png',self.registro.pk))['Content-Type'],'image/png')
 
     def test_no_aparece_pendiente_almacenada_no_stock(self):

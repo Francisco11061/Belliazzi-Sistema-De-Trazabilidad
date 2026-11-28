@@ -506,9 +506,9 @@ class ProcesamientoTests(DatosProcesamiento, TestCase):
         self.client.force_login(self.usuario)
         detalle = reverse("trazabilidad:detalle_partida", args=[self.partida.pk])
         gestionar = reverse("trazabilidad:gestionar_procesamiento", args=[self.partida.pk])
-        self.assertNotContains(self.client.get(detalle), "Gestionar procesamiento")
+        self.assertNotContains(self.client.get(detalle), "Continuar proceso")
         self.iniciar()
-        self.assertContains(self.client.get(detalle), "Gestionar procesamiento")
+        self.assertContains(self.client.get(detalle), "Continuar proceso")
         respuesta = self.client.get(gestionar)
         self.assertNotContains(respuesta, "Enviar a túnel de congelado")
         self.assertContains(respuesta, "Iniciar etapa", count=1)
@@ -523,12 +523,12 @@ class ProcesamientoTests(DatosProcesamiento, TestCase):
         self.assertContains(self.client.get(gestionar), "Enviar a túnel de congelado")
         self.enviar()
         respuesta = self.client.get(detalle)
-        self.assertContains(respuesta, "Retirar del túnel")
-        self.assertNotContains(respuesta, "Gestionar procesamiento")
+        self.assertContains(respuesta, "Sacar del túnel")
+        self.assertNotContains(respuesta, "Continuar proceso")
         retirar_de_tunel(partida=self.partida, usuario=self.usuario)
         respuesta = self.client.get(detalle)
-        self.assertContains(respuesta, "Registra el peso postproceso antes de empacar.")
-        for accion in ("Retirar del túnel", "Gestionar procesamiento", "Enviar a proceso", "Enviar a cámara"):
+        self.assertContains(respuesta, "Pesa el producto al salir del túnel. Sin ese peso no se puede asignar a un lote.")
+        for accion in ("Sacar del túnel", "Continuar proceso", "Enviar a proceso", "Guardar en cámara"):
             self.assertNotContains(respuesta, accion)
 
     def test_filtros_congelacion_pesaje_sin_n_mas_uno(self):

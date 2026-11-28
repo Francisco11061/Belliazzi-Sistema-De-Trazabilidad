@@ -29,24 +29,30 @@ class TerminologiaSeguimientoTests(DatosProcesamiento, TestCase):
     def test_listado_y_filtro_utilizan_nueva_terminologia(self):
         respuesta = self.pagina("lista_partidas")
         self.assertEqual(self.titulo(respuesta), "Seguimiento de proceso")
-        self.assertContains(respuesta, "ID de seguimiento")
-        self.assertContains(respuesta, "Consultar historial del seguimiento")
+        self.assertContains(respuesta, "Especie, proveedor o folio Sernapesca")
+        self.assertContains(respuesta, self.partida.procedencia)
+        self.assertNotContains(respuesta, f"Seguimiento #{self.partida.pk}")
         self.assertNotContains(respuesta, "Partidas")
         self.assertNotContains(respuesta, "ID de partida")
 
-    def test_detalle_prioriza_especie_y_mantiene_identificadores(self):
+    def test_detalle_nombra_por_especie_y_procedencia_sin_numeros_internos(self):
         respuesta = self.pagina("detalle_partida")
-        self.assertEqual(self.titulo(respuesta), self.especie.nombre)
-        self.assertContains(respuesta, f"Seguimiento #{self.partida.pk}")
-        self.assertContains(respuesta, f"Recepción #{self.partida.detalle_recepcion.recepcion_id}")
-        self.assertContains(respuesta, "Origen del seguimiento")
-        self.assertContains(respuesta, "Registro inicial de la especie.")
+        self.assertTrue(self.titulo(respuesta).startswith(self.especie.nombre))
+        self.assertContains(respuesta, self.partida.procedencia)
+        self.assertContains(respuesta, "De dónde viene")
+        enlace_recepcion = reverse("trazabilidad:detalle_recepcion", args=[self.partida.detalle_recepcion.recepcion_id])
+        self.assertNotContains(respuesta, enlace_recepcion)  # La operaria no entra a recepciones.
+        self.client.force_login(self.jefe)
+        self.assertContains(self.pagina("detalle_partida"), enlace_recepcion)
+        self.client.force_login(self.usuario)
+        self.assertNotContains(respuesta, f"Seguimiento #{self.partida.pk}")
+        self.assertNotContains(respuesta, "Detalle de recepción")
         self.assertNotContains(respuesta, "Partida #")
 
     def test_formulario_camara_muestra_especie_y_seguimiento(self):
         respuesta = self.pagina("enviar_partida_mantencion")
         self.assertContains(respuesta, self.especie.nombre)
-        self.assertContains(respuesta, f"Seguimiento #{self.partida.pk}")
+        self.assertContains(respuesta, self.partida.procedencia)
         self.assertNotContains(respuesta, "Partida #")
         self.assertContains(respuesta, reverse("trazabilidad:detalle_partida", args=[self.partida.pk]))
         self.assertContains(respuesta, 'aria-label="Ruta de navegación"')
@@ -55,7 +61,7 @@ class TerminologiaSeguimientoTests(DatosProcesamiento, TestCase):
         self.iniciar()
         respuesta = self.pagina("gestionar_procesamiento")
         self.assertEqual(self.titulo(respuesta), f"Procesamiento de {self.especie.nombre}")
-        self.assertContains(respuesta, f"Seguimiento #{self.partida.pk}")
+        self.assertContains(respuesta, self.partida.procedencia)
         self.assertContains(respuesta, "Ruta de procesamiento")
         self.assertNotContains(respuesta, "Procesamiento de partida")
 
@@ -64,7 +70,7 @@ class TerminologiaSeguimientoTests(DatosProcesamiento, TestCase):
         self.completar()
         respuesta = self.pagina("enviar_partida_tunel")
         self.assertContains(respuesta, self.especie.nombre)
-        self.assertContains(respuesta, f"Seguimiento #{self.partida.pk}")
+        self.assertContains(respuesta, self.partida.procedencia)
         self.assertNotContains(respuesta, "Partida #")
 
     def test_mensaje_parcial_describe_cantidades_sin_parentesco_tecnico(self):

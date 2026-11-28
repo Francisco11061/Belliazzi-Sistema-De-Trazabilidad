@@ -273,7 +273,7 @@ def _bloquear_partida(partida, usuario):
     DetalleRecepcion.objects.select_for_update().get(pk=detalle_id)
     actual = PartidaProceso.objects.select_for_update().get(pk=partida.pk)
     if actual.estado != PartidaProceso.Estado.ACTIVA or actual.subpartidas.exists():
-        raise ValidationError("Solo se puede operar un seguimiento activo sin divisiones.")
+        raise ValidationError("Solo se puede operar un producto activo que no se haya dividido.")
     return actual
 
 
@@ -283,7 +283,7 @@ def _validar_cantidad(partida, cantidad):
     if cantidad.as_tuple().exponent < -2:
         raise ValidationError("La cantidad admite como máximo dos decimales.")
     if cantidad <= 0 or cantidad > partida.cantidad_inicial_kg:
-        raise ValidationError("La cantidad debe ser mayor que cero y no superar la cantidad de este seguimiento.")
+        raise ValidationError("La cantidad debe ser mayor que cero y no superar los kilos de este producto.")
 
 
 def _comprobar_disponible(partida):
@@ -331,7 +331,7 @@ def retirar_de_mantencion(*, partida, cantidad_kg, usuario):
     _validar_cantidad(partida, cantidad_kg)
     abiertas = list(partida.estancias_frio.select_for_update().filter(fecha_hora_salida__isnull=True))
     if len(abiertas) != 1 or abiertas[0].unidad_frio.tipo != UnidadFrio.TipoUnidad.MANTENCION:
-        raise ValidationError("El seguimiento debe tener exactamente una estancia abierta en mantención.")
+        raise ValidationError("El producto no figura dentro de una cámara de mantención.")
     if partida.eventos.exists():
         raise ValidationError("El producto ya inició procesamiento.")
     estancia = abiertas[0]
@@ -376,7 +376,7 @@ def _validar_ruta(partida, ruta, *, nueva):
     if ruta is None:
         raise ValidationError("Seleccione una ruta de procesamiento.")
     if ruta.especie_id != partida.detalle_recepcion.especie_id:
-        raise ValidationError("La ruta debe corresponder a la especie de este seguimiento.")
+        raise ValidationError("La ruta debe corresponder a la especie de este producto.")
     if nueva and not ruta.activo:
         raise ValidationError("La ruta seleccionada está inactiva.")
     etapas = list(ruta.etapas.select_for_update().select_related("tipo_proceso").order_by("orden"))
@@ -392,7 +392,7 @@ def _evento_general_abierto(partida):
         fecha_hora_termino__isnull=True,
     ))
     if len(generales) != 1:
-        raise ValidationError("El seguimiento debe tener exactamente un procesamiento general abierto.")
+        raise ValidationError("Este producto no tiene un proceso abierto.")
     return generales[0]
 
 
@@ -430,7 +430,7 @@ def iniciar_etapa_proceso(*, partida, etapa, usuario):
     _, etapas, eventos = _contexto_etapas(partida)
     actual = next((e for e in etapas if e.pk == etapa.pk), None)
     if actual is None:
-        raise ValidationError("La etapa no pertenece a la ruta de este seguimiento.")
+        raise ValidationError("La etapa no pertenece a la ruta de este producto.")
     if actual.pk in eventos:
         raise ValidationError("La etapa ya fue iniciada.")
     if any(e.fecha_hora_termino is None for e in eventos.values()):
@@ -480,7 +480,7 @@ def retirar_de_tunel(*, partida, usuario):
     partida = _bloquear_partida(partida, usuario)
     abiertas = list(partida.estancias_frio.select_for_update().filter(fecha_hora_salida__isnull=True))
     if len(abiertas) != 1 or abiertas[0].unidad_frio.tipo != UnidadFrio.TipoUnidad.TUNEL_CONGELADO:
-        raise ValidationError("El seguimiento debe tener exactamente una estancia abierta en túnel de congelado.")
+        raise ValidationError("El producto no figura dentro de un túnel de congelado.")
     estancia = abiertas[0]
     estancia.fecha_hora_salida = timezone.now()
     estancia.retirado_por = usuario
@@ -500,7 +500,7 @@ def registrar_peso_postproceso(*, partida, peso_kg, usuario):
     partida = _bloquear_partida(partida, usuario)
     actual = partidas_con_situacion().get(pk=partida.pk)
     if actual.situacion != "PENDIENTE_PESAJE" or actual.tiene_postproceso:
-        raise ValidationError("El seguimiento debe estar pendiente de pesaje y no tener un peso postproceso registrado.")
+        raise ValidationError("Este producto ya tiene peso final o todavía no sale del túnel.")
     _validar_decimal_registro(Pesaje, "peso_kg", peso_kg)
     pesaje = Pesaje(
         partida=partida, tipo=Pesaje.POSTPROCESO, peso_kg=peso_kg,
@@ -516,14 +516,14 @@ def registrar_merma_proceso(*, partida, tipo, cantidad_kg, motivo, usuario):
     partida = _bloquear_partida(partida, usuario)
     actual = partidas_con_situacion().get(pk=partida.pk)
     if actual.situacion not in SITUACIONES_MERMA or actual.tiene_postproceso:
-        raise ValidationError("Solo se pueden registrar pérdidas o mermas durante el proceso, la congelación o antes del pesaje postproceso.")
+        raise ValidationError("Solo se pueden registrar mermas durante el proceso, en el túnel o antes del peso final.")
     _validar_decimal_registro(MermaProceso, "cantidad_kg", cantidad_kg)
     motivo = _normalizar_texto(motivo, "motivo")
     # Todas las escrituras operativas comparten el bloqueo detalle -> seguimiento.
     # Leer después de adquirirlo incluye los registros de la transacción anterior.
     cantidades = partida.mermas.select_for_update().values_list("cantidad_kg", flat=True)
     if sum(cantidades, Decimal("0.00")) + cantidad_kg > partida.cantidad_inicial_kg:
-        raise ValidationError("Las pérdidas, descartes y mermas acumuladas no pueden superar la cantidad del seguimiento.")
+        raise ValidationError("Las pérdidas, descartes y mermas acumuladas no pueden superar los kilos del producto.")
     abiertas = list(partida.eventos.select_for_update().filter(
         etapa_ruta__isnull=False, fecha_hora_termino__isnull=True,
     ))
@@ -543,16 +543,16 @@ def _validar_asignacion_lote(partida, cantidad_kg):
     # El llamador ya bloqueó detalle -> seguimiento. Releer saldo dentro de atomic.
     actual = partidas_con_disponibilidad().get(pk=partida.pk)
     if not puede_asignar_lote(actual):
-        raise ValidationError("El seguimiento debe estar listo para empaque, tener ruta, un peso postproceso y cantidad disponible.")
+        raise ValidationError("Para asignarlo a un lote, el producto debe estar listo para empaque, con ruta, peso final y kilos sin asignar.")
     _validar_decimal_registro(ConsumoLote, "cantidad_kg_utilizada", cantidad_kg)
     if cantidad_kg > actual.disponible_lote_kg:
-        raise ValidationError("La cantidad a asignar no puede superar el peso postproceso disponible.")
+        raise ValidationError("La cantidad a asignar no puede superar los kilos sin asignar.")
     return actual
 
 
 def _crear_consumo(lote, partida, cantidad_kg):
     if lote.consumos.filter(partida=partida).exists():
-        raise ValidationError("Este seguimiento ya fue asignado a este lote. No se permite modificar su aporte.")
+        raise ValidationError("Este producto ya está en este lote. Su aporte no se puede modificar.")
     consumo = ConsumoLote(partida=partida, lote_produccion=lote, cantidad_kg_utilizada=cantidad_kg)
     consumo.full_clean()
     consumo.save()

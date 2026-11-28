@@ -63,12 +63,12 @@ def _bloqueo_etapa(evento):
 
 def _bloqueo_frio(estancia):
     if estancia.unidad_frio.tipo != UnidadFrio.TipoUnidad.TUNEL_CONGELADO:
-        return "Las estancias en cámara de mantención están ligadas a las divisiones del seguimiento y no se corrigen."
+        return "La cámara de mantención está ligada a las divisiones del producto y no se corrige."
     return None
 
 
 def _bloqueo_pesaje(pesaje):
-    return None if pesaje.tipo == Pesaje.POSTPROCESO else "Solo se corrige el peso postproceso."
+    return None if pesaje.tipo == Pesaje.POSTPROCESO else "Solo se corrige el peso final."
 
 
 def _bloqueo_caja(caja):
@@ -229,7 +229,7 @@ def corregir_estancia_tunel(*, estancia, usuario, fecha_hora_ingreso, fecha_hora
         raise ValidationError({"fecha_hora_ingreso": "El ingreso al túnel no puede ser anterior al término de la última etapa."})
     pesaje = partida.pesajes.filter(tipo=Pesaje.POSTPROCESO).order_by("fecha_hora_evento").first()
     if pesaje and fecha_hora_salida and fecha_hora_salida > pesaje.fecha_hora_evento:
-        raise ValidationError({"fecha_hora_salida": "La salida del túnel no puede ser posterior al peso postproceso."})
+        raise ValidationError({"fecha_hora_salida": "La salida del túnel no puede ser posterior al peso final."})
     anterior_ingreso = estancia.fecha_hora_ingreso
     cambios = _aplicar(estancia, usuario, {"fecha_hora_ingreso": fecha_hora_ingreso,
                                            "fecha_hora_salida": fecha_hora_salida}, motivo)
@@ -267,7 +267,7 @@ def corregir_merma(*, merma, usuario, tipo, cantidad_kg, detalle, motivo):
     _validar_decimal_registro(MermaProceso, "cantidad_kg", cantidad_kg)
     otras = partida.mermas.exclude(pk=merma.pk).aggregate(total=Sum("cantidad_kg"))["total"] or Decimal("0.00")
     if otras + cantidad_kg > partida.cantidad_inicial_kg:
-        raise ValidationError({"cantidad_kg": "Las pérdidas, descartes y mermas acumuladas no pueden superar la cantidad del seguimiento."})
+        raise ValidationError({"cantidad_kg": "Las pérdidas, descartes y mermas acumuladas no pueden superar los kilos del producto."})
     detalle = _normalizar_texto(detalle if isinstance(detalle, str) else "", "motivo")
     if not detalle:
         raise ValidationError({"detalle": "Indica el motivo de la merma."})

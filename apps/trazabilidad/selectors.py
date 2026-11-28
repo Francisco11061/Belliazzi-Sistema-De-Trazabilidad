@@ -10,18 +10,18 @@ from .models import (
 )
 
 SITUACIONES = (
-    ("DISPONIBLE", "Disponible"),
+    ("DISPONIBLE", "Esperando proceso"),
     ("EN_MANTENCION", "En cámara de mantención"),
     ("EN_PROCESO", "En proceso"),
-    ("EN_CONGELACION", "En congelación"),
-    ("PENDIENTE_PESAJE", "Pendiente de pesaje"),
+    ("EN_CONGELACION", "En túnel"),
+    ("PENDIENTE_PESAJE", "Falta peso final"),
     ("LISTA_PARA_EMPAQUE", "Lista para empaque"),
 )
 
 SITUACIONES_MERMA = {"EN_PROCESO", "EN_CONGELACION", "PENDIENTE_PESAJE"}
 ADVERTENCIA_PESO_SUPERIOR = (
-    "El peso postproceso supera la cantidad registrada al inicio de este seguimiento. "
-    "Verifique que el valor ingresado sea correcto."
+    "El peso final supera los kilos con que empezó el proceso. "
+    "Verifica que el valor ingresado sea correcto."
 )
 
 
@@ -161,7 +161,7 @@ def cajas_con_trazabilidad():
     """Una rama por aporte real; consultas constantes al aumentar los orígenes."""
     aportes = ConsumoLote.objects.select_related(
         "partida__ruta_proceso", "partida__detalle_recepcion__recepcion",
-        "partida__detalle_recepcion__origen_sernapesca",
+        "partida__detalle_recepcion__origen_sernapesca", "partida__detalle_recepcion__especie",
     ).prefetch_related(
         Prefetch("partida__eventos", queryset=EventoProceso.objects.select_related("tipo_proceso").order_by("fecha_hora_inicio", "pk"), to_attr="eventos_qr"),
         Prefetch("partida__estancias_frio", queryset=EstanciaPartida.objects.select_related("unidad_frio").order_by("fecha_hora_ingreso", "pk"), to_attr="estancias_qr"),

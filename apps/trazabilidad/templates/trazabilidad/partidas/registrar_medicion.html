@@ -7,11 +7,11 @@
 <div class="w-full min-w-0 w-full">
 
     <h1 class="mt-4 break-words text-2xl font-semibold md:text-3xl">{{ partida.detalle_recepcion.especie.nombre }}</h1>
-    <p class="mt-2 text-sm text-slate-600">Seguimiento #{{ partida.pk }} · {% include "components/_badge.html" with estado=partida.situacion etiqueta=partida.situacion_visible only %}</p>
+    <p class="mt-2 text-sm text-slate-600">{{ partida.nombre_corto }} · {{ partida.procedencia }} · {% include "components/_badge.html" with estado=partida.situacion etiqueta=partida.situacion_visible only %}</p>
     <section class="mt-6 min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-lg font-semibold">{{ titulo }}</h2>
         <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-            <div><dt class="text-slate-600">Cantidad del seguimiento procesado</dt><dd class="mt-1 font-semibold">{{ partida.cantidad_inicial_kg|num }} kg</dd></div>
+            <div><dt class="text-slate-600">Kilos que entraron a proceso</dt><dd class="mt-1 font-semibold">{{ partida.cantidad_inicial_kg|num }} kg</dd></div>
             <div><dt class="text-slate-600">Total de pérdidas, descartes y mermas</dt><dd class="mt-1 font-semibold">{{ total_mermas|num }} kg</dd></div>
         </dl>
         {% if es_pesaje %}<p class="mt-4 text-sm text-slate-600">Peso recibido en recepción (origen): {{ partida.detalle_recepcion.peso_recepcion_kg|num }} kg</p>{% endif %}
