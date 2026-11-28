@@ -37,9 +37,11 @@ class MatrizPermisosTests(DatosQR, TestCase):
             *[(n, [c], "get") for n in ("ingresar", "mover")]])
         grupo("inventario", ("ENCARGADA", "JEFE"), [("crear_baja", [c], "get")])
         grupo("trazabilidad", ("ENCARGADA", "JEFE"), [("lista_recepciones", [], "get"),
-            ("nueva_recepcion", [], "get"), ("detalle_recepcion", [recepcion], "get")])
+            ("nueva_recepcion", [], "get"), ("detalle_recepcion", [recepcion], "get"),
+            ("restos", [], "get"), ("terminar_partida", [p], "post")])
         grupo("producto_terminado", ("ENCARGADA", "JEFE"), [("lista_lotes", [], "get"),
-            ("detalle_lote", [l], "get"), ("crear_lote", [p], "get"), ("agregar_producto_lote", [l], "get")])
+            ("detalle_lote", [l], "get"), ("crear_lote", [p], "get"), ("agregar_producto_lote", [l], "get"),
+            ("terminar_lote", [l], "post")])
         grupo("inventario", ("ENCARGADA", "JEFE"), [("lista_despachos", [], "get"),
             ("crear_despacho", [], "get"), ("detalle_despacho", [self.despacho.pk], "get")])
         # La encargada solo corrige lo propio del mismo día; estos registros los creó otra persona.

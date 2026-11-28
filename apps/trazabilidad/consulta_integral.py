@@ -108,7 +108,7 @@ def ficha_integral(usuario, tipo, pk):
     recepciones = {d.recepcion_id: d.recepcion for d in detalles}
     if tipo == "recepcion":
         recepciones[raiz.pk] = raiz
-    lotes = list(lotes_con_empaque().filter(pk__in=lote_ids).select_related("especie", "ruta_proceso", "registrado_por").order_by("pk"))
+    lotes = list(lotes_con_empaque().filter(pk__in=lote_ids).select_related("especie", "ruta_proceso", "registrado_por", "terminado_por").order_by("pk"))
     aportes = list(ConsumoLote.objects.filter(lote_produccion_id__in=lote_ids).select_related("lote_produccion").order_by("pk"))
     cajas = list(cajas_con_inventario(cajas_con_peso()).filter(lote_produccion_id__in=lote_ids).select_related("registrado_por").prefetch_related(
         Prefetch("composiciones", queryset=ComposicionCaja.objects.select_related("presentacion").order_by("pk"))).order_by("pk"))
@@ -203,10 +203,14 @@ def ficha_integral(usuario, tipo, pk):
         evento(e.fecha_hora_evento, "Pesaje", e.pk, e.registrado_por, f"{producto(e.partida_id)}: {e.tipo_visible}, {formatear_kg(e.peso_kg)}", enlace("seguimiento", e.partida_id), 6)
     for e in mermas:
         evento(e.fecha_hora_evento, e.get_tipo_display(), e.pk, e.registrado_por, f"{producto(e.partida_id)}: {formatear_kg(e.cantidad_kg)}. {e.motivo}", enlace("seguimiento", e.partida_id), 7)
+    codigos_lote = {e.pk: e.codigo_visible for e in lotes}
     for e in lotes:
         evento(e.creado_en, "Registro del lote", e.pk, e.registrado_por, e.codigo_visible, enlace("lote", e.pk), 8)
+        evento(e.terminado_en, "Lote terminado", e.pk, e.terminado_por,
+               f"{e.codigo_visible}: {formatear_kg(e.merma_cierre_kg)} sin encajar, a merma" if e.terminado_en else "",
+               enlace("lote", e.pk), 10)
     for e in cajas:
-        evento(e.fecha_armado, "Armado de caja", e.pk, e.registrado_por, f"Lote #{e.lote_produccion_id}", enlace("caja", e.pk), 9)
+        evento(e.fecha_armado, "Armado de caja", e.pk, e.registrado_por, f"Lote {codigos_lote.get(e.lote_produccion_id, '')}".strip(), enlace("caja", e.pk), 9)
     por_despacho = {raiz.pk: {"registro": raiz, "cajas": []}} if tipo == "despacho" else {}
     cajas_por_id = {c.pk: c for c in cajas}
     for d in despachos:

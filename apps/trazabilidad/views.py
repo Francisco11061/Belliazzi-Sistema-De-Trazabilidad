@@ -1,3 +1,4 @@
+from django.utils.http import url_has_allowed_host_and_scheme
 from collections import Counter
 from decimal import Decimal
 from datetime import datetime, time
@@ -36,11 +37,11 @@ from .forms import PesoPostprocesoForm, MermaProcesoForm
 from .forms import CrearLoteForm, AgregarConsumoLoteForm, LoteFiltroForm
 from .selectors import partidas_con_disponibilidad, puede_asignar_lote, lotes_con_totales
 from .seguimiento_operativo import CATEGORIAS, seguimientos_operativos
-from .services import crear_lote_produccion, agregar_consumo_lote
+from .services import crear_lote_produccion, agregar_consumo_lote, dar_por_terminada_partida, dar_por_terminado_lote
 from .forms import ComposicionCajaFormSet, CajaFiltroForm, CajaForm, SeleccionarLoteCajaForm
 from .constantes import CAMPOS_EMBARCACION, ORIGEN_EMBARCACION, PESO_MAXIMO_CAJA_KG
-from .models import PresentacionBolsa
-from .selectors import lotes_con_empaque, cajas_con_peso, puede_crear_caja
+from .models import LoteProduccion, PresentacionBolsa
+from .selectors import lotes_con_empaque, cajas_con_peso, puede_crear_caja, puede_terminar_lote, puede_terminar_partida
 from .selectors import cajas_con_trazabilidad
 from .selectors import origen_unico_lote
 from .models import Caja
@@ -366,6 +367,7 @@ def detalle_partida(request, pk):
         "partida": partida,
         **resumen_pesajes_mermas(partida),
         "puede_asignar_lote": puede_asignar_lote(partida),
+        "puede_terminar": puede_terminar_partida(partida),
         "consumos_lotes": partida.consumos_lote.select_related("lote_produccion").order_by("pk"),
         "padre": padre,
         "hijas": partida.subpartidas.order_by("pk"),
@@ -481,6 +483,47 @@ def retirar_partida_tunel(request, pk):
     return redirect("trazabilidad:detalle_partida", pk=pk)
 
 
+def _volver(request):
+    """Vuelve a la página desde donde se cerró (p. ej. la lista de restos), solo si es de este sitio."""
+    destino = request.POST.get("volver", "")
+    if destino and url_has_allowed_host_and_scheme(destino, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return redirect(destino)
+    return None
+
+
+@jefe_o_encargada_requerido
+def restos(request):
+    from .pendientes import restos_por_cerrar
+    productos, lotes = restos_por_cerrar()
+    return render(request, "trazabilidad/restos.html", {"productos": productos, "lotes": lotes})
+
+
+@jefe_o_encargada_requerido
+@require_http_methods(["POST"])
+def terminar_partida(request, pk):
+    partida = get_object_or_404(PartidaProceso, pk=pk)
+    try:
+        resto = dar_por_terminada_partida(partida=partida, usuario=request.user)
+    except ValidationError as error:
+        messages.error(request, " ".join(error.messages))
+    else:
+        messages.success(request, f"Producto terminado. {formatear_kg(resto)} registrados como merma.")
+    return _volver(request) or redirect("trazabilidad:detalle_partida", pk=pk)
+
+
+@jefe_o_encargada_requerido
+@require_http_methods(["POST"])
+def terminar_lote(request, pk):
+    lote = get_object_or_404(LoteProduccion, pk=pk)
+    try:
+        resto = dar_por_terminado_lote(lote=lote, usuario=request.user)
+    except ValidationError as error:
+        messages.error(request, " ".join(error.messages))
+    else:
+        messages.success(request, f"Lote terminado. {formatear_kg(resto)} registrados como merma.")
+    return _volver(request) or redirect("producto_terminado:detalle_lote", pk=pk)
+
+
 def _registrar_medicion(request, pk, *, es_pesaje):
     partida = presentar_partida(get_object_or_404(partidas_con_situacion(), pk=pk))
     clase = PesoPostprocesoForm if es_pesaje else MermaProcesoForm
@@ -546,7 +589,8 @@ def detalle_lote(request, pk):
     return render(request, "trazabilidad/lotes/detalle.html", {
         "lote": lote,
         "puede_crear_caja": puede_crear_caja(lote),
-        "puede_agregar_producto": bool(lote.ruta_proceso_id and origen_unico_lote(lote) is not None),
+        "puede_agregar_producto": bool(lote.ruta_proceso_id and not lote.terminado_en and origen_unico_lote(lote) is not None),
+        "puede_terminar": puede_terminar_lote(lote),
         "cajas": cajas_con_peso().filter(lote_produccion=lote).order_by("pk"),
         "consumos": lote.consumos.select_related(
             "partida__detalle_recepcion__especie", "partida__detalle_recepcion__recepcion",

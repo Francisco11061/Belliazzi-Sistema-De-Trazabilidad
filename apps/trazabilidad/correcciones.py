@@ -67,8 +67,17 @@ def _bloqueo_frio(estancia):
     return None
 
 
+TERMINADO = "Ya se dio por terminado; los kilos quedan como se registraron."
+
+
 def _bloqueo_pesaje(pesaje):
-    return None if pesaje.tipo == Pesaje.POSTPROCESO else "Solo se corrige el peso final."
+    if pesaje.tipo != Pesaje.POSTPROCESO:
+        return "Solo se corrige el peso final."
+    return TERMINADO if pesaje.partida.estado == PartidaProceso.Estado.CERRADA else None
+
+
+def _bloqueo_merma(merma):
+    return TERMINADO if merma.partida.estado == PartidaProceso.Estado.CERRADA else None
 
 
 def _bloqueo_caja(caja):
@@ -77,10 +86,13 @@ def _bloqueo_caja(caja):
         return "La caja ya fue despachada; su peso queda como se registró."
     if BajaCaja.objects.filter(caja_id=caja.pk).exists():
         return "La caja tiene una baja registrada; su peso queda como se registró."
+    if caja.lote_produccion.terminado_en:
+        return TERMINADO
     return None
 
 
-BLOQUEOS = {"etapa": _bloqueo_etapa, "frio": _bloqueo_frio, "pesaje": _bloqueo_pesaje, "caja": _bloqueo_caja}
+BLOQUEOS = {"etapa": _bloqueo_etapa, "frio": _bloqueo_frio, "pesaje": _bloqueo_pesaje,
+            "merma": _bloqueo_merma, "caja": _bloqueo_caja}
 
 
 def _tipos():
@@ -261,6 +273,8 @@ def corregir_merma(*, merma, usuario, tipo, cantidad_kg, detalle, motivo):
     partida = _bloquear_seguimiento(merma.partida_id)
     merma = MermaProceso.objects.select_for_update().get(pk=merma.pk)
     _exigir_permiso(usuario, merma.registrado_por_id, merma.creado_en)
+    if _bloqueo_merma(merma):
+        raise ValidationError(_bloqueo_merma(merma))
     motivo = _motivo(motivo)
     if tipo not in MermaProceso.Tipo.values:
         raise ValidationError({"tipo": "Selecciona un tipo válido."})

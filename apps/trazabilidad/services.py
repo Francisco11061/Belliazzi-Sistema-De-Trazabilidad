@@ -17,7 +17,7 @@ from .rutas import validar_etapas_ruta
 from .models import LoteProduccion, ConsumoLote
 from .selectors import partidas_con_disponibilidad, puede_asignar_lote
 from .models import Caja, ComposicionCaja, PresentacionBolsa
-from .selectors import lotes_con_empaque, puede_crear_caja
+from .selectors import lotes_con_empaque, puede_crear_caja, puede_terminar_lote, puede_terminar_partida
 from .constantes import CAMPOS_EMBARCACION, ORIGEN_EMBARCACION, PESO_MAXIMO_CAJA_KG
 from .lotes import segmento_folio
 from .selectors import origen_unico_lote
@@ -603,6 +603,8 @@ def agregar_consumo_lote(*, lote, partida, cantidad_kg, usuario):
     lote = LoteProduccion.objects.select_for_update().filter(pk=lote.pk).first()
     if lote is None or not lote.ruta_proceso_id:
         raise ValidationError("El lote no existe o no tiene una ruta documentada para recibir producto.")
+    if lote.terminado_en:
+        raise ValidationError("El lote ya se dio por terminado.")
     if lote.especie_id != actual.detalle_recepcion.especie_id or lote.ruta_proceso_id != actual.ruta_proceso_id:
         raise ValidationError("El producto debe tener la misma especie y la misma ruta de procesamiento del lote.")
     origen_id = origen_unico_lote(lote)
@@ -667,3 +669,44 @@ def crear_caja(*, lote, composiciones, peso_neto_kg, usuario):
         linea.full_clean()
         linea.save()
     return caja
+
+
+MOTIVO_RESTO_EMPAQUE = "Resto de empaque al dar por terminado"
+
+
+@transaction.atomic
+def dar_por_terminada_partida(*, partida, usuario):
+    """Lo que quedó sin asignar a lote se registra como merma y el producto sale de los pendientes."""
+    if not tiene_rol(usuario, ROL_JEFE, ROL_ENCARGADA):
+        raise PermissionDenied
+    partida = _bloquear_partida(partida, usuario)
+    actual = partidas_con_disponibilidad().get(pk=partida.pk)
+    if not puede_terminar_partida(actual):
+        raise ValidationError("Solo se puede dar por terminado un producto ya asignado a lote que tenga kilos sin asignar.")
+    resto = actual.disponible_lote_kg
+    merma = MermaProceso(partida=partida, tipo=MermaProceso.Tipo.MERMA, cantidad_kg=resto,
+                         motivo=MOTIVO_RESTO_EMPAQUE, fecha_hora_evento=timezone.now(), registrado_por=usuario)
+    merma.full_clean()
+    merma.save()
+    partida.estado = PartidaProceso.Estado.CERRADA
+    partida.save(update_fields=["estado"])
+    return resto
+
+
+@transaction.atomic
+def dar_por_terminado_lote(*, lote, usuario):
+    """Lo que quedó sin encajar se registra como merma de cierre y el lote deja de admitir cajas."""
+    if not tiene_rol(usuario, ROL_JEFE, ROL_ENCARGADA):
+        raise PermissionDenied
+    lote = LoteProduccion.objects.select_for_update().filter(pk=lote.pk).first()
+    if lote is None:
+        raise ValidationError("El lote no existe.")
+    actual = lotes_con_empaque().get(pk=lote.pk)
+    if not puede_terminar_lote(actual):
+        raise ValidationError("Solo se puede dar por terminado un lote con cajas, pesos completos y kilos sin encajar.")
+    lote.merma_cierre_kg = actual.disponible_empacar
+    lote.terminado_en = timezone.now()
+    lote.terminado_por = usuario
+    lote.full_clean()
+    lote.save(update_fields=["merma_cierre_kg", "terminado_en", "terminado_por"])
+    return lote.merma_cierre_kg

@@ -4,13 +4,17 @@
     {% if partida.tiene_postproceso %}
     <dl class="mt-5 grid gap-5 text-sm sm:grid-cols-2">
         <div><dt class="text-slate-600">Asignado a lotes</dt><dd class="mt-1 text-lg font-semibold">{{ partida.asignado_lotes_kg|num }} kg</dd></div>
-        <div><dt class="text-slate-600">Sin asignar</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{{ partida.disponible_lote_kg|num }} kg</dd></div>
+        <div><dt class="text-slate-600">{% if partida.estado == "CERRADA" %}A merma{% else %}Sin asignar{% endif %}</dt><dd class="mt-1 text-lg font-semibold text-cyan-800">{{ partida.disponible_lote_kg|num }} kg</dd></div>
     </dl>
     {% endif %}
-    {% if partida.disponible_lote_kg == 0 %}
+    {% if partida.estado == "CERRADA" %}
+    <p class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">Terminado: el resto quedó registrado como merma.</p>
+    {% elif partida.disponible_lote_kg == 0 %}
     <p class="mt-5 rounded-lg border border-cyan-100 bg-cyan-50 p-4 text-sm text-cyan-800">Todo el peso final ya está asignado a lotes.</p>
-    {% elif partida.situacion == 'LISTA_PARA_EMPAQUE' and not partida.ruta_proceso_id %}
     {% endif %}
+    {% if puede_terminar %}{% if user.is_superuser or user.rol.codigo == "JEFE" or user.rol.codigo == "ENCARGADA" %}
+    <form method="post" action="{% url 'trazabilidad:terminar_partida' partida.pk %}" data-loading-text="Terminando…" class="mt-5">{% csrf_token %}<button type="submit" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Dar por terminado · {{ partida.disponible_lote_kg|num }} kg a merma</button></form>
+    {% endif %}{% endif %}
     <ul class="mt-5 space-y-3 text-sm">
         {% for consumo in consumos_lotes %}
         <li class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-4">

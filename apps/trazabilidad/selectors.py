@@ -154,7 +154,8 @@ def lotes_con_empaque():
     ).annotate(total_empacado=Case(
         When(historial_empaque_incompleto=True, then=Value(None)),
         default=F("peso_real_documentado"), output_field=decimal,
-    )).annotate(disponible_empacar=F("total_asignado") - F("total_empacado"))
+    )).annotate(disponible_empacar=F("total_asignado") - F("total_empacado")
+                - Coalesce(F("merma_cierre_kg"), Value(Decimal("0.00")), output_field=decimal))
 
 
 def cajas_con_trazabilidad():
@@ -174,7 +175,20 @@ def cajas_con_trazabilidad():
 
 
 def puede_crear_caja(lote):
-    return bool(lote.ruta_proceso_id and not lote.historial_empaque_incompleto and lote.disponible_empacar > 0)
+    return bool(lote.ruta_proceso_id and not lote.terminado_en and not lote.historial_empaque_incompleto
+                and lote.disponible_empacar > 0)
+
+
+def puede_terminar_lote(lote):
+    """Hay cajas y queda un resto sin encajar: se puede cerrar registrándolo como merma."""
+    return bool(not lote.terminado_en and lote.numero_cajas and not lote.historial_empaque_incompleto
+                and lote.disponible_empacar > 0)
+
+
+def puede_terminar_partida(partida):
+    """Ya aportó a algún lote y quedan kilos del peso final sin asignar."""
+    return bool(partida.situacion == "LISTA_PARA_EMPAQUE" and partida.numero_postprocesos == 1
+                and partida.asignado_lotes_kg > 0 and partida.disponible_lote_kg > 0)
 
 
 def resumen_pesajes_mermas(partida):

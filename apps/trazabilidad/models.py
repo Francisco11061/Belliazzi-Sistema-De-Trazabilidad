@@ -133,7 +133,7 @@ class PartidaProceso(models.Model):
         ACTIVA = "ACTIVA", "Activa"
         DIVIDIDA = "DIVIDIDA", "Dividida"
         CONSUMIDA = "CONSUMIDA", "Consumida"
-        CERRADA = "CERRADA", "Cerrada"
+        CERRADA = "CERRADA", "Terminado"
 
     detalle_recepcion = models.ForeignKey(
         DetalleRecepcion,
@@ -506,10 +506,26 @@ class LoteProduccion(models.Model):
     )
     observaciones = models.TextField(blank=True)
     creado_en = models.DateTimeField(auto_now_add=True)
+    # «Dar por terminado»: lo que quedó sin encajar se registra como merma de empaque.
+    terminado_en = models.DateTimeField(null=True, blank=True)
+    terminado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT,
+        related_name="lotes_terminados",
+    )
+    merma_cierre_kg = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
 
     class Meta:
         ordering = ["-fecha_elaboracion", "-id"]
         constraints = [
+            models.CheckConstraint(
+                condition=(models.Q(terminado_en__isnull=True, merma_cierre_kg__isnull=True)
+                           | models.Q(terminado_en__isnull=False, merma_cierre_kg__isnull=False)),
+                name="lote_terminado_con_merma",
+                violation_error_message="Un lote terminado debe registrar su merma de cierre.",
+            ),
             models.CheckConstraint(
                 condition=(
                     models.Q(fecha_vencimiento__isnull=True)

@@ -9,7 +9,10 @@ from apps.usuarios.permisos import tiene_rol
 
 from .formato import formatear_kg, hace
 from .models import PartidaProceso, UnidadFrio
-from .selectors import lotes_con_empaque, presentar_partida, puede_asignar_lote, puede_crear_caja
+from .selectors import (
+    lotes_con_empaque, partidas_con_disponibilidad, presentar_partida, puede_asignar_lote, puede_crear_caja,
+    puede_terminar_lote, puede_terminar_partida,
+)
 from .seguimiento_operativo import seguimientos_operativos
 
 MAXIMO_POR_GRUPO = 5
@@ -104,8 +107,8 @@ def pendientes_de_planta(usuario, ahora=None):
         partida.puede_asignar_lote = puede_asignar_lote(partida)
         if partida.revision_operativa:
             partida.puede_registrar_merma = False
-        if clave == "empaque" and partida.disponible_lote_kg < SALDO_MINIMO_KG:
-            saldos["empaque"] += 1
+        if clave == "empaque" and partida.disponible_lote_kg < SALDO_MINIMO_KG and puede_terminar_partida(partida):
+            saldos["empaque"] += 1  # Resto: se cierra en «Restos por cerrar».
             continue
         partida.contexto, partida.alerta = _contexto_partida(partida, ahora, umbrales)
         partida.contexto_fecha = _fecha_contexto(partida)
@@ -113,7 +116,7 @@ def pendientes_de_planta(usuario, ahora=None):
 
     for lote in lotes_con_empaque().order_by("fecha_elaboracion", "pk"):
         if puede_crear_caja(lote):
-            if lote.disponible_empacar < SALDO_MINIMO_KG:
+            if lote.disponible_empacar < SALDO_MINIMO_KG and puede_terminar_lote(lote):
                 saldos["encajar"] += 1
             else:
                 items["encajar"].append(lote)
@@ -142,4 +145,17 @@ def pendientes_de_planta(usuario, ahora=None):
                            items=lista[:MAXIMO_POR_GRUPO], enlace_todos=enlace_todos,
                            urgente=clave in ("revision", "EN_CONGELACION") or any(
                                getattr(item, "alerta", False) for item in lista)))
-    return dict(grupos=grupos, total=sum(g["total"] for g in grupos), gestion=gestion)
+    restos = (saldos["empaque"] + saldos["encajar"]) if gestion else 0
+    return dict(grupos=grupos, total=sum(g["total"] for g in grupos), gestion=gestion, restos=restos)
+
+
+def restos_por_cerrar():
+    """Productos y lotes ya usados que dejaron menos de 5 kg sueltos; se cierran con «Dar por terminado»."""
+    productos = [presentar_partida(p) for p in partidas_con_disponibilidad().filter(
+        estado=PartidaProceso.Estado.ACTIVA, asignado_lotes_kg__gt=0,
+        disponible_lote_kg__gt=0, disponible_lote_kg__lt=SALDO_MINIMO_KG,
+    ).order_by("disponible_lote_kg", "pk") if puede_terminar_partida(p)]
+    lotes = [l for l in lotes_con_empaque().select_related("especie").filter(
+        terminado_en__isnull=True, disponible_empacar__gt=0, disponible_empacar__lt=SALDO_MINIMO_KG,
+    ).order_by("disponible_empacar", "pk") if puede_terminar_lote(l)]
+    return productos, lotes

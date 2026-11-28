@@ -15,7 +15,9 @@
             <div><dt class="text-sm text-slate-600">Fuentes</dt><dd class="mt-1 text-lg font-semibold">{{ lote.numero_fuentes }} proceso{{ lote.numero_fuentes|pluralize:"s" }}</dd></div>
         </dl>
         {% if puede_crear_caja %}<a href="{% url 'producto_terminado:crear_caja' lote.pk %}" class="mt-5 inline-flex rounded-lg bg-cyan-700 px-5 py-3 text-center text-sm font-semibold text-white hover:bg-cyan-800">Crear caja</a>{% endif %}
-        {% if lote.historial_empaque_incompleto %}<p role="alert" class="mt-5 text-sm text-slate-600">Hay cajas sin peso registrado.</p>{% elif lote.disponible_empacar == 0 %}<p class="mt-5 text-sm text-cyan-800">Todo el producto fue empacado.</p>{% endif %}
+        {% if lote.terminado_en %}<p class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">Terminado el {{ lote.terminado_en|date:"d/m/Y H:i" }} por {{ lote.terminado_por.get_full_name|default:lote.terminado_por.username }} · {{ lote.merma_cierre_kg|num }} kg a merma.</p>
+        {% elif lote.historial_empaque_incompleto %}<p role="alert" class="mt-5 text-sm text-slate-600">Hay cajas sin peso registrado.</p>{% elif lote.disponible_empacar == 0 %}<p class="mt-5 text-sm text-cyan-800">Todo el producto fue empacado.</p>{% endif %}
+        {% if puede_terminar %}<form method="post" action="{% url 'producto_terminado:terminar_lote' lote.pk %}" data-loading-text="Terminando…" class="mt-5 inline-block">{% csrf_token %}<button type="submit" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Dar por terminado · {{ lote.disponible_empacar|num }} kg a merma</button></form>{% endif %}
         {% if puede_agregar_producto %}<a href="{% url 'producto_terminado:agregar_producto_lote' lote.pk %}" class="mt-5 inline-flex rounded-lg border border-slate-300 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">Agregar producto</a>
         {% elif not lote.ruta_proceso_id %}<p class="mt-5 text-sm text-slate-600">Lote sin ruta registrada.</p>{% endif %}
     </section>

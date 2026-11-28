@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}Restos por cerrar | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Restos por cerrar{% endblock %}
+{% block breadcrumbs %}{% url 'usuarios:inicio' as destino %}{% include 'components/_breadcrumbs.html' with grupo='Producción' pagina='Inicio' actual='Restos por cerrar' %}{% endblock %}
+{% block content %}{% language "es" %}
+<div class="w-full min-w-0 max-w-5xl space-y-6">
+    <header><h1 class="text-2xl font-semibold md:text-3xl">Restos de menos de 5 kg</h1></header>
+    <section aria-labelledby="restos-productos" class="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <h2 id="restos-productos" class="border-b border-slate-100 px-5 py-4 text-lg font-semibold sm:px-6">Productos con kilos sin asignar <span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 align-middle text-sm font-medium text-slate-700">{{ productos|length }}</span></h2>
+        <ul class="divide-y divide-slate-100">
+        {% for partida in productos %}
+            <li class="flex min-w-0 flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div class="min-w-0">
+                    <p class="font-semibold"><a href="{% url 'trazabilidad:detalle_partida' partida.pk %}" class="hover:underline">{{ partida.especie_nombre }}</a> <span class="font-normal text-slate-600">· {{ partida.disponible_lote_kg|num }} kg sin asignar</span></p>
+                    <p class="mt-1 text-sm text-slate-600">{% procedencia partida %}</p>
+                </div>
+                <form method="post" action="{% url 'trazabilidad:terminar_partida' partida.pk %}" data-loading-text="Terminando…" class="shrink-0">{% csrf_token %}<input type="hidden" name="volver" value="{{ request.get_full_path }}">
+                    <button type="submit" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Dar por terminado<span class="sr-only"> {{ partida.nombre_corto }}</span></button>
+                </form>
+            </li>
+        {% empty %}<li class="px-5 py-4 text-sm text-slate-600 sm:px-6">Sin restos.</li>{% endfor %}
+        </ul>
+    </section>
+    <section aria-labelledby="restos-lotes" class="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <h2 id="restos-lotes" class="border-b border-slate-100 px-5 py-4 text-lg font-semibold sm:px-6">Lotes con kilos sin encajar <span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 align-middle text-sm font-medium text-slate-700">{{ lotes|length }}</span></h2>
+        <ul class="divide-y divide-slate-100">
+        {% for lote in lotes %}
+            <li class="flex min-w-0 flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div class="min-w-0">
+                    <p class="font-semibold"><a href="{% url 'producto_terminado:detalle_lote' lote.pk %}" class="hover:underline">{{ lote.especie.nombre }} · lote {{ lote.codigo_visible }}</a></p>
+                    <p class="mt-1 text-sm text-slate-600">{{ lote.disponible_empacar|num }} kg sin encajar · {{ lote.numero_cajas }} caja{{ lote.numero_cajas|pluralize }}</p>
+                </div>
+                <form method="post" action="{% url 'producto_terminado:terminar_lote' lote.pk %}" data-loading-text="Terminando…" class="shrink-0">{% csrf_token %}<input type="hidden" name="volver" value="{{ request.get_full_path }}">
+                    <button type="submit" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Dar por terminado<span class="sr-only"> lote {{ lote.codigo_visible }}</span></button>
+                </form>
+            </li>
+        {% empty %}<li class="px-5 py-4 text-sm text-slate-600 sm:px-6">Sin restos.</li>{% endfor %}
+        </ul>
+    </section>
+</div>
+{% endlanguage %}{% endblock %}

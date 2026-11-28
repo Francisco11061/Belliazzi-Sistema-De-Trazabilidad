@@ -15,7 +15,7 @@
     </header>
     <section aria-label="Estado actual" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div class="grid gap-5 sm:grid-cols-3">
-            <div><p class="text-sm text-slate-600">Situación</p><p class="mt-1">{% include "components/_badge.html" with estado=partida.situacion etiqueta=partida.situacion_visible only %}</p>{% if partida.estado != "ACTIVA" %}<p class="mt-2 text-sm text-slate-600">{% include "components/_badge.html" with estado=partida.estado etiqueta=partida.get_estado_display only %}</p>{% endif %}</div>
+            <div><p class="text-sm text-slate-600">Situación</p><p class="mt-1">{% include "components/_badge.html" with estado=partida.situacion etiqueta=partida.situacion_visible only %}</p>{% if partida.estado != "ACTIVA" and partida.estado != "CERRADA" %}<p class="mt-2 text-sm text-slate-600">{% include "components/_badge.html" with estado=partida.estado etiqueta=partida.get_estado_display only %}</p>{% endif %}</div>
             <div><p class="text-sm text-slate-600">Dónde está</p><p class="mt-1 font-medium">{{ partida.ubicacion|default:"Fuera de cámaras y túnel" }}</p></div>
             <div><p class="text-sm text-slate-600">Ruta de proceso</p><p class="mt-1 font-medium">{{ partida.ruta_proceso.nombre|default:"Sin ruta asignada" }}</p></div>
         </div>

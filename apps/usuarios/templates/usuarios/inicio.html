@@ -61,8 +61,8 @@
             </li>
         {% endfor %}
         </ul>
-        {% if grupo.saldos %}<p class="border-t border-slate-100 px-5 py-3 text-sm text-slate-600 sm:px-6">Más {{ grupo.saldos }} resto{{ grupo.saldos|pluralize }} de menos de 5 kg.</p>{% endif %}
     </section>
     {% endfor %}
+    {% if restos %}<a href="{% url 'trazabilidad:restos' %}" class="flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 sm:px-6"><span>{{ restos }} resto{{ restos|pluralize }} de menos de 5 kg por cerrar</span><span aria-hidden="true" class="text-slate-400">›</span></a>{% endif %}
 </div>
 {% endlanguage %}{% endblock %}
