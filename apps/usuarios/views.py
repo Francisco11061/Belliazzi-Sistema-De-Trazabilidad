@@ -100,7 +100,7 @@ def crear_usuario(request):
             except ValidationError as error:
                 _error_formulario(form, error)
             else:
-                messages.success(request, "Usuario creado correctamente. Debe cambiar su contraseña al iniciar sesión.")
+                messages.success(request, "Usuario creado. Deberá cambiar la contraseña al entrar.")
                 return redirect("usuarios:detalle_usuario", pk=usuario.pk)
         return render(request, "usuarios/gestion/formulario.html", {
             "form": form, "titulo": "Crear usuario", "boton": "Crear usuario",
@@ -120,10 +120,10 @@ def editar_usuario(request, pk, accion):
     with override("es"):
         if accion == "rol":
             form = RolUsuarioForm(request.POST or None, initial={"rol": usuario.rol_id})
-            titulo, exito = "Editar rol", "Rol actualizado correctamente."
+            titulo, exito = "Editar rol", "Rol actualizado."
         else:
             form = ContrasenaTemporalForm(request.POST or None, usuario=usuario)
-            titulo, exito = "Restablecer contraseña", "Contraseña restablecida correctamente."
+            titulo, exito = "Restablecer contraseña", "Contraseña restablecida."
         if request.method == "POST" and form.is_valid():
             try:
                 if accion == "rol":
@@ -154,7 +154,7 @@ def estado_usuario(request, pk, activo):
     except ValidationError as error:
         messages.error(request, " ".join(error.messages))
     else:
-        messages.success(request, "Usuario reactivado correctamente." if activo else "Usuario desactivado correctamente.")
+        messages.success(request, "Usuario reactivado." if activo else "Usuario desactivado.")
     return redirect("usuarios:detalle_usuario", pk=pk)
 
 
@@ -173,7 +173,7 @@ def cambiar_contrasena(request):
                 _error_formulario(form, error)
             else:
                 update_session_auth_hash(request, usuario)
-                messages.success(request, "Contraseña actualizada correctamente.")
+                messages.success(request, "Contraseña actualizada.")
                 return redirect("usuarios:inicio")
         return render(request, "usuarios/gestion/formulario.html", {
             "form": form, "titulo": "Cambiar mi contraseña", "boton": "Cambiar contraseña",

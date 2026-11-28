@@ -23,7 +23,7 @@
     {% if puede_asignar_ruta %}
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-lg font-semibold">Seleccionar ruta</h2>
-        <p class="mt-2 text-sm leading-6 text-slate-600">Selecciona una ruta antes de comenzar las etapas.</p>
+        <p class="mt-2 text-sm leading-6 text-slate-600">Elige una ruta para empezar.</p>
         <form method="post" data-loading-text="Guardando…" class="mt-5 space-y-5 [&_select]:w-full [&_select]:min-w-0 [&_select]:max-w-full [&_select]:rounded-lg [&_select]:border-slate-300 [&_select:focus]:border-cyan-600 [&_select:focus]:ring-cyan-600">
             {% csrf_token %}{% resumen_errores %}
             {% if form.non_field_errors %}<div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
@@ -61,7 +61,7 @@
         </ol>
         {% if puede_enviar_tunel %}
         <div class="mt-6 rounded-xl border border-cyan-100 bg-cyan-50 p-4">
-            <p class="text-sm leading-6 text-cyan-800">Procesamiento completo; listo para ingresar al túnel.</p>
+            <p class="text-sm leading-6 text-cyan-800">Listo para el túnel.</p>
             <a href="{% url 'trazabilidad:enviar_partida_tunel' partida.pk %}" class="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-center text-sm font-semibold text-white hover:bg-cyan-800 sm:w-auto">Enviar a túnel de congelado</a>
         </div>
         {% endif %}

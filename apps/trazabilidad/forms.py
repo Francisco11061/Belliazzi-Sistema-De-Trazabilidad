@@ -387,7 +387,7 @@ class CrearLoteForm(CantidadLoteForm):
     ))
     fecha_vencimiento = forms.DateField(required=False, label="Fecha de vencimiento", widget=forms.DateInput(
         format="%Y-%m-%d", attrs={"type": "date"},
-    ), help_text="Ingresa la fecha cuando esté definida. No se calcula automáticamente.")
+    ))
     observaciones = forms.CharField(required=False, label="Observaciones", widget=forms.Textarea(attrs={"rows": 3}))
     field_order = ["fecha_elaboracion", "fecha_vencimiento", "cantidad_kg", "observaciones"]
 
@@ -422,7 +422,6 @@ class CajaForm(forms.Form):
     peso_neto_kg = forms.DecimalField(
         label="Peso neto real de la caja (kg)", max_digits=10, decimal_places=2,
         min_value=Decimal("0.01"), max_value=PESO_MAXIMO_CAJA_KG,
-        help_text="Ingrese el peso obtenido al pesar la caja terminada.",
         widget=forms.NumberInput(attrs={"step": "0.01"}),
     )
 

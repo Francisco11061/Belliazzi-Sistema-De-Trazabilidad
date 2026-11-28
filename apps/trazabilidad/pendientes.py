@@ -18,15 +18,15 @@ SALDO_MINIMO_KG = Decimal("5")
 
 # Orden de urgencia: primero lo que se echa a perder o bloquea el resto.
 GRUPOS = (
-    ("revision", "Revisar antes de seguir", "Los registros no cuadran; revisa qué falta antes de operar."),
-    ("EN_CONGELACION", "En el túnel", "Sácalos cuando terminen de congelarse."),
-    ("EN_PROCESO", "En proceso", "Registra el inicio y término de cada etapa."),
-    ("PENDIENTE_PESAJE", "Falta el peso final", "Ya salieron del túnel: pésalos para poder asignarlos a lote."),
-    ("empaque", "Listos para asignar a lote", "Tienen peso final y kilos sin asignar."),
-    ("encajar", "Lotes con producto por encajar", "Quedan kilos del lote sin caja."),
-    ("guardar", "Cajas por guardar en cámara", "Están registradas pero aún no entran a almacenamiento."),
-    ("DISPONIBLE", "Esperando proceso", "Llegaron y todavía no empiezan."),
-    ("EN_MANTENCION", "En cámara de mantención", "Guardados a la espera de proceso."),
+    ("revision", "Revisar antes de seguir"),
+    ("EN_CONGELACION", "En el túnel"),
+    ("EN_PROCESO", "En proceso"),
+    ("PENDIENTE_PESAJE", "Falta el peso final"),
+    ("empaque", "Listos para asignar a lote"),
+    ("encajar", "Lotes con producto por encajar"),
+    ("guardar", "Cajas por guardar en cámara"),
+    ("DISPONIBLE", "Esperando proceso"),
+    ("EN_MANTENCION", "En cámara de mantención"),
 )
 
 
@@ -90,7 +90,7 @@ def pendientes_de_planta(usuario, ahora=None):
     gestion = tiene_rol(usuario, "JEFE", "ENCARGADA")
     umbrales = {nombre: umbral for nombre, umbral in UnidadFrio.objects.filter(
         umbral_alerta_horas__isnull=False).values_list("nombre", "umbral_alerta_horas")}
-    items = {clave: [] for clave, *_ in GRUPOS}
+    items = {clave: [] for clave, _ in GRUPOS}
     saldos = {"empaque": 0, "encajar": 0}
 
     # Filtrar por estado y no por categoría en SQL: es mucho más rápido con estas anotaciones.
@@ -122,7 +122,7 @@ def pendientes_de_planta(usuario, ahora=None):
     items["guardar"] = list(pendientes)
 
     grupos = []
-    for clave, titulo, ayuda in GRUPOS:
+    for clave, titulo in GRUPOS:
         lista = items[clave]
         if not lista:
             continue  # Un grupo solo con saldos pequeños no es pendiente del día.
@@ -138,7 +138,7 @@ def pendientes_de_planta(usuario, ahora=None):
         if saldo and not enlace_todos:
             enlace_todos = (reverse("producto_terminado:seleccionar_lote_caja") if clave == "encajar"
                             else _enlace_lista(clave))
-        grupos.append(dict(clave=clave, titulo=titulo, ayuda=ayuda, total=len(lista), saldos=saldo,
+        grupos.append(dict(clave=clave, titulo=titulo, total=len(lista), saldos=saldo,
                            items=lista[:MAXIMO_POR_GRUPO], enlace_todos=enlace_todos,
                            urgente=clave in ("revision", "EN_CONGELACION") or any(
                                getattr(item, "alerta", False) for item in lista)))

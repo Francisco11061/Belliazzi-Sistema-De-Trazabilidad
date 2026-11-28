@@ -133,7 +133,7 @@ class PostprocesoTests(DatosPostproceso, TestCase):
         self.pendiente("190")
         self.client.force_login(self.usuario)
         respuesta = self.client.post(self.url("registrar_peso_postproceso"), {"peso_kg": "193"}, follow=True)
-        self.assertContains(respuesta, "Peso postproceso registrado correctamente.")
+        self.assertContains(respuesta, "Peso final registrado.")
         self.assertContains(respuesta, ADVERTENCIA_PESO_SUPERIOR)
         self.assertContains(respuesta, "-3 kg")
         self.assertContains(respuesta, "101,58 %")

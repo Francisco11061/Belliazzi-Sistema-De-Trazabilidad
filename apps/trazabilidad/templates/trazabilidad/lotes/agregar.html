@@ -11,7 +11,6 @@
         <p class="mt-4 text-sm">Total asignado: <strong>{{ lote.total_asignado|num }} kg</strong></p>
         {% if form.non_field_errors %}<div role="alert" class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ form.non_field_errors }}</div>{% endif %}
         {% if hay_seguimientos %}
-        <p class="mt-5 text-sm leading-6 text-slate-600">Elige producto de la misma especie, ruta y origen.</p>
         <form method="post" data-loading-text="Guardando…" class="mt-5 space-y-5">
             {% csrf_token %}{% resumen_errores %}{% include "trazabilidad/lotes/_formulario.html" %}
             <div class="flex flex-col gap-3 sm:flex-row">

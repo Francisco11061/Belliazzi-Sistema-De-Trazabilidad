@@ -102,7 +102,7 @@ class HistorialProductoTests(DatosDespacho, TestCase):
         self.agregar(self.lote, partida=otra, cantidad='20', usuario=self.jefe)
         respuesta = self.client.get(self.qr())
         self.assertContains(respuesta, aviso)
-        self.assertContains(respuesta, 'No se registró cuántos kilos de cada proceso')
+        self.assertContains(respuesta, 'Esta caja pertenece a un lote que junta producto de más de un proceso.')
         self.assertEqual({a.partida_id for a in respuesta.context['aportes']}, {self.partida.pk, otra.pk})
         self.assertNotContains(self.client.get(reverse('trazabilidad:ficha_integral', args=['lote',self.lote.pk])), aviso)
 

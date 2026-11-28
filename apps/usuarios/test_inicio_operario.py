@@ -17,7 +17,7 @@ class InicioOperarioTests(TestCase):
         self.client.force_login(self.operario)
         response = self.client.get(reverse("usuarios:inicio"))
         self.assertContains(response, "Hola, Francisco")
-        self.assertContains(response, "Nada pendiente por ahora")
+        self.assertContains(response, "Nada pendiente en planta")
         for destino in ("producto_terminado:seleccionar_lote_caja", "trazabilidad:lista_partidas"):
             self.assertContains(response, f'href="{reverse(destino)}"')
             self.assertEqual(self.client.get(reverse(destino)).status_code, 200)

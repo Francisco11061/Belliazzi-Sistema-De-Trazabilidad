@@ -323,7 +323,7 @@ class CajasTests(DatosCajas, TestCase):
         self.client.force_login(self.jefe)
         self.assertContains(self.client.get(self.url_lote("lista_lotes")), "Sin ruta documentada")
         respuesta = self.client.get(self.url_lote("detalle_lote", self.lote.pk))
-        self.assertContains(respuesta, "Lote histórico sin ruta documentada")
+        self.assertContains(respuesta, "Lote sin ruta registrada")
         self.assertNotContains(respuesta, ">Crear caja</a>")
 
     def test_caja_historica_sin_composicion_se_conserva_y_bloquea_empaque(self):

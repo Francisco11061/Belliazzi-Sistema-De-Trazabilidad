@@ -103,7 +103,7 @@ class GestionUsuariosTests(TestCase):
     def test_crear_desde_ui_ignora_flags_y_no_expone_clave(self):
         response = self.client.post(self.url("crear_usuario"), self.datos(is_staff="on", is_superuser="on"), follow=True)
         usuario = Usuario.objects.get(username="operaria02")
-        self.assertContains(response, "Usuario creado correctamente. Debe cambiar su contraseña al iniciar sesión.")
+        self.assertContains(response, "Usuario creado. Deberá cambiar la contraseña al entrar.")
         self.assertNotContains(response, CLAVE)
         self.assertNotContains(response, usuario.password)
         self.assertTrue(usuario.check_password(CLAVE))
@@ -177,7 +177,7 @@ class GestionUsuariosTests(TestCase):
         self.client.force_login(usuario)
         response = self.client.post(self.url("cambiar_contrasena"),
                                    dict(old_password=CLAVE, new_password1=NUEVA, new_password2=NUEVA), follow=True)
-        self.assertContains(response, "Contraseña actualizada correctamente.")
+        self.assertContains(response, "Contraseña actualizada.")
         usuario.refresh_from_db()
         self.assertFalse(usuario.cambio_contrasena_pendiente)
         self.assertTrue(usuario.check_password(NUEVA))
@@ -197,7 +197,7 @@ class GestionUsuariosTests(TestCase):
 
     def test_cambio_rol_y_auditoria(self):
         response = self.client.post(self.url("editar_rol", self.operaria), {"rol": self.encargada_rol.pk}, follow=True)
-        self.assertContains(response, "Rol actualizado correctamente.")
+        self.assertContains(response, "Rol actualizado.")
         self.operaria.refresh_from_db()
         self.assertEqual(self.operaria.rol, self.encargada_rol)
         evento = self.operaria.eventos.get()
@@ -227,7 +227,7 @@ class GestionUsuariosTests(TestCase):
         otro = Client()
         otro.force_login(self.operaria)
         response = self.client.post(self.url("desactivar_usuario", self.operaria), follow=True)
-        self.assertContains(response, "Usuario desactivado correctamente.")
+        self.assertContains(response, "Usuario desactivado.")
         self.operaria.refresh_from_db()
         self.assertFalse(self.operaria.is_active)
         self.assertIsNone(authenticate(request=RequestFactory().post("/login/"), username=self.operaria.username, password=CLAVE))
@@ -282,7 +282,7 @@ class GestionUsuariosTests(TestCase):
         otro.force_login(self.operaria)
         response = self.client.post(self.url("reset_contrasena", self.operaria),
                                     dict(password1=NUEVA, password2=NUEVA), follow=True)
-        self.assertContains(response, "Contraseña restablecida correctamente.")
+        self.assertContains(response, "Contraseña restablecida.")
         self.assertNotContains(response, NUEVA)
         self.operaria.refresh_from_db()
         self.assertFalse(self.operaria.check_password(CLAVE))

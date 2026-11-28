@@ -1,15 +1,15 @@
 {% extends "base.html" %}{% load formularios %}
 {% load i18n %}
-{% block title %}Tiempo recomendado en frío | Pesquera Belliazzi{% endblock %}
-{% block page_title %}Dashboard / Tiempo recomendado en frío{% endblock %}
+{% block title %}Tiempo recomendado | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Dashboard / Tiempo recomendado{% endblock %}
 {% block content %}{% language "es" %}
 <div class="min-w-0 w-full space-y-6">
-    <header><h1 class="mt-4 text-2xl font-semibold md:text-3xl">Tiempo recomendado en frío</h1><p class="mt-3 text-sm leading-6 text-slate-600">Cuánto puede estar el producto en cada túnel o cámara antes de que el sistema avise. Deja el campo vacío y guarda para quitar el aviso.</p><p class="mt-2 text-sm text-slate-600">Las unidades inactivas siguen alertando si tienen producto dentro.</p></header>
+    <header><h1 class="mt-4 text-2xl font-semibold md:text-3xl">Tiempo recomendado</h1></header>
     <div class="grid min-w-0 gap-4 md:grid-cols-2">{% for form in formularios %}<form method="post" data-loading-text="Guardando…" class="min-w-0 space-y-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
         {% csrf_token %}{% resumen_errores %}<input type="hidden" name="unidad" value="{{ form.instance.pk }}">
         <div><h2 class="font-semibold">{{ form.instance.nombre }}</h2><p class="mt-1 text-xs text-slate-600">{{ form.instance.get_tipo_display }} · {{ form.instance.activo|yesno:'Activa,Inactiva' }}</p></div>
         {% if form.non_field_errors %}<div role="alert" class="text-sm text-red-700">{{ form.non_field_errors }}</div>{% endif %}
-        <div><label for="{{ form.umbral_alerta_horas.id_for_label }}" class="mb-2 block text-sm font-medium">Tiempo recomendado</label><div class="flex min-w-0 gap-2 [&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:rounded-lg [&_input]:border [&_input]:border-slate-300 [&_input]:px-3 [&_input]:py-2.5 [&_select]:rounded-lg [&_select]:border [&_select]:border-slate-300 [&_select]:bg-white [&_select]:px-3 [&_select]:py-2.5"><div class="min-w-0 flex-1">{{ form.umbral_alerta_horas }}</div><label for="{{ form.unidad.id_for_label }}" class="sr-only">Unidad del tiempo recomendado</label>{{ form.unidad }}</div><p id="{{ form.umbral_alerta_horas.auto_id }}_helptext" class="mt-2 text-xs text-slate-600">Vacío = sin aviso.</p>{% if form.umbral_alerta_horas.errors %}<div id="{{ form.umbral_alerta_horas.auto_id }}_error" role="alert" class="mt-2 text-sm text-red-700">{{ form.umbral_alerta_horas.errors }}</div>{% endif %}</div>
+        <div><label for="{{ form.umbral_alerta_horas.id_for_label }}" class="mb-2 block text-sm font-medium">Tiempo recomendado</label><div class="flex min-w-0 gap-2 [&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:rounded-lg [&_input]:border [&_input]:border-slate-300 [&_input]:px-3 [&_input]:py-2.5 [&_select]:rounded-lg [&_select]:border [&_select]:border-slate-300 [&_select]:bg-white [&_select]:px-3 [&_select]:py-2.5"><div class="min-w-0 flex-1">{{ form.umbral_alerta_horas }}</div><label for="{{ form.unidad.id_for_label }}" class="sr-only">Unidad del tiempo recomendado</label>{{ form.unidad }}</div>{% if form.umbral_alerta_horas.errors %}<div id="{{ form.umbral_alerta_horas.auto_id }}_error" role="alert" class="mt-2 text-sm text-red-700">{{ form.umbral_alerta_horas.errors }}</div>{% endif %}</div>
         <button type="submit" class="w-full rounded-lg bg-cyan-700 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-800 sm:w-auto">Guardar</button>
     </form>{% empty %}<p class="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">No hay unidades de frío registradas.</p>{% endfor %}</div>
 </div>

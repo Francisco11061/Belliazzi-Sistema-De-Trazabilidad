@@ -163,7 +163,7 @@ class DashboardPermisosTests(DatosDashboard, TestCase):
         response = self.client.get(self.url())
         for mensaje in ("Sin despachos en este período.", "No hay cajas almacenadas.",
                         "Sin alertas de frío.", "Sin actividad reciente.",
-                        "No hay umbrales de frío configurados."):
+                        "Sin tiempos recomendados configurados."):
             self.assertContains(response, mensaje)
         self.assertNotContains(response, '<canvas')
 

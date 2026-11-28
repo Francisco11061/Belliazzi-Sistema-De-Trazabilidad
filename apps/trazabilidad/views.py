@@ -160,7 +160,7 @@ def nueva_recepcion(request):
             except ValidationError as error:
                 form.add_error(None, error.messages)
             else:
-                messages.success(request, "Recepción registrada correctamente.")
+                messages.success(request, "Recepción registrada.")
                 return redirect("trazabilidad:detalle_recepcion", pk=recepcion.pk)
     else:
         form = RecepcionForm(initial={"fecha_hora_recepcion": timezone.localtime()})
@@ -261,7 +261,7 @@ def corregir_recepcion(request, pk):
             except ValidationError as error:
                 form.add_error(None, error.messages)
             else:
-                messages.success(request, "Recepción corregida correctamente.")
+                messages.success(request, "Recepción corregida.")
                 return redirect("trazabilidad:detalle_recepcion", pk=recepcion.pk)
     return render(request, "trazabilidad/recepciones/corregir.html", {
         "recepcion": recepcion, "form": form, "origen": origen, "especies": especies,
@@ -381,11 +381,11 @@ def operar_partida(request, pk, operacion):
     partida = presentar_partida(get_object_or_404(partidas_con_situacion(), pk=pk))
     opciones = {
         "mantencion": ("Guardar en cámara", "DISPONIBLE", EnviarMantencionForm, enviar_a_mantencion,
-                       "Producto enviado a cámara de mantención correctamente."),
+                       "Producto guardado en cámara."),
         "retirar": ("Sacar de la cámara", "EN_MANTENCION", CantidadPartidaForm, retirar_de_mantencion,
-                    "Producto retirado de la cámara de mantención correctamente."),
+                    "Producto fuera de la cámara."),
         "procesar": ("Enviar a proceso", "DISPONIBLE", IniciarProcesamientoForm, iniciar_procesamiento,
-                     "Procesamiento iniciado correctamente."),
+                     "Proceso iniciado."),
     }
     titulo, situacion, clase, servicio, mensaje = opciones[operacion]
     form = clase(request.POST if request.method == "POST" else None, partida=partida)
@@ -423,7 +423,7 @@ def gestionar_procesamiento(request, pk):
         except ValidationError as error:
             form.add_error(None, error.messages)
         else:
-            messages.success(request, "Ruta de procesamiento asignada correctamente.")
+            messages.success(request, "Ruta asignada.")
             return redirect("trazabilidad:gestionar_procesamiento", pk=pk)
     return render(request, "trazabilidad/partidas/procesamiento.html", {
         "partida": partida, "form": form, **resumen,
@@ -443,9 +443,9 @@ def operar_etapa(request, pk, etapa_pk, accion):
     else:
         actual = presentar_partida(partidas_con_situacion().get(pk=pk))
         if accion == "finalizar" and resumen_procesamiento(actual)["ruta_completa"]:
-            messages.success(request, "Procesamiento completado. El producto está listo para ingresar al túnel de congelado.")
+            messages.success(request, "Proceso terminado. Listo para el túnel.")
         else:
-            messages.success(request, "Etapa iniciada correctamente." if accion == "iniciar" else "Etapa finalizada correctamente.")
+            messages.success(request, "Etapa iniciada." if accion == "iniciar" else "Etapa finalizada.")
     return redirect("trazabilidad:gestionar_procesamiento", pk=pk)
 
 
@@ -460,7 +460,7 @@ def enviar_partida_tunel(request, pk):
         except ValidationError as error:
             form.add_error(None, error.messages)
         else:
-            messages.success(request, "Producto enviado al túnel de congelado correctamente.")
+            messages.success(request, "Producto en el túnel.")
             return redirect("trazabilidad:detalle_partida", pk=pk)
     return render(request, "trazabilidad/partidas/tunel.html", {
         "partida": partida, "form": form,
@@ -492,7 +492,7 @@ def _registrar_medicion(request, pk, *, es_pesaje):
         except ValidationError as error:
             form.add_error(None, error.messages)
         else:
-            messages.success(request, "Peso postproceso registrado correctamente." if es_pesaje else "Pérdida o merma registrada correctamente.")
+            messages.success(request, "Peso final registrado." if es_pesaje else "Merma registrada.")
             if es_pesaje and registro.peso_kg > registro.partida.cantidad_inicial_kg:
                 messages.warning(request, ADVERTENCIA_PESO_SUPERIOR)
             return redirect("trazabilidad:detalle_partida", pk=pk)
@@ -566,7 +566,7 @@ def crear_lote(request, pk):
         except ValidationError as error:
             form.add_error(None, error.messages)
         else:
-            messages.success(request, "Lote de producción creado y producto asignado correctamente.")
+            messages.success(request, "Lote creado.")
             return redirect("producto_terminado:detalle_lote", pk=lote.pk)
     return render(request, "trazabilidad/lotes/crear.html", {
         "partida": partida, "form": form, "compatible": puede_asignar_lote(partida),
@@ -584,7 +584,7 @@ def agregar_producto_lote(request, pk):
         except ValidationError as error:
             form.add_error(None, error.messages)
         else:
-            messages.success(request, "Producto agregado al lote correctamente.")
+            messages.success(request, "Producto agregado al lote.")
             return redirect("producto_terminado:detalle_lote", pk=lote.pk)
     return render(request, "trazabilidad/lotes/agregar.html", {
         "lote": lote, "form": form, "hay_seguimientos": form.fields["partida"].queryset.exists(),
@@ -607,7 +607,7 @@ def crear_caja(request, pk):
             errores = error.messages
             lote = lotes_con_empaque().get(pk=lote.pk)
         else:
-            messages.success(request, "Caja registrada correctamente.")
+            messages.success(request, "Caja registrada.")
             return redirect("producto_terminado:detalle_caja", pk=caja.pk)
     return render(request, "trazabilidad/cajas/crear.html", {
         "lote": lote, "composiciones": composiciones, "errores": errores,

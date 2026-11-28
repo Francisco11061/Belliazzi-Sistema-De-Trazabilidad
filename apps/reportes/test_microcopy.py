@@ -13,19 +13,18 @@ class MicrocopyAvisosTests(DatosQR, TestCase):
 
     def test_reportes_conserva_aviso_oficial_y_remite_al_excel(self):
         respuesta = self.client.get(reverse('reportes:sernapesca'))
-        self.assertContains(respuesta, 'Reporte de apoyo. No reemplaza las declaraciones oficiales ante Sernapesca.')
-        self.assertContains(respuesta, 'Los criterios de lectura están en la hoja Resumen, al final del Excel.')
+        self.assertContains(respuesta, 'No reemplaza la declaración oficial en Sernapesca.')
+        self.assertNotContains(respuesta, 'Los criterios de lectura están en la hoja Resumen')
         self.assertNotContains(respuesta, 'Cómo interpretar los pesos y datos históricos')
 
     def test_baja_correccion_y_desactivacion_conservan_consecuencias(self):
         baja = self.client.get(reverse('inventario:crear_baja',args=[self.registro.pk]))
-        self.assertContains(baja, 'La baja retira la caja completa de forma definitiva. Se conserva su trazabilidad.')
+        self.assertContains(baja, 'La baja es definitiva.')
         self.assertContains(baja, 'role="alert"')
         correccion = self.client.get(reverse('trazabilidad:corregir_recepcion',args=[self.partida.detalle_recepcion.recepcion_id]))
-        self.assertContains(correccion, 'Los cambios quedarán registrados en el historial.')
-        self.assertContains(correccion, 'Las especies y sus pesos están bloqueados para preservar la trazabilidad.')
+        self.assertContains(correccion, 'Las especies y sus pesos no se pueden cambiar.')
         usuario = self.client.get(reverse('usuarios:detalle_usuario',args=[self.usuario.pk]))
-        self.assertContains(usuario, 'La cuenta dejará de acceder al sistema. Su historial se conserva.')
+        self.assertContains(usuario, 'No podrá entrar al sistema. Su historial se mantiene.')
 
     def test_advertencia_postproceso_permanece_completa_y_accesible(self):
         html=render_to_string('trazabilidad/partidas/_pesajes_mermas.html',{

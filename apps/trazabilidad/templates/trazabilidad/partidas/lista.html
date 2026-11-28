@@ -32,7 +32,7 @@
             <button type="submit" class="mt-3 min-h-11 rounded-lg border border-cyan-700 px-4 py-2 text-sm font-semibold text-cyan-700">Aplicar filtros</button>
         </details>
     </form>
-    <p class="text-sm text-slate-600">{{ page_obj.paginator.count }} producto{{ page_obj.paginator.count|pluralize }} · Primero los que llevan más tiempo esperando.</p>
+    <p class="text-sm text-slate-600">{{ page_obj.paginator.count }} producto{{ page_obj.paginator.count|pluralize }}</p>
     {% if page_obj %}
         {% if request.GET.vista == 'tarjetas' %}{% include "trazabilidad/partidas/_tarjetas.html" %}{% elif request.GET.vista == 'tabla' %}{% include "trazabilidad/partidas/_tabla.html" %}{% else %}<div class="md:hidden">{% include "trazabilidad/partidas/_tarjetas.html" %}</div><div class="hidden md:block">{% include "trazabilidad/partidas/_tabla.html" %}</div>{% endif %}
     {% else %}

@@ -45,7 +45,7 @@ class PendientesDePlantaTests(DatosProcesamiento, TestCase):
 
         self.client.force_login(self.encargada)
         respuesta = self.client.get(reverse("usuarios:inicio"))
-        self.assertContains(respuesta, "Hay 1 pendiente en planta")
+        self.assertContains(respuesta, "1 pendiente en planta")
         self.assertContains(respuesta, "En el túnel")
         self.assertContains(respuesta, "Sacar del túnel")
         self.assertContains(respuesta, f"{self.partida.proveedor} · <time")

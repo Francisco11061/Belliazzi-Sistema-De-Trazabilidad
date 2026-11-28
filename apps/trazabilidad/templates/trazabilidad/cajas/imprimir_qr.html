@@ -23,7 +23,6 @@
                 {% if caja.lote_produccion.fecha_vencimiento %}<div><dt>Vencimiento</dt><dd>{{ caja.lote_produccion.fecha_vencimiento|date:"d/m/Y" }}</dd></div>{% endif %}
             </dl>
         </article>
-        <p class="no-print ayuda">Si el diálogo de impresión no se abrió, usa el botón Imprimir.</p>
     </main>
     <script src="{% static 'trazabilidad/etiqueta.js' %}"></script>
 </body>

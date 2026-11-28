@@ -161,7 +161,7 @@ class LotesV2Tests(DatosLotes, TestCase):
         self.client.force_login(self.jefe)
         respuesta = self.client.get(self.url_lote("detalle_lote", lote.pk))
         self.assertContains(respuesta, "TEST-MER-280926-A")
-        self.assertContains(respuesta, "Revisa la ruta y el origen antes de agregar producto.")
+        self.assertNotContains(respuesta, "Agregar producto</a>")
         self.assertNotContains(respuesta, ">Agregar producto</a>")
         self.assertEqual(lote.consumos.count(), 2)
 
@@ -179,7 +179,7 @@ class LotesV2Tests(DatosLotes, TestCase):
         self.assertEqual(respuesta.context["form"]["cantidad_kg"].value(), Decimal("130"))
         self.assertNotContains(respuesta, 'name="codigo"')
         self.assertContains(respuesta, "38343")
-        self.assertContains(respuesta, "Se generará automáticamente")
+        self.assertContains(respuesta, "Automático.")
         datos = self.datos_form(cantidad="100") | {"fecha_elaboracion": "2026-09-28", "codigo": "MANIPULADO"}
         self.assertEqual(self.client.post(url, datos).status_code, 302)
         self.assertEqual(LoteProduccion.objects.get().codigo_lote, "38343010128092026")

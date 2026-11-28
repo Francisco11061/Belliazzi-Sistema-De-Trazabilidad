@@ -129,7 +129,7 @@ def crear_despacho(request):
         except ValidationError as error:
             form.add_error(None, error)
         else:
-            messages.success(request, "Despacho registrado correctamente.")
+            messages.success(request, "Despacho registrado.")
             return redirect("inventario:detalle_despacho", pk=despacho.pk)
     seleccionadas = set(request.POST.getlist("cajas"))
     disponibles = list(form.fields["cajas"].queryset)
@@ -160,7 +160,7 @@ def crear_baja(request, pk):
         except ValidationError as error:
             form.add_error(None, error)
         else:
-            messages.success(request, "Baja registrada correctamente.")
+            messages.success(request, "Baja registrada.")
             return redirect("producto_terminado:detalle_caja", pk=caja.pk)
     return render(request, "inventario/bajas/crear.html", {"caja":caja, "form":form})
 

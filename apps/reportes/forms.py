@@ -35,7 +35,8 @@ class UmbralFrioForm(forms.ModelForm):
         model = UnidadFrio
         fields = ["umbral_alerta_horas"]
         labels = {"umbral_alerta_horas": "Tiempo recomendado"}
-        widgets = {"umbral_alerta_horas": forms.NumberInput(attrs={"step": "0.01", "min": "0.01"})}
+        help_texts = {"umbral_alerta_horas": ""}
+        widgets = {"umbral_alerta_horas": forms.NumberInput(attrs={"step": "0.01", "min": "0.01", "placeholder": "Sin aviso"})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
