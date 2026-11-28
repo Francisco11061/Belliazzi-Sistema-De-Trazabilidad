@@ -3,14 +3,12 @@ from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 from apps.usuarios.permisos import jefe_o_encargada_requerido, personal_operativo_requerido, tiene_rol
-from .models import Especie, RutaProceso, TipoProceso, SolicitudRuta
-from .forms_rutas import RutaGestionForm, OperacionGestionForm, SecuenciaFormSet, SeleccionOperacionesForm, ResolverSolicitudForm
-from .services_rutas import (guardar_ruta, guardar_operacion, estado_ruta, nombre_para_secuencia, rutas_equivalentes,
-    solicitar_ruta, resolver_solicitud)
+from .models import Especie, RutaProceso, TipoProceso
+from .forms_rutas import RutaGestionForm, OperacionGestionForm, SecuenciaFormSet, SeleccionOperacionesForm
+from .services_rutas import guardar_ruta, guardar_operacion, estado_ruta, nombre_para_secuencia, rutas_equivalentes
 from .selectors import partidas_con_situacion, presentar_partida
 from .services import iniciar_procesamiento
 
@@ -98,7 +96,7 @@ def operaciones(request, pk=None):
 def seleccionar_operaciones(request, pk):
     partida = presentar_partida(get_object_or_404(partidas_con_situacion(), pk=pk))
     especie = partida.detalle_recepcion.especie
-    # El jefe y la encargada no solicitan rutas: si no existe, la crean aquí mismo.
+    # Si no hay una ruta con la secuencia, el jefe o la encargada la crean aquí mismo.
     gestion = tiene_rol(request.user, "JEFE", "ENCARGADA")
     form = SeleccionOperacionesForm(request.POST if request.method == "POST" else None, initial={"cantidad_kg": partida.cantidad_inicial_kg})
     secuencia = SecuenciaFormSet(request.POST if request.method == "POST" else None, prefix="etapas")
@@ -111,8 +109,6 @@ def seleccionar_operaciones(request, pk):
     crear = gestion and consultado and not coincidencias
     if not coincidencias:
         del form.fields["ruta"]  # Sin rutas que calcen, el selector queda vacío y no sirve.
-    if gestion:
-        del form.fields["observacion"]
     if crear:
         form.fields["nombre_ruta"].widget.attrs["placeholder"] = nombre_para_secuencia(especie, ids)
     else:
@@ -128,7 +124,7 @@ def seleccionar_operaciones(request, pk):
                     if ruta is None and len(coincidencias) == 1:
                         ruta = coincidencias[0]
                     if ruta is None:
-                        raise ValidationError("Selecciona una ruta autorizada coincidente; las solicitudes pendientes no permiten iniciar.")
+                        raise ValidationError("Selecciona una de las rutas que calzan con la secuencia.")
                     seleccionada, _ = iniciar_procesamiento(partida=partida, cantidad_kg=form.cleaned_data["cantidad_kg"], ruta=ruta, usuario=request.user)
                     return redirect("trazabilidad:gestionar_procesamiento", pk=seleccionada.pk)
                 if accion == "crear" and crear:
@@ -140,50 +136,7 @@ def seleccionar_operaciones(request, pk):
                                                                 ruta=ruta, usuario=request.user)
                     messages.success(request, f"Ruta «{ruta.nombre}» creada.")
                     return redirect("trazabilidad:gestionar_procesamiento", pk=seleccionada.pk)
-                if accion == "solicitar" and not gestion:
-                    solicitar_ruta(usuario=request.user, especie=especie,
-                                   operaciones=ids, observacion=form.cleaned_data["observacion"])
-                    messages.success(request, "Solicitud enviada. El procesamiento no se ha iniciado.")
-                    return redirect("trazabilidad:solicitudes_ruta")
             except (ValidationError, IntegrityError) as error:
                 error_form(form, error)
     return render(request, "trazabilidad/rutas/seleccionar.html", {"form": form, "secuencia": secuencia,
         "partida": partida, "coincidencias": coincidencias, "consultado": consultado, "puede_crear": gestion})
-
-
-@personal_operativo_requerido
-@require_http_methods(["GET"])
-def solicitudes(request):
-    consulta = SolicitudRuta.objects.select_related("especie", "solicitante", "resuelto_por", "ruta_aprobada").prefetch_related("etapas__tipo_proceso")
-    if request.GET.get("especie", "").isdecimal():
-        consulta = consulta.filter(especie_id=request.GET["especie"][:18])
-    gestion = tiene_rol(request.user, "JEFE", "ENCARGADA")
-    if not gestion:
-        consulta = consulta.filter(solicitante=request.user)
-    if request.GET.get("estado") in SolicitudRuta.Estado.values:
-        consulta = consulta.filter(estado=request.GET["estado"])
-    pagina = Paginator(consulta, 20).get_page(request.GET.get("page"))
-    # Al entrar aquí la persona ve la respuesta: deja de aparecerle en la campana.
-    SolicitudRuta.objects.filter(solicitante=request.user, respuesta_vista_en__isnull=True).exclude(
-        estado=SolicitudRuta.Estado.PENDIENTE).update(respuesta_vista_en=timezone.now())
-    return render(request, "trazabilidad/rutas/solicitudes.html", {"page_obj": pagina, "puede_resolver": gestion})
-
-
-@jefe_o_encargada_requerido
-@require_http_methods(["GET", "POST"])
-def resolver(request, pk):
-    solicitud = get_object_or_404(SolicitudRuta.objects.select_related("especie", "solicitante").prefetch_related("etapas__tipo_proceso"), pk=pk)
-    ids = [e.tipo_proceso_id for e in solicitud.etapas.all()]
-    equivalentes = rutas_equivalentes(solicitud.especie, ids)
-    form = ResolverSolicitudForm(request.POST if request.method == "POST" else None)
-    form.fields["ruta_existente"].queryset = RutaProceso.objects.filter(pk__in=[r.pk for r in equivalentes])
-    if request.method == "POST" and form.is_valid():
-        datos = form.cleaned_data.copy()
-        try:
-            resolver_solicitud(usuario=request.user, solicitud=solicitud, aprobar=datos.pop("decision") == "aprobar", **datos)
-        except (ValidationError, IntegrityError) as error:
-            error_form(form, error)
-        else:
-            messages.success(request, "Solicitud resuelta.")
-            return redirect("trazabilidad:solicitudes_ruta")
-    return render(request, "trazabilidad/rutas/resolver.html", {"form": form, "solicitud": solicitud})

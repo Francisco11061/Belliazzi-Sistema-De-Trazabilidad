@@ -10,7 +10,6 @@ from django.utils import timezone
 from apps.inventario.models import DetalleDespacho
 from apps.inventario.selectors import totales_stock
 from apps.trazabilidad.lotes import presentar_codigo_lote
-from apps.trazabilidad.models import SolicitudRuta
 from apps.trazabilidad.selectors import SITUACIONES, partidas_con_disponibilidad
 
 
@@ -36,7 +35,6 @@ def control_operativo(*, cajas, inventario, periodo, ahora, especie, frio):
     empaque = disponibles.aggregate(
         kg=Sum("disponible_lote_kg", filter=Q(numero_postprocesos=1, disponible_lote_kg__gte=0)),
         incompletos=Count("pk", filter=~Q(numero_postprocesos=1) | Q(disponible_lote_kg__lt=0)))
-    solicitudes = _especie(SolicitudRuta.objects.filter(estado="PENDIENTE"), "especie", especie).count()
     pendientes = [
         dict(nombre="Por ingresar a almacenamiento", cantidad=inventario["pendientes"],
              url=enlace("inventario:lista", estado="PENDIENTE", especie=especie_id)),
@@ -46,8 +44,6 @@ def control_operativo(*, cajas, inventario, periodo, ahora, especie, frio):
              url=enlace("inventario:lista", estado="ALMACENADA", sin_peso="on", especie=especie_id)),
         dict(nombre="Productos que requieren revisión", cantidad=cantidades.get("NO_OPERABLE", 0),
              url=produccion[-1]["url"]),
-        dict(nombre="Solicitudes de rutas pendientes", cantidad=solicitudes,
-             url=enlace("trazabilidad:solicitudes_ruta", estado="PENDIENTE", especie=especie_id)),
     ]
     stock = cajas.filter(estado_inventario="ALMACENADA")
     desglose = stock.order_by().values("unidad_abierta_id", "nombre_unidad_abierta",
@@ -96,7 +92,7 @@ def control_operativo(*, cajas, inventario, periodo, ahora, especie, frio):
     return dict(produccion=produccion, procesamiento_activo=cantidades.get("EN_PROCESO", 0),
         listos_empaque=cantidades.get("LISTA_PARA_EMPAQUE", 0), saldo_empaque=empaque,
         asuntos=frio["total"] + sum(p["cantidad"] for p in pendientes), pendientes_control=pendientes,
-        solicitudes_ruta_pendientes=solicitudes, camaras=camaras, ranking=ranking,
+        camaras=camaras, ranking=ranking,
         vencimientos=vencimientos, vencimientos_total=sum(grupos.values()), vencimientos_resumen=grupos,
         ventana_vencimientos=ventana, antiguos=antiguos,
         stock_url=enlace("inventario:lista", estado="ALMACENADA", especie=especie_id),

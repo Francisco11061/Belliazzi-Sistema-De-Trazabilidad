@@ -4,8 +4,8 @@ from django.urls import reverse
 
 from apps.usuarios.models import Rol, Usuario
 
-from .models import EventoProceso, PartidaProceso, RutaProceso, SolicitudRuta, TipoProceso
-from .services_rutas import guardar_operacion, nombre_para_secuencia, resolver_solicitud
+from .models import EventoProceso, PartidaProceso, RutaProceso, TipoProceso
+from .services_rutas import guardar_operacion, nombre_para_secuencia
 from .test_gestion_rutas import DatosGestionRutas
 
 
@@ -18,13 +18,13 @@ class RutasEncargadaTests(DatosGestionRutas, TestCase):
         # Fileteo solo no calza con la ruta de prueba (Descabezado, Fileteo, Emparrillado).
         self.datos = self.secuencia_post(cantidad_kg="100")
 
-    def test_encargada_crea_la_ruta_y_empieza_sin_solicitar(self):
+    def test_encargada_crea_la_ruta_y_empieza(self):
         self.client.force_login(self.encargada)
         respuesta = self.client.post(self.url, {**self.datos, "accion": "buscar"})
         self.assertContains(respuesta, "Crear ruta y empezar")
         self.assertContains(respuesta, 'placeholder="Fileteo"')
-        self.assertNotContains(respuesta, "Solicitar nueva ruta")
-        self.assertNotContains(respuesta, "Observación de la solicitud")
+        self.assertNotContains(respuesta, "Avísale a la encargada")
+        self.assertNotContains(respuesta, "Ruta autorizada coincidente")
         respuesta = self.client.post(self.url, {**self.datos, "accion": "crear"})
         ruta = RutaProceso.objects.get(nombre="Fileteo")
         self.assertEqual((ruta.creado_por, ruta.activo, ruta.especie), (self.encargada, True, self.especie))
@@ -32,7 +32,6 @@ class RutasEncargadaTests(DatosGestionRutas, TestCase):
         self.assertRedirects(respuesta, reverse("trazabilidad:gestionar_procesamiento", args=[hija.pk]),
                              fetch_redirect_response=False)
         self.assertTrue(EventoProceso.objects.filter(partida=hija).exists())
-        self.assertFalse(SolicitudRuta.objects.exists())
 
     def test_nombre_propio_repetido_no_deja_nada_a_medias(self):
         self.client.force_login(self.encargada)
@@ -45,36 +44,6 @@ class RutasEncargadaTests(DatosGestionRutas, TestCase):
         self.assertContains(respuesta, "Ya hay una ruta llamada")
         self.assertEqual(RutaProceso.objects.filter(creado_por=self.encargada).count(), 1)
         self.assertFalse(PartidaProceso.objects.filter(partida_padre=otra).exists())
-
-    def test_operaria_sigue_solicitando_y_no_puede_crear(self):
-        self.client.force_login(self.usuario)
-        respuesta = self.client.post(self.url, {**self.datos, "accion": "buscar"})
-        self.assertContains(respuesta, "Solicitar nueva ruta")
-        self.assertNotContains(respuesta, "Crear ruta y empezar")
-        self.assertEqual(self.client.post(self.url, {**self.datos, "accion": "crear", "nombre_ruta": "X"}).status_code, 200)
-        self.assertEqual(RutaProceso.objects.count(), 1)
-        self.client.post(self.url, {**self.datos, "accion": "solicitar"})
-        self.assertEqual(SolicitudRuta.objects.get().solicitante, self.usuario)
-
-    def test_jefe_y_encargada_no_generan_solicitudes(self):
-        for usuario in (self.jefe, self.encargada):
-            self.client.force_login(usuario)
-            self.assertEqual(self.client.post(self.url, {**self.datos, "accion": "solicitar"}).status_code, 200)
-        self.assertFalse(SolicitudRuta.objects.exists())
-
-    def test_encargada_ve_y_resuelve_solicitudes_de_operarias(self):
-        solicitud = self.propuesta()
-        self.client.force_login(self.encargada)
-        respuesta = self.client.get(reverse("trazabilidad:solicitudes_ruta"))
-        self.assertContains(respuesta, f"Solicitud #{solicitud.pk}")
-        self.assertContains(respuesta, reverse("trazabilidad:resolver_solicitud", args=[solicitud.pk]))
-        resolver = reverse("trazabilidad:resolver_solicitud", args=[solicitud.pk])
-        self.assertEqual(self.client.post(resolver, {"decision": "aprobar", "nombre": "Aprobada por Carolina"}).status_code, 302)
-        solicitud.refresh_from_db()
-        self.assertEqual((solicitud.estado, solicitud.resuelto_por), ("APROBADA", self.encargada))
-        self.assertEqual(solicitud.ruta_aprobada.creado_por, self.encargada)
-        self.client.force_login(self.usuario)
-        self.assertNotContains(self.client.get(reverse("trazabilidad:solicitudes_ruta")), "Revisar solicitud")
 
     def test_encargada_gestiona_rutas_y_operaciones(self):
         self.client.force_login(self.encargada)
@@ -95,14 +64,3 @@ class RutasEncargadaTests(DatosGestionRutas, TestCase):
         self.crear_ruta(nombre="Descabezado, fileteo y emparrillado", activo=False)
         self.assertEqual(nombre_para_secuencia(self.especie, ids), "Descabezado, fileteo y emparrillado (2)")
         self.assertEqual(nombre_para_secuencia(self.otra_especie, ids), "Descabezado, fileteo y emparrillado")
-
-    def test_solicitud_resuelta_por_la_encargada_avisa_a_la_operaria(self):
-        from apps.reportes.avisos import avisos_para
-        solicitud = self.propuesta()
-        self.assertIn(f"pidió una ruta para {self.especie.nombre}",
-                      " ".join(a["titulo"] for a in avisos_para(self.encargada)["avisos"]))
-        resolver_solicitud(usuario=self.encargada, solicitud=solicitud, aprobar=False, respuesta="Usa la ruta habitual.")
-        titulos = [a["titulo"] for a in avisos_para(self.usuario)["avisos"]]
-        self.assertEqual(titulos, [f"Rechazaron tu ruta para {self.especie.nombre}"])
-        with self.assertRaises(ValidationError):
-            resolver_solicitud(usuario=self.jefe, solicitud=solicitud, aprobar=True, nombre="Tarde")

@@ -6,7 +6,6 @@ from django.template import Context, Template
 from django.test import RequestFactory, TestCase
 from django.urls import resolve, reverse
 
-from apps.trazabilidad.models import Especie, SolicitudRuta
 from .models import Rol, Usuario
 from .templatetags.navegacion import ENLACES, menu_lateral
 
@@ -19,10 +18,6 @@ class SidebarTests(TestCase):
         cls.operaria = Usuario.objects.create_user(username='menu_operaria', rol=Rol.objects.get(codigo='OPERARIA'))
         cls.superusuario = Usuario.objects.create_superuser(username='menu_super')
         cls.sin_rol = Usuario(username='menu_sin_rol')
-        especie = Especie.objects.create(nombre='Especie menú')
-        for usuario in (cls.encargada, cls.operaria, cls.operaria):
-            SolicitudRuta.objects.create(solicitante=usuario, especie=especie)
-        SolicitudRuta.objects.create(solicitante=cls.operaria, especie=especie, estado='RECHAZADA')
 
     def request(self, user, actual='usuarios:inicio'):
         request = RequestFactory().get('/')
@@ -37,8 +32,8 @@ class SidebarTests(TestCase):
         for usuario, esperado in (
             (self.jefe, [e[0] for e in ENLACES]),
             (self.superusuario, [e[0] for e in ENLACES]),
-            (self.encargada, ['consulta', 'rutas', 'solicitudes', 'recepciones', 'seguimiento', 'lotes', 'cajas', 'inventario', 'despachos']),
-            (self.operaria, ['solicitudes', 'seguimiento', 'cajas', 'inventario']),
+            (self.encargada, ['consulta', 'rutas', 'recepciones', 'seguimiento', 'lotes', 'cajas', 'inventario', 'despachos']),
+            (self.operaria, ['seguimiento', 'cajas', 'inventario']),
             (self.sin_rol, []), (AnonymousUser(), []),
         ):
             with self.subTest(usuario=usuario):
@@ -57,28 +52,23 @@ class SidebarTests(TestCase):
         for pagina in ('usuarios:cambiar_contrasena', 'otra:lista', 'trazabilidad:ruta_inexistente'):
             self.assertFalse(any(e['activo'] for e in self.enlaces(menu_lateral({'request': self.request(self.jefe, pagina)}))))
 
-    def test_contador_respeta_propietario_y_una_consulta_por_request(self):
-        for usuario, esperado in ((self.jefe, 3), (self.superusuario, 3), (self.encargada, 3), (self.operaria, 2)):
+    def test_contadores_se_calculan_una_vez_por_request(self):
+        for usuario in (self.jefe, self.superusuario, self.encargada, self.operaria):
             request = self.request(usuario)
-            # Solicitudes + contadores de planta (proceso y cajas por guardar); se calculan una vez por request.
-            with self.assertNumQueries(3):
-                datos = menu_lateral({'request': request})
+            # Contadores de planta: seguimiento y cajas por guardar.
+            with self.assertNumQueries(2):
                 menu_lateral({'request': request})
-            solicitud = next(e for e in self.enlaces(datos) if e['clave'] == 'solicitudes')
-            self.assertEqual(solicitud['pendientes'], esperado)
+                menu_lateral({'request': request})
         with self.assertNumQueries(0):
             menu_lateral({'request': self.request(AnonymousUser())})
 
     def test_html_iconos_activo_y_contador_cero_oculto(self):
         template = Template('{% load navegacion %}{% menu_lateral %}')
-        html = template.render(Context({'request': self.request(self.jefe, 'trazabilidad:resolver_solicitud')}))
+        html = template.render(Context({'request': self.request(self.jefe, 'trazabilidad:editar_ruta')}))
         self.assertEqual(html.count('aria-current="page"'), 1)
-        self.assertEqual(html.count('<svg '), 12)
-        self.assertEqual(html.count('width="20" height="20"'), 12)
-        self.assertIn('3<span class="sr-only"> solicitudes pendientes', html)
-        SolicitudRuta.objects.all().delete()
-        html = template.render(Context({'request': self.request(self.jefe)}))
-        self.assertNotIn('solicitudes pendientes', html)
+        self.assertEqual(html.count('<svg '), 11)
+        self.assertEqual(html.count('width="20" height="20"'), 11)
+        self.assertNotIn('sr-only"> productos', html)  # Sin pendientes no se muestra el número.
 
     def test_destinos_visibles_resuelven_y_permiten_get(self):
         for usuario in (self.jefe, self.superusuario, self.encargada, self.operaria):

@@ -11,7 +11,7 @@
                 <a href="{{ aviso.url }}" class="block px-4 py-2.5 pl-9 text-sm font-medium text-cyan-700 hover:bg-slate-50 hover:underline focus-visible:bg-slate-50 focus-visible:outline-none">{{ aviso.titulo }}</a>
             {% else %}
                 <a href="{{ aviso.url }}" class="flex gap-3 px-4 py-3 hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none">
-                    <span class="mt-1.5 size-2 shrink-0 rounded-full {% if aviso.nivel == 'urgente' %}bg-red-500{% elif aviso.nivel == 'atencion' %}bg-amber-500{% elif aviso.nivel == 'listo' %}bg-emerald-500{% else %}bg-slate-400{% endif %}" aria-hidden="true"></span>
+                    <span class="mt-1.5 size-2 shrink-0 rounded-full {% if aviso.nivel == 'urgente' %}bg-red-500{% elif aviso.nivel == 'atencion' %}bg-amber-500{% else %}bg-slate-400{% endif %}" aria-hidden="true"></span>
                     <span class="min-w-0">
                         <span class="block text-sm font-medium text-slate-900">{{ aviso.titulo }}</span>
                         {% if aviso.detalle %}<span class="mt-0.5 line-clamp-2 block text-xs text-slate-600">{{ aviso.detalle }}</span>{% endif %}

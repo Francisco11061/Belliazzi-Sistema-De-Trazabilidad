@@ -1,7 +1,6 @@
 """Navegación de presentación; las vistas conservan sus controles de acceso."""
 from django import template
 from apps.usuarios.permisos import tiene_rol
-from apps.trazabilidad.models import SolicitudRuta
 
 register = template.Library()
 
@@ -11,7 +10,6 @@ ENLACES = (
     ('consulta', 'Consulta de trazabilidad', 'trazabilidad:consulta_integral', ('trazabilidad:consulta_integral', 'trazabilidad:ficha_integral'), 'gestion'),
     ('reportes', 'Reportes', 'reportes:sernapesca', ('reportes:sernapesca', 'reportes:descargar_sernapesca'), 'jefe'),
     ('rutas', 'Rutas de procesamiento', 'trazabilidad:rutas', ('trazabilidad:rutas', 'trazabilidad:nueva_ruta', 'trazabilidad:editar_ruta', 'trazabilidad:duplicar_ruta', 'trazabilidad:estado_ruta', 'trazabilidad:operaciones', 'trazabilidad:editar_operacion'), 'gestion'),
-    ('solicitudes', 'Solicitudes de rutas', 'trazabilidad:solicitudes_ruta', ('trazabilidad:solicitudes_ruta', 'trazabilidad:resolver_solicitud'), 'personal'),
     ('usuarios', 'Usuarios', 'usuarios:lista_usuarios', ('usuarios:lista_usuarios', 'usuarios:crear_usuario', 'usuarios:detalle_usuario', 'usuarios:editar_rol', 'usuarios:reset_contrasena', 'usuarios:desactivar_usuario', 'usuarios:reactivar_usuario'), 'jefe'),
     ('recepciones', 'Recepciones', 'trazabilidad:lista_recepciones', ('trazabilidad:lista_recepciones', 'trazabilidad:nueva_recepcion', 'trazabilidad:detalle_recepcion', 'trazabilidad:corregir_recepcion'), 'gestion'),
     ('seguimiento', 'Seguimiento de proceso', 'trazabilidad:lista_partidas', ('trazabilidad:lista_partidas', 'trazabilidad:detalle_partida', 'trazabilidad:seleccionar_operaciones', 'trazabilidad:registrar_peso_postproceso', 'trazabilidad:registrar_merma_proceso', 'trazabilidad:gestionar_procesamiento', 'trazabilidad:iniciar_etapa', 'trazabilidad:finalizar_etapa', 'trazabilidad:enviar_partida_tunel', 'trazabilidad:retirar_partida_tunel', 'trazabilidad:enviar_partida_mantencion', 'trazabilidad:retirar_partida_mantencion', 'trazabilidad:procesar_partida'), 'personal'),
@@ -57,19 +55,11 @@ def menu_lateral(context):
     permisos = {"jefe": tiene_rol(user, "JEFE"),
                 "gestion": tiene_rol(user, "JEFE", "ENCARGADA"),
                 "personal": tiene_rol(user, "JEFE", "ENCARGADA", "OPERARIA")}
-    pendientes = 0
-    if permisos["personal"]:
-        if not hasattr(request, "_menu_solicitudes_pendientes"):
-            consulta = SolicitudRuta.objects.filter(estado="PENDIENTE")
-            if not permisos["gestion"]:
-                consulta = consulta.filter(solicitante=user)
-            request._menu_solicitudes_pendientes = consulta.count()
-        pendientes = request._menu_solicitudes_pendientes
-    contadores = {"solicitudes": (pendientes, "solicitudes pendientes")}
+    contadores = {}
     if permisos["personal"]:
         contadores.update(_contadores_planta(request, permisos["gestion"]))
     grupos = []
-    for titulo, enlaces in (("Control y administración", ENLACES[:6]), ("Flujo productivo", ENLACES[6:])):
+    for titulo, enlaces in (("Control y administración", ENLACES[:5]), ("Flujo productivo", ENLACES[5:])):
         visibles = [dict(clave=clave, nombre=nombre, destino=destino, activo=actual in paginas,
                          pendientes=contadores.get(clave, (0, ""))[0], pendientes_texto=contadores.get(clave, (0, ""))[1])
                     for clave, nombre, destino, paginas, permiso in enlaces if permisos[permiso]]
@@ -83,15 +73,11 @@ def menu_lateral(context):
 def campana(context):
     request = context["request"]
     user = request.user
-    if not tiene_rol(user, "JEFE", "ENCARGADA", "OPERARIA"):
+    # La operaria no tiene avisos propios: lo suyo está en su inicio.
+    if not tiene_rol(user, "JEFE", "ENCARGADA"):
         return {"mostrar": False}
     if not hasattr(request, "_campana"):
         from apps.reportes.avisos import avisos_para
-        conteos = {}
-        if tiene_rol(user, "JEFE", "ENCARGADA"):
-            _contadores_planta(request, True)
-            conteos.update(request._menu_revisiones)
-        if tiene_rol(user, "JEFE", "ENCARGADA") and hasattr(request, "_menu_solicitudes_pendientes"):
-            conteos["solicitudes"] = request._menu_solicitudes_pendientes
-        request._campana = avisos_para(user, conteos)
+        _contadores_planta(request, True)
+        request._campana = avisos_para(user, request._menu_revisiones)
     return {"mostrar": True, **request._campana}

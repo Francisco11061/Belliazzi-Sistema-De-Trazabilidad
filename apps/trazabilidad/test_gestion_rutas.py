@@ -7,8 +7,8 @@ from django.db import close_old_connections, connection
 from django.test import TestCase, TransactionTestCase, Client, skipUnlessDBFeature
 from django.urls import reverse
 from apps.usuarios.models import Rol, Usuario
-from .models import RutaProceso, TipoProceso, SolicitudRuta, PartidaProceso, EventoProceso, EtapaRutaProceso
-from .services_rutas import guardar_ruta, estado_ruta, guardar_operacion, solicitar_ruta, resolver_solicitud, rutas_equivalentes
+from .models import RutaProceso, TipoProceso, PartidaProceso, EventoProceso, EtapaRutaProceso
+from .services_rutas import guardar_ruta, estado_ruta, guardar_operacion, rutas_equivalentes
 from .selectors import resumen_procesamiento, partidas_con_situacion
 from .services import iniciar_etapa_proceso, finalizar_etapa_proceso, enviar_a_tunel
 from .test_procesamiento import DatosProcesamiento
@@ -20,11 +20,6 @@ class DatosGestionRutas(DatosProcesamiento):
             descripcion="", activo=True, predeterminada=False, operaciones=[self.tipos["FILETEO"].pk])
         datos.update(kwargs)
         return guardar_ruta(**datos)
-
-    def propuesta(self, **kwargs):
-        datos = dict(usuario=self.usuario, especie=self.especie, operaciones=[self.tipos["FILETEO"].pk])
-        datos.update(kwargs)
-        return solicitar_ruta(**datos)
 
     def secuencia_post(self, **kwargs):
         datos = {"etapas-TOTAL_FORMS": "1", "etapas-INITIAL_FORMS": "0",
@@ -68,36 +63,14 @@ class GestionRutasTests(DatosGestionRutas, TestCase):
         with self.assertRaises(ValidationError):
             guardar_operacion(usuario=self.jefe, codigo="PROCESAMIENTO", nombre="Evento", activo=True)
 
-    def test_solicitud_no_produce_aprobacion_reutiliza_y_rechazo(self):
-        uno = self.propuesta()
-        dos = self.propuesta(usuario=self.jefe)
-        self.assertEqual(self.propuesta().pk, uno.pk)
-        self.assertFalse(EventoProceso.objects.exists())
-        self.assertEqual(PartidaProceso.objects.count(), 1)
-        primero = resolver_solicitud(usuario=self.jefe, solicitud=uno, aprobar=True, nombre="Aprobada")
-        segundo = resolver_solicitud(usuario=self.jefe, solicitud=dos, aprobar=True, nombre="No duplicada")
-        self.assertEqual(primero.ruta_aprobada_id, segundo.ruta_aprobada_id)
-        self.assertEqual(RutaProceso.objects.filter(nombre="Aprobada").count(), 1)
-        with self.assertRaises(ValidationError):
-            resolver_solicitud(usuario=self.jefe, solicitud=uno, aprobar=False)
-        otra = self.propuesta(operaciones=[self.tipos["DESCABEZADO"].pk])
-        resolver_solicitud(usuario=self.jefe, solicitud=otra, aprobar=False, respuesta="No autorizada")
-        otra.refresh_from_db()
-        self.assertEqual(otra.estado, "RECHAZADA")
-        self.assertIsNone(otra.ruta_aprobada_id)
-
     def test_equivalencias_ambiguas_exigen_seleccion(self):
-        solicitud = self.propuesta()
         primera = self.nueva()
-        segunda = self.crear_ruta(nombre="Legado equivalente", codigos=["FILETEO"])
+        self.crear_ruta(nombre="Legado equivalente", codigos=["FILETEO"])
         self.assertEqual(len(rutas_equivalentes(self.especie, [self.tipos["FILETEO"].pk])), 2)
-        with self.assertRaises(ValidationError):
-            resolver_solicitud(usuario=self.jefe, solicitud=solicitud, aprobar=True)
-        resolver_solicitud(usuario=self.jefe, solicitud=solicitud, aprobar=True, ruta_existente=segunda)
         self.client.force_login(self.usuario)
         url = reverse("trazabilidad:seleccionar_operaciones", args=[self.partida.pk])
         datos = self.secuencia_post(cantidad_kg="500", accion="iniciar")
-        self.assertContains(self.client.post(url, datos), "Selecciona una ruta autorizada")
+        self.assertContains(self.client.post(url, datos), "Selecciona una de las rutas que calzan")
         self.assertFalse(EventoProceso.objects.exists())
         self.assertEqual(self.client.post(url, {**datos, "ruta": primera.pk}).status_code, 302)
 
@@ -117,25 +90,22 @@ class GestionRutasTests(DatosGestionRutas, TestCase):
         self.assertFalse(restante.eventos.exists())
 
     def test_permisos_backend_csrf_y_get_sin_escrituras(self):
-        solicitud = self.propuesta()
         for usuario in (self.usuario,):
             self.client.force_login(usuario)
-            for nombre, args in (("rutas", []), ("nueva_ruta", []), ("operaciones", []), ("resolver_solicitud", [solicitud.pk])):
+            for nombre, args in (("rutas", []), ("nueva_ruta", []), ("operaciones", [])):
                 self.assertEqual(self.client.get(reverse("trazabilidad:"+nombre, args=args)).status_code, 403)
                 self.assertEqual(self.client.post(reverse("trazabilidad:"+nombre, args=args), {}).status_code, 403)
             with self.assertRaises(PermissionDenied):
                 self.nueva(usuario=usuario)
-            with self.assertRaises(PermissionDenied):
-                resolver_solicitud(usuario=usuario, solicitud=solicitud, aprobar=True, nombre="No")
         self.client.force_login(self.jefe)
-        for nombre in ("rutas", "nueva_ruta", "operaciones", "solicitudes_ruta"):
+        for nombre in ("rutas", "nueva_ruta", "operaciones"):
             self.assertEqual(self.client.get(reverse("trazabilidad:"+nombre)).status_code, 200)
         self.assertEqual(self.client.get(reverse("trazabilidad:estado_ruta", args=[self.ruta.pk])).status_code, 405)
         cliente = Client(enforce_csrf_checks=True)
         cliente.force_login(self.jefe)
         self.assertEqual(cliente.post(reverse("trazabilidad:nueva_ruta"), {}).status_code, 403)
 
-    def test_formularios_creacion_solicitud_y_aprobacion(self):
+    def test_formularios_creacion_y_uso_por_operaria(self):
         respuesta = self.client.post(reverse("trazabilidad:nueva_ruta"), self.secuencia_post(
             nombre="Web", especie=self.especie.pk, activo="on"))
         self.assertEqual(respuesta.status_code, 302)
@@ -154,22 +124,16 @@ class GestionRutasTests(DatosGestionRutas, TestCase):
         datos["etapas-0-ORDER"] = "0"
         self.assertContains(self.client.post(reverse("trazabilidad:nueva_ruta"), datos), "orden positivo")
 
-    def test_solicitud_y_resolucion_desde_interfaz(self):
+    def test_operaria_sin_ruta_le_avisa_a_la_encargada(self):
         self.client.force_login(self.usuario)
         url = reverse("trazabilidad:seleccionar_operaciones", args=[self.partida.pk])
         self.assertEqual(self.client.get(url).status_code, 200)
         datos = self.secuencia_post(cantidad_kg="100", accion="buscar")
-        self.assertContains(self.client.post(url, datos), "Solicitar nueva ruta")
-        self.assertEqual(self.client.post(url, {**datos, "accion": "solicitar"}).status_code, 302)
-        solicitud = SolicitudRuta.objects.get()
-        self.assertFalse(EventoProceso.objects.exists())
-        self.assertEqual(self.client.get(reverse("trazabilidad:solicitudes_ruta")).status_code, 200)
-        self.client.force_login(self.jefe)
-        resolver = reverse("trazabilidad:resolver_solicitud", args=[solicitud.pk])
-        self.assertEqual(self.client.get(resolver).status_code, 200)
-        self.assertEqual(self.client.post(resolver, {"decision": "aprobar", "nombre": "Aprobada por web"}).status_code, 302)
-        solicitud.refresh_from_db()
-        self.assertEqual(solicitud.estado, "APROBADA")
+        respuesta = self.client.post(url, datos)
+        self.assertContains(respuesta, "Avísale a la encargada para que la cree.")
+        self.assertNotContains(respuesta, "Crear ruta y empezar")
+        self.assertEqual(self.client.post(url, {**datos, "accion": "crear"}).status_code, 200)
+        self.assertEqual(RutaProceso.objects.count(), 1)
         self.assertFalse(EventoProceso.objects.exists())
 
 
@@ -193,18 +157,3 @@ class ConcurrenciaRutasTests(DatosGestionRutas, TransactionTestCase):
         with ThreadPoolExecutor(max_workers=2) as ejecutor:
             resultados = list(ejecutor.map(crear, ["Concurrente A", "Concurrente B"]))
         self.assertCountEqual(resultados, ["creada", "existente"])
-
-    @skipUnlessDBFeature("has_select_for_update")
-    def test_dos_aprobaciones_concurrentes_reutilizan(self):
-        uno, dos = self.propuesta(), self.propuesta(usuario=self.jefe)
-        barrera = Barrier(2)
-        def aprobar(solicitud):
-            close_old_connections()
-            try:
-                barrera.wait(timeout=15)
-                return resolver_solicitud(usuario=self.jefe, solicitud=solicitud, aprobar=True, nombre=f"Aprobada {solicitud.pk}").ruta_aprobada_id
-            finally:
-                connection.close()
-        with ThreadPoolExecutor(max_workers=2) as ejecutor:
-            ids = list(ejecutor.map(aprobar, [uno, dos]))
-        self.assertEqual(ids[0], ids[1])

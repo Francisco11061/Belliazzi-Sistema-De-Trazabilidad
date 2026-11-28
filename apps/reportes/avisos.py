@@ -1,27 +1,22 @@
-"""Avisos de la campana: lo que necesita atención ahora. Solo lectura, sin tablas propias.
+"""Avisos de la campana del jefe y la encargada: lo que necesita atención ahora.
 
-Los avisos de estado (frío, vencimientos, revisiones, solicitudes por aprobar) desaparecen solos
-cuando se resuelven. La respuesta a una solicitud de ruta se quita cuando quien la pidió entra a
-«Solicitudes de rutas».
+Solo lectura y sin tablas propias: cada aviso desaparece solo cuando se resuelve.
 """
 from datetime import timedelta
 
 from django.conf import settings
-from django.db.models import F
 from django.urls import reverse
 from django.utils import timezone
 
 from apps.inventario.selectors import cajas_con_inventario, totales_stock
-from apps.trazabilidad.formato import hace
 from apps.trazabilidad.lotes import presentar_codigo_lote
-from apps.trazabilidad.models import SolicitudRuta
 from apps.trazabilidad.selectors import partidas_con_disponibilidad
 from apps.usuarios.permisos import tiene_rol
 
 from .selectors import alertas_frio
 
 POR_TIPO = 5
-URGENTE, ATENCION, LISTO, INFO = "urgente", "atencion", "listo", "info"
+URGENTE, ATENCION = "urgente", "atencion"
 
 
 def _aviso(nivel, titulo, url, detalle=""):
@@ -68,30 +63,6 @@ def _vencimientos(jefe):
     return _con_resto(avisos, len(filas), resto), urgentes
 
 
-def _solicitudes_por_aprobar(ahora, total=None):
-    consulta = SolicitudRuta.objects.filter(estado=SolicitudRuta.Estado.PENDIENTE)
-    total = consulta.count() if total is None else total
-    if not total:
-        return []
-    avisos = [_aviso(ATENCION, f"{s.solicitante.get_full_name() or s.solicitante.username} pidió una ruta para {s.especie.nombre}",
-                     reverse("trazabilidad:resolver_solicitud", args=[s.pk]), f"Enviada {hace(s.creado_en, ahora)}")
-              for s in consulta.select_related("solicitante", "especie").order_by("creado_en", "pk")[:POR_TIPO]]
-    return _con_resto(avisos, total, reverse("trazabilidad:solicitudes_ruta") + "?estado=PENDIENTE")
-
-
-def _respuestas(usuario, ahora):
-    consulta = SolicitudRuta.objects.filter(solicitante=usuario, respuesta_vista_en__isnull=True).exclude(
-        estado=SolicitudRuta.Estado.PENDIENTE).exclude(resuelto_por=F("solicitante"))
-    url = reverse("trazabilidad:solicitudes_ruta")
-    solicitudes = list(consulta.select_related("especie").order_by("-resuelto_en", "-pk")[:POR_TIPO])
-    avisos = []
-    for s in solicitudes:
-        aprobada = s.estado == SolicitudRuta.Estado.APROBADA
-        titulo = f"{'Aprobaron' if aprobada else 'Rechazaron'} tu ruta para {s.especie.nombre}"
-        avisos.append(_aviso(LISTO if aprobada else INFO, titulo, url, s.respuesta or hace(s.resuelto_en, ahora).capitalize()))
-    return _con_resto(avisos, consulta.count() if len(solicitudes) == POR_TIPO else len(solicitudes), url)
-
-
 def _historial_por_revisar(total):
     if not total:
         return []
@@ -112,22 +83,18 @@ def _ubicacion_por_revisar(total):
 
 
 def avisos_para(usuario, conteos=None, ahora=None):
-    """Avisos según el rol. `conteos` trae lo que el menú lateral ya contó, para no repetir consultas."""
+    """Avisos del jefe y la encargada. `conteos` trae lo que el menú lateral ya contó, para no repetir consultas."""
+    if not tiene_rol(usuario, "JEFE", "ENCARGADA"):
+        return dict(avisos=[], total=0, urgente=False)
     ahora = ahora or timezone.now()
     jefe = tiene_rol(usuario, "JEFE")
-    gestion = tiene_rol(usuario, "JEFE", "ENCARGADA")
     conteos = conteos or {}
-    avisos, urgentes = [], 0
-    if gestion:
-        frio, total_frio = _frio(ahora, jefe)
-        vencimientos, vencidos = _vencimientos(jefe)
-        avisos += frio + vencimientos
-        urgentes += total_frio + vencidos
-    if gestion:
-        avisos += _solicitudes_por_aprobar(ahora, conteos.get("solicitudes"))
-        avisos += _historial_por_revisar(conteos.get("historial", 0))
-        avisos += _ubicacion_por_revisar(conteos.get("ubicacion", 0))
-    avisos += _respuestas(usuario, ahora)
+    frio, total_frio = _frio(ahora, jefe)
+    vencimientos, vencidos = _vencimientos(jefe)
+    avisos = frio + vencimientos
+    avisos += _historial_por_revisar(conteos.get("historial", 0))
+    avisos += _ubicacion_por_revisar(conteos.get("ubicacion", 0))
+    urgentes = total_frio + vencidos
     # El número cuenta todos los avisos, también los que quedan detrás de «Ver N más».
     total = sum(a.get("resto", 1) for a in avisos)
     return dict(avisos=avisos, total=total, urgente=bool(urgentes))

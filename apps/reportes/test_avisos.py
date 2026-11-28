@@ -8,7 +8,6 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.inventario.models import EstanciaCaja
-from apps.trazabilidad.models import SolicitudRuta
 from apps.usuarios.models import Usuario
 
 from .avisos import avisos_para
@@ -28,13 +27,6 @@ class AvisosTests(DatosDashboard, TestCase):
         caja.lote_produccion.save()
         return caja
 
-    def solicitud(self, solicitante, **kwargs):
-        return SolicitudRuta.objects.create(solicitante=solicitante, especie=self.especie, **kwargs)
-
-    def resuelta(self, solicitante, estado="APROBADA", resuelto_por=None, respuesta=""):
-        return self.solicitud(solicitante, estado=estado, resuelto_por=resuelto_por or self.jefe,
-                              resuelto_en=timezone.now(), respuesta=respuesta)
-
     def renderizar(self, usuario):
         request = RequestFactory().get("/")
         request.user = usuario
@@ -45,12 +37,10 @@ class AvisosTests(DatosDashboard, TestCase):
         self.umbral("24.00")
         self.caja(almacenada=True, ingreso=AHORA - timedelta(hours=40))
         self.por_vencer(5)
-        self.solicitud(self.operaria)
         jefe = self.titulos(self.jefe)
-        self.assertEqual(len(jefe), 3)
+        self.assertEqual(len(jefe), 2)
         self.assertIn("Merluza revisión: pasó el tiempo recomendado", jefe)
         self.assertTrue(any("vence el" in t for t in jefe))
-        self.assertTrue(any("pidió una ruta para Merluza revisión" in t for t in jefe))
         self.assertEqual(self.titulos(self.encargada), jefe)
         self.assertEqual(self.titulos(self.operaria), [])
         self.assertTrue(avisos_para(self.jefe, ahora=AHORA)["urgente"])
@@ -76,32 +66,6 @@ class AvisosTests(DatosDashboard, TestCase):
         self.assertEqual(datos["avisos"][-1]["url"], reverse("inventario:lista") + "?estado=ALMACENADA")
         self.assertTrue(avisos_para(self.jefe, ahora=AHORA)["avisos"][-1]["url"].endswith("#vencimientos"))
 
-    def test_respuesta_aparece_hasta_que_quien_pidio_entra_a_solicitudes(self):
-        self.resuelta(self.operaria, respuesta="Usar la ruta de venta local.")
-        self.resuelta(self.operaria, estado="RECHAZADA")
-        self.resuelta(self.encargada)
-        self.resuelta(self.jefe, resuelto_por=self.jefe)  # La resolvió él mismo: no es novedad.
-        datos = avisos_para(self.operaria, ahora=AHORA)
-        self.assertEqual([a["titulo"] for a in datos["avisos"]],
-                         ["Rechazaron tu ruta para Merluza revisión", "Aprobaron tu ruta para Merluza revisión"])
-        self.assertEqual(datos["avisos"][1]["detalle"], "Usar la ruta de venta local.")
-        self.assertEqual(datos["avisos"][1]["nivel"], "listo")
-        self.assertFalse(datos["urgente"])
-        self.assertEqual(self.titulos(self.jefe), [])
-        self.client.force_login(self.jefe)
-        self.client.get(reverse("trazabilidad:solicitudes_ruta"))
-        self.assertEqual(len(self.titulos(self.operaria)), 2)
-        self.client.force_login(self.operaria)
-        self.client.get(reverse("trazabilidad:solicitudes_ruta") + "?estado=PENDIENTE")
-        self.assertEqual(self.titulos(self.operaria), [])
-        self.assertEqual(len(self.titulos(self.encargada)), 1)
-
-    def test_pendiente_no_cuenta_como_respuesta(self):
-        self.solicitud(self.operaria)
-        self.client.force_login(self.operaria)
-        self.client.get(reverse("trazabilidad:solicitudes_ruta"))
-        self.assertIsNone(SolicitudRuta.objects.get().respuesta_vista_en)
-
     def test_campana_en_la_cabecera_usa_los_conteos_del_menu(self):
         caja = self.caja(almacenada=True)
         EstanciaCaja.objects.create(caja=caja, unidad_frio=self.mantencion, fecha_hora_ingreso=AHORA, ingresado_por=self.jefe)
@@ -111,10 +75,12 @@ class AvisosTests(DatosDashboard, TestCase):
         self.assertIn("bg-cyan-700", html)
         with self.assertNumQueries(0):
             CAMPANA.render(Context({"request": request}))
-        html, _ = self.renderizar(self.operaria)
+        EstanciaCaja.objects.filter(caja=caja).delete()
+        html, _ = self.renderizar(self.jefe)
         self.assertIn('aria-label="Avisos: ninguno"', html)
         self.assertIn("No hay avisos.", html)
-        for usuario in (AnonymousUser(), Usuario(username="sin_rol_campana")):
+        # La operaria no tiene campana: lo suyo está en su inicio.
+        for usuario in (self.operaria, AnonymousUser(), Usuario(username="sin_rol_campana")):
             self.assertEqual(self.renderizar(usuario)[0].strip(), "")
 
     def test_numero_grande_y_rojo_si_hay_algo_urgente(self):
@@ -129,5 +95,6 @@ class AvisosTests(DatosDashboard, TestCase):
 
     def test_pagina_completa_muestra_la_campana(self):
         self.client.force_login(self.encargada)
-        respuesta = self.client.get(reverse("usuarios:inicio"))
-        self.assertContains(respuesta, "data-campana")
+        self.assertContains(self.client.get(reverse("usuarios:inicio")), "data-campana")
+        self.client.force_login(self.operaria)
+        self.assertNotContains(self.client.get(reverse("usuarios:inicio")), "data-campana")

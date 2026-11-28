@@ -1,15 +1,15 @@
-"""Altas y aprobación de configuraciones; serialización por especie."""
+"""Rutas y operaciones; serialización por especie."""
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
 from apps.usuarios.permisos import tiene_rol
-from .models import Especie, RutaProceso, EtapaRutaProceso, TipoProceso, SolicitudRuta, EtapaSolicitudRuta
+from .models import Especie, RutaProceso, EtapaRutaProceso, TipoProceso
 from .rutas import validar_etapas_ruta
 
 
 def exigir_gestion(usuario):
-    """Rutas, operaciones y solicitudes las gestionan el jefe y la encargada."""
+    """Rutas y operaciones las gestionan el jefe y la encargada."""
     if not tiene_rol(usuario, "JEFE", "ENCARGADA"):
         raise PermissionDenied
 
@@ -107,49 +107,3 @@ def guardar_operacion(*, usuario, codigo, nombre, activo, operacion=None):
     operacion.full_clean()
     operacion.save()
     return operacion
-
-
-@transaction.atomic
-def solicitar_ruta(*, usuario, especie, operaciones, observacion=""):
-    if not tiene_rol(usuario, "JEFE", "ENCARGADA", "OPERARIA"):
-        raise PermissionDenied
-    Especie.objects.select_for_update().get(pk=especie.pk)
-    etapas = secuencia_validada(operaciones, bloquear=True)
-    if rutas_equivalentes(especie, operaciones):
-        raise ValidationError("Ya hay rutas autorizadas con esta secuencia. Selecciona una de ellas.")
-    for previa in SolicitudRuta.objects.filter(especie=especie, solicitante=usuario, estado="PENDIENTE").prefetch_related("etapas"):
-        if [e.tipo_proceso_id for e in previa.etapas.all()] == operaciones:
-            return previa
-    solicitud = SolicitudRuta.objects.create(especie=especie, solicitante=usuario, observacion=observacion.strip())
-    EtapaSolicitudRuta.objects.bulk_create([EtapaSolicitudRuta(solicitud=solicitud, orden=e.orden, tipo_proceso=e.tipo_proceso) for e in etapas])
-    return solicitud
-
-
-@transaction.atomic
-def resolver_solicitud(*, usuario, solicitud, aprobar, nombre="", respuesta="", ruta_existente=None):
-    exigir_gestion(usuario)
-    Especie.objects.select_for_update().get(pk=solicitud.especie_id)
-    solicitud = SolicitudRuta.objects.select_for_update().get(pk=solicitud.pk)
-    if solicitud.estado != "PENDIENTE":
-        raise ValidationError("La solicitud ya fue resuelta.")
-    if aprobar:
-        ids = list(solicitud.etapas.values_list("tipo_proceso_id", flat=True))
-        secuencia_validada(ids, bloquear=True)
-        equivalentes = rutas_equivalentes(solicitud.especie, ids)
-        if ruta_existente:
-            ruta = next((r for r in equivalentes if r.pk == ruta_existente.pk), None)
-            if ruta is None:
-                raise ValidationError("La ruta seleccionada no es una coincidencia activa de la solicitud.")
-        elif len(equivalentes) == 1:
-            ruta = equivalentes[0]
-        elif equivalentes:
-            raise ValidationError("Hay varias rutas equivalentes. Selecciona explícitamente una.")
-        else:
-            ruta = guardar_ruta(usuario=usuario, especie=solicitud.especie, nombre=nombre,
-                descripcion=solicitud.observacion, activo=True, predeterminada=False, operaciones=ids)
-        solicitud.ruta_aprobada = ruta
-    solicitud.estado = "APROBADA" if aprobar else "RECHAZADA"
-    solicitud.resuelto_por, solicitud.resuelto_en = usuario, timezone.now()
-    solicitud.respuesta = respuesta.strip()
-    solicitud.save(update_fields=["estado", "ruta_aprobada", "resuelto_por", "resuelto_en", "respuesta"])
-    return solicitud

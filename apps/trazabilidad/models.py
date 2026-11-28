@@ -205,7 +205,7 @@ class TipoProceso(models.Model):
         return self.nombre
 
     def tiene_referencias(self):
-        return self.eventos.exists() or self.etapas_ruta.exists() or self.etapas_solicitadas.exists()
+        return self.eventos.exists() or self.etapas_ruta.exists()
 
     @transaction.atomic
     def save(self, *args, **kwargs):
@@ -688,38 +688,3 @@ class Correccion(models.Model):
 
     def __str__(self):
         return f"{self.entidad_afectada} {self.identificador_registro} - {self.campo}"
-
-
-class SolicitudRuta(models.Model):
-    class Estado(models.TextChoices):
-        PENDIENTE = "PENDIENTE", "Pendiente"
-        APROBADA = "APROBADA", "Aprobada"
-        RECHAZADA = "RECHAZADA", "Rechazada"
-
-    solicitante = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="solicitudes_ruta")
-    especie = models.ForeignKey(Especie, on_delete=models.PROTECT, related_name="solicitudes_ruta")
-    observacion = models.TextField(blank=True)
-    creado_en = models.DateTimeField(auto_now_add=True)
-    estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PENDIENTE, db_index=True)
-    resuelto_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="solicitudes_ruta_resueltas")
-    resuelto_en = models.DateTimeField(null=True, blank=True)
-    respuesta = models.TextField(blank=True)
-    ruta_aprobada = models.ForeignKey(RutaProceso, on_delete=models.PROTECT, null=True, blank=True, related_name="solicitudes_aprobadas")
-    # Cuándo quien la pidió vio la respuesta; mientras esté vacío, le aparece en la campana.
-    respuesta_vista_en = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        ordering = ["creado_en", "pk"]
-
-
-class EtapaSolicitudRuta(models.Model):
-    solicitud = models.ForeignKey(SolicitudRuta, on_delete=models.PROTECT, related_name="etapas")
-    tipo_proceso = models.ForeignKey(TipoProceso, on_delete=models.PROTECT, related_name="etapas_solicitadas")
-    orden = models.PositiveSmallIntegerField()
-
-    class Meta:
-        ordering = ["orden", "pk"]
-        constraints = [
-            models.UniqueConstraint(fields=["solicitud", "orden"], name="solicitud_ruta_orden_unico"),
-            models.CheckConstraint(condition=models.Q(orden__gt=0), name="solicitud_ruta_orden_positivo"),
-        ]

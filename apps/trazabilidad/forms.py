@@ -336,7 +336,7 @@ class SeleccionRutaMixin:
         elif len(predeterminadas) > 1:
             self.fields["ruta"].help_text = "Hay varias rutas predeterminadas. La configuración es ambigua; seleccione una ruta."
         if not opciones:
-            self.fields["ruta"].help_text = "No hay rutas activas para esta especie. Solicite su configuración en Administración."
+            self.fields["ruta"].help_text = "No hay rutas activas para esta especie."
 
 
 class RutaPartidaForm(SeleccionRutaMixin, forms.Form):

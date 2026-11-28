@@ -2,13 +2,15 @@
 
 Entrega local del 23 de octubre de 2026. No se realizaron commits, push, merge ni despliegues. No se aplicaron migraciones ni se escribieron datos en la base de trabajo; las pruebas utilizaron la base temporal de Django.
 
+> **Cambio del 28 de noviembre de 2026 (marcha blanca).** La encargada administra rutas y operaciones igual que el jefe. Las solicitudes de rutas se eliminaron: en «Seleccionar operaciones», si la secuencia no calza con ninguna ruta, el jefe o la encargada la crean ahí mismo con «Crear ruta y empezar»; la operaria ve que debe avisar a la encargada. Cada ruta registra quién la creó. Las migraciones `0019_ruta_creado_por` y `0020_quitar_solicitudes_ruta` aplican estos cambios; la segunda borra las tablas de solicitudes. Las secciones siguientes se actualizaron; las menciones a solicitudes en los archivos quedan como historial.
+
 ## Funcionalidades y pantallas
 
 - Gestión del catálogo de rutas por especie: búsqueda, filtros, secuencias ordenadas, edición de configuraciones no utilizadas, duplicación, activación y predeterminada.
 - Gestión de operaciones: se preservan código y nombre cuando tienen referencias. `PROCESAMIENTO` continúa reservado al evento general.
 - Inicio con una ruta habitual que muestra sus operaciones, o selección de operaciones y búsqueda de una coincidencia exacta. Las coincidencias ambiguas requieren elección explícita.
-- Solicitudes de secuencias nuevas, aprobación o rechazo por jefe. Las solicitudes pendientes no generan eventos ni divisiones de producto. Las aprobaciones y altas se serializan por especie para evitar duplicados concurrentes.
-- Dashboard: accesos a nueva ruta, gestión y solicitudes pendientes; gráficos sin modificaciones.
+- Secuencias nuevas: el jefe o la encargada crean la ruta desde «Seleccionar operaciones» y empiezan el proceso en el mismo paso. Las altas se serializan por especie para evitar duplicados concurrentes.
+- Dashboard: accesos a nueva ruta y gestión; gráficos sin modificaciones.
 - Buscador por folio Sernapesca, recepción, seguimiento, lote, caja/código/UUID/URL QR o despacho.
 - Ficha integral con orígenes, familias de seguimientos, aportes, planificación y ejecución real, pesajes, mermas, frío, cajas, almacenamiento, despachos, bajas, conciliación, cronología y correcciones verificables.
 - Enlaces «Ver ficha integral» desde los detalles. Actividad y mediciones del seguimiento e historial del QR quedan desplegables; no se eliminó información operativa.
@@ -27,10 +29,9 @@ La ficha muestra los aportes registrados al lote. No calcula qué parte de cada 
 
 | Función | Jefe / superusuario | Encargada | Operario |
 | --- | --- | --- | --- |
-| Administrar rutas y operaciones | Sí | No | No |
-| Resolver solicitudes | Sí | No | No |
-| Usar rutas y solicitar secuencias | Sí | Sí | Sí |
-| Consultar solicitudes | Todas | Propias | Propias |
+| Administrar rutas y operaciones | Sí | Sí | No |
+| Crear una ruta desde «Seleccionar operaciones» | Sí | Sí | No |
+| Usar rutas existentes | Sí | Sí | Sí |
 | Consulta integral | Sí | Sí | No |
 
 La ficha completa contiene datos de recepciones, lotes y despachos, que el operario actualmente no puede consultar en detalle. Por eso la protección se aplica tanto en las vistas como en los selectores, además de los enlaces. Se conservan autenticación, sesiones y retorno con `next`. Las escrituras usan POST, CSRF y servicios transaccionales.
@@ -103,7 +104,7 @@ uv run python manage.py runserver
 La migración es necesaria antes de usar las pantallas nuevas o el contador del dashboard. El CSS ya está recompilado.
 
 1. Como jefe, abrir `/trazabilidad/rutas/`, crear una ruta, agregar y reordenar operaciones. Revisar `/trazabilidad/operaciones/`.
-2. Desde un seguimiento disponible, iniciar por ruta habitual o «Seleccionar operaciones». Proponer una combinación inexistente y comprobar que permanece disponible, sin eventos de producción.
-3. Como jefe, resolverla en `/trazabilidad/solicitudes-ruta/`; luego elegir la ruta aprobada desde el seguimiento.
+2. Desde un seguimiento disponible, iniciar por ruta habitual o «Seleccionar operaciones».
+3. Como encargada, elegir una combinación inexistente y usar «Crear ruta y empezar». Como operario, comprobar que la misma combinación muestra el aviso para la encargada y no crea nada.
 4. Consultar `/trazabilidad/consulta/` con un folio, lote o QR. Revisar aportes, ramas, cajas, conciliación y cronología; comprobar la misma procedencia desde el despacho.
-5. Como operario, verificar acceso a solicitudes propias y rechazo de la URL de consulta integral.
+5. Como operario, verificar el rechazo de la URL de consulta integral.

@@ -11,7 +11,7 @@ from django.urls import reverse
 
 from apps.inventario.models import DetalleDespacho, EstanciaCaja, Despacho
 from apps.trazabilidad.models import (PartidaProceso, EventoProceso, TipoProceso, Pesaje,
-    ConsumoLote, SolicitudRuta, EstanciaPartida)
+    ConsumoLote, EstanciaPartida)
 from .selectors import dashboard_operacional
 from .test_dashboard import DatosDashboard, AHORA
 
@@ -157,15 +157,6 @@ class CentroControlTests(DatosDashboard, TestCase):
         nueva = self.caja(almacenada=True)
         type(nueva).objects.filter(pk=nueva.pk).update(fecha_armado=AHORA-timedelta(days=100))
         self.assertEqual([c.pk for c in self.datos()["antiguos"]], [vieja.pk, nueva.pk])
-
-    def test_solicitudes_pendientes_respetan_especie(self):
-        SolicitudRuta.objects.create(especie=self.especie, solicitante=self.operaria)
-        SolicitudRuta.objects.create(especie=self.otra_especie, solicitante=self.operaria)
-        datos = self.datos(especie=self.especie)
-        self.assertEqual(datos["solicitudes_ruta_pendientes"], 1)
-        self.client.force_login(self.jefe)
-        respuesta = self.client.get(datos["pendientes_control"][-1]["url"])
-        self.assertEqual(respuesta.context["page_obj"].paginator.count, 1)
 
     def test_enlace_inventario_sin_peso(self):
         vacia = self.caja(None, almacenada=True)

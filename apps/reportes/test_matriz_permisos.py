@@ -3,7 +3,6 @@ from django.urls import reverse
 from apps.inventario.models import Despacho
 from apps.usuarios.models import Rol, Usuario
 from apps.trazabilidad.test_qr_cajas import DatosQR
-from apps.trazabilidad.services_rutas import solicitar_ruta
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
@@ -13,8 +12,6 @@ class MatrizPermisosTests(DatosQR, TestCase):
         self.encargada = Usuario.objects.create_user(username="matriz_enc", rol=Rol.objects.get(codigo="ENCARGADA"))
         self.cuenta = Usuario.objects.create_user(username="matriz_cuenta", rol=Rol.objects.get(codigo="OPERARIA"))
         self.despacho = Despacho.objects.create(fecha_hora_despacho=self.registro.fecha_armado, registrado_por=self.jefe)
-        self.solicitud = solicitar_ruta(usuario=self.usuario, especie=self.especie,
-                                       operaciones=[self.tipos["FILETEO"].pk])
 
     def matriz(self):
         p, l, c = self.partida.pk, self.lote.pk, self.registro.pk
@@ -53,16 +50,15 @@ class MatrizPermisosTests(DatosQR, TestCase):
             *[(n, [self.cuenta.pk], "post") for n in ("desactivar_usuario", "reactivar_usuario")]])
         grupo("usuarios", ("OPERARIA", "ENCARGADA", "JEFE"), [(n, [], "get") for n in ("inicio", "cambiar_contrasena")])
         grupo("trazabilidad", ("OPERARIA", "ENCARGADA", "JEFE"), [
-            ("seleccionar_operaciones", [p], "get"), ("solicitudes_ruta", [], "get")])
+            ("seleccionar_operaciones", [p], "get")])
         grupo("trazabilidad", ("ENCARGADA", "JEFE"), [
             ("consulta_integral", [], "get"), ("ficha_integral", ["caja", c], "get")])
-        # Rutas, operaciones y solicitudes: jefe y encargada. La operaria solo solicita.
+        # Rutas y operaciones: jefe y encargada.
         grupo("trazabilidad", ("ENCARGADA", "JEFE"), [
             ("rutas", [], "get"), ("nueva_ruta", [], "get"), ("operaciones", [], "get"),
             ("editar_ruta", [self.ruta.pk], "get"), ("duplicar_ruta", [self.ruta.pk], "get"),
             ("estado_ruta", [self.ruta.pk], "post"),
-            ("editar_operacion", [self.tipos["FILETEO"].pk], "get"),
-            ("resolver_solicitud", [self.solicitud.pk], "get")])
+            ("editar_operacion", [self.tipos["FILETEO"].pk], "get")])
         return filas
 
     def test_matriz_completa_por_perfil_y_anonimo(self):

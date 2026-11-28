@@ -555,7 +555,7 @@ class RecepcionViewsTests(TestCase):
         request = RequestFactory().get(reverse("trazabilidad:detalle_recepcion", args=[recepcion.pk]))
         request.user = self.jefe
         # Historial, contadores del sidebar, partidas precargadas y bodega por defecto.
-        with self.assertNumQueries(13):  # Incluye 3 de la campana.
+        with self.assertNumQueries(11):  # Incluye 2 de la campana.
             response = detalle_recepcion(request, recepcion.pk)
         for indice in range(3):
             self.assertContains(response, f"HISTORICO-{indice}")
