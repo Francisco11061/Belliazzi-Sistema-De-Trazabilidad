@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% load i18n static %}
-{% block title %}{% if total %}({{ total }}) {% endif %}Inicio | Pesquera Belliazzi{% endblock %}
+{% load i18n %}
+{% block title %}Inicio | Pesquera Belliazzi{% endblock %}
 
 {% block page_title %}Inicio{% endblock %}
 
@@ -10,13 +10,7 @@
         <p class="text-sm text-slate-500 first-letter:uppercase">{% now "l j \d\e F" %}</p>
         <h1 class="mt-1 text-2xl font-semibold tracking-tight break-words md:text-3xl">Hola, {{ user.first_name|default:user.username }}</h1>
         {% if grupos is not None %}
-        <div class="mt-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <p class="text-slate-600" data-resumen-pendientes>{% if total %}Hay {{ total }} pendiente{{ total|pluralize }} en planta. Primero lo más urgente.{% else %}Todo al día: no hay nada pendiente en planta.{% endif %}</p>
-            <p class="flex items-center gap-2 text-sm text-slate-500" role="status" data-actualizacion data-cada="120">
-                <span class="size-2 rounded-full bg-emerald-500" aria-hidden="true" data-actualizacion-punto></span>
-                <span data-actualizacion-texto>{% now "c" as ahora %}<time datetime="{{ ahora }}" data-tip="{% now 'd/m/Y H:i' %}">Actualizado recién</time></span>
-            </p>
-        </div>
+        <p class="mt-2 text-slate-600">{% if total %}Hay {{ total }} pendiente{{ total|pluralize }} en planta. Primero lo más urgente.{% else %}Todo al día: no hay nada pendiente en planta.{% endif %}</p>
         {% endif %}
     </header>
 
@@ -33,7 +27,6 @@
     </nav>
     {% endif %}
 
-    <div class="space-y-6" data-pendientes>
     {% for grupo in grupos %}
     <section aria-labelledby="grupo-{{ grupo.clave }}" class="min-w-0 rounded-2xl border {% if grupo.urgente %}border-amber-200{% else %}border-slate-200{% endif %} bg-white shadow-sm">
         <header class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-slate-100 px-5 py-4 sm:px-6">
@@ -79,7 +72,5 @@
         </div>
         {% endif %}
     {% endfor %}
-    </div>
 </div>
 {% endlanguage %}{% endblock %}
-{% block extra_js %}{% if grupos is not None %}<script src="{% static 'usuarios/js/inicio.js' %}?v=pulido-1" defer></script>{% endif %}{% endblock %}
