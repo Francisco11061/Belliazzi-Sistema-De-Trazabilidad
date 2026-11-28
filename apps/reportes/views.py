@@ -63,7 +63,7 @@ def umbrales(request):
                 except ValidationError as error:
                     form.add_error(None, " ".join(error.messages))
                 else:
-                    messages.success(request, "Umbral actualizado correctamente.")
+                    messages.success(request, "Tiempo recomendado guardado.")
                     return redirect("reportes:umbrales")
             forms.append(form)
         return render(request, "reportes/umbrales.html", {"formularios": forms})

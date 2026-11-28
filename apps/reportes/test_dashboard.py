@@ -103,7 +103,7 @@ class DashboardRecorridoTests(DatosDashboard, TestCase):
         with patch("django.utils.timezone.now", return_value=AHORA):
             respuesta = self.client.get(self.url())
         self.assertContains(respuesta, "dc-banner")
-        self.assertContains(respuesta, "sobre el umbral")
+        self.assertContains(respuesta, "1 producto pasó el tiempo recomendado en frío")
         self.assertEqual(respuesta.context["alerta_frio"]["unidad"], self.unidad)
 
     def test_sin_seccion_de_criterios_ni_accesos_a_rutas(self):

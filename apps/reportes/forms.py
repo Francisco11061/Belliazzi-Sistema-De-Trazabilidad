@@ -26,7 +26,7 @@ def _sin_ceros(valor):
 
 
 class UmbralFrioForm(forms.ModelForm):
-    """El umbral se guarda en horas, pero se puede escribir en horas o en días."""
+    """El tiempo recomendado se guarda en horas, pero se puede escribir en horas o en días."""
 
     UNIDADES = (("horas", "horas"), ("dias", "días"))
     unidad = forms.ChoiceField(label="Unidad", choices=UNIDADES, required=False)
@@ -34,7 +34,7 @@ class UmbralFrioForm(forms.ModelForm):
     class Meta:
         model = UnidadFrio
         fields = ["umbral_alerta_horas"]
-        labels = {"umbral_alerta_horas": "Umbral"}
+        labels = {"umbral_alerta_horas": "Tiempo recomendado"}
         widgets = {"umbral_alerta_horas": forms.NumberInput(attrs={"step": "0.01", "min": "0.01"})}
 
     def __init__(self, *args, **kwargs):
