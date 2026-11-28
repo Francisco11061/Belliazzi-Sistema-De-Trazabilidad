@@ -192,7 +192,7 @@ class RecepcionFiltroForm(forms.Form):
 class MotivoCorreccionForm(forms.Form):
     motivo = forms.CharField(
         max_length=Correccion._meta.get_field("motivo").max_length,
-        label="Motivo de la corrección", widget=forms.Textarea,
+        label="¿Por qué se corrige?", widget=forms.Textarea(attrs={"rows": 3}),
         error_messages={"required": "Indica el motivo de la corrección."},
     )
 

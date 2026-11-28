@@ -25,7 +25,7 @@ def _campo_kg(etiqueta):
 class CorreccionBaseForm(forms.Form):
     motivo = forms.CharField(
         max_length=Correccion._meta.get_field("motivo").max_length,
-        label="Motivo de la corrección", widget=forms.Textarea(attrs={"rows": 3}),
+        label="¿Por qué se corrige?", widget=forms.Textarea(attrs={"rows": 3, "placeholder": "Explica brevemente qué estaba mal."}),
         error_messages={"required": "Indica el motivo de la corrección."},
     )
 
