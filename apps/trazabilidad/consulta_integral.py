@@ -12,6 +12,7 @@ from apps.usuarios.permisos import tiene_rol
 from apps.inventario.models import Despacho, DetalleDespacho, EstanciaCaja, BajaCaja
 from apps.inventario.selectors import cajas_con_inventario
 from .constantes import ETIQUETAS_CAMPOS_RECEPCION
+from .templatetags.correcciones_tags import ETIQUETAS as ETIQUETAS_CORRECCIONES
 from .formato import formatear_kg, formatear_valor_correccion
 from .models import (OrigenSernapesca, Recepcion, DetalleRecepcion, PartidaProceso, EventoProceso,
     EstanciaPartida, Pesaje, MermaProceso, ConsumoLote, LoteProduccion, Caja, ComposicionCaja, Correccion)
@@ -124,20 +125,23 @@ def ficha_integral(usuario, tipo, pk):
     bajas = list(BajaCaja.objects.filter(caja_id__in=caja_ids).select_related("registrado_por").order_by("fecha_hora_evento", "pk"))
     vinculados = {"Recepcion": recepciones.keys(), "DetalleRecepcion": detalle_ids,
         "OrigenSernapesca": {d.origen_sernapesca_id for d in detalles}, "PartidaProceso": partida_ids,
-        "LoteProduccion": lote_ids, "Caja": caja_ids, "Despacho": {d.despacho_id for d in despachos}}
+        "LoteProduccion": lote_ids, "Caja": caja_ids, "Despacho": {d.despacho_id for d in despachos},
+        "EventoProceso": [e.pk for e in eventos], "EstanciaPartida": [e.pk for e in frio],
+        "Pesaje": [p.pk for p in pesos], "MermaProceso": [m.pk for m in mermas]}
     vinculados[raiz.__class__.__name__] = set(vinculados.get(raiz.__class__.__name__, ())) | {raiz.pk}
     filtro_correcciones = Q(pk__in=[])
     for entidad, ids in vinculados.items():
         filtro_correcciones |= Q(entidad_afectada=entidad, identificador_registro__in=[str(i) for i in ids])
     correcciones = list(Correccion.objects.filter(filtro_correcciones).select_related("usuario").order_by("fecha_hora", "pk"))
-    entidades = {m.__name__: m for m in (*MODELOS.values(), DetalleRecepcion)}
+    entidades = {m.__name__: m for m in (*MODELOS.values(), DetalleRecepcion, EventoProceso, EstanciaPartida, Pesaje, MermaProceso)}
     nombres = {"PartidaProceso": "Seguimiento", "LoteProduccion": "Lote de producción",
                "OrigenSernapesca": "Origen Sernapesca", "DetalleRecepcion": "Detalle de recepción",
-               "Recepcion": "Recepción", "Caja": "Caja", "Despacho": "Despacho"}
+               "Recepcion": "Recepción", "Caja": "Caja", "Despacho": "Despacho",
+               "EventoProceso": "Etapa", "EstanciaPartida": "Túnel", "Pesaje": "Pesaje", "MermaProceso": "Merma"}
     for correccion in correcciones:
         correccion.entidad_visible = nombres.get(correccion.entidad_afectada, "Registro")
         campos = {f.name: str(f.verbose_name).capitalize() for f in entidades[correccion.entidad_afectada]._meta.fields} if correccion.entidad_afectada in entidades else {}
-        correccion.campo_visible = ETIQUETAS_CAMPOS_RECEPCION.get(
+        correccion.campo_visible = ETIQUETAS_CORRECCIONES.get(
             correccion.campo, campos.get(correccion.campo, correccion.campo.replace("_", " ").capitalize()))
         correccion.anterior_visible = formatear_valor_correccion(correccion.campo, correccion.valor_anterior)
         correccion.nuevo_visible = formatear_valor_correccion(correccion.campo, correccion.valor_nuevo)

@@ -1,0 +1,35 @@
+{% extends "base.html" %}{% load formularios %}
+{% block title %}{{ titulo }} | Pesquera Belliazzi{% endblock %}
+{% block page_title %}Corrección{% endblock %}
+{% block content %}
+<div class="w-full min-w-0">
+    <header class="mb-8">
+        <h1 class="text-2xl font-semibold tracking-tight md:text-3xl">{{ titulo }}</h1>
+        <p class="mt-2 text-sm leading-6 text-slate-600">El cambio queda en el historial con el valor anterior, el nuevo, quién lo hizo y el motivo.</p>
+    </header>
+    {% if bloqueo %}
+        <div role="alert" class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{{ bloqueo }}</div>
+        <a href="{{ volver }}" class="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:w-auto">Volver</a>
+    {% else %}
+    <div role="status" class="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{{ fijo }}{% if aviso_plazo %}<br><span class="font-medium">{{ aviso_plazo }}</span>{% endif %}</div>
+    <form method="post" data-loading-text="Guardando…" class="space-y-6 [&_input:not([type=checkbox])]:block [&_input:not([type=checkbox])]:w-full [&_input]:min-w-0 [&_input]:max-w-full [&_input]:rounded-lg [&_input]:border-slate-300 [&_select]:block [&_select]:w-full [&_select]:min-w-0 [&_select]:rounded-lg [&_select]:border-slate-300 [&_textarea]:block [&_textarea]:w-full [&_textarea]:rounded-lg [&_textarea]:border-slate-300">
+        {% csrf_token %}{% resumen_errores %}
+        <section aria-labelledby="datos-title" class="min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 id="datos-title" class="mb-6 text-lg font-semibold">Datos a corregir</h2>
+            {% if form.non_field_errors %}<div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+            <div class="grid min-w-0 gap-6 sm:grid-cols-2">
+                {% for campo in form %}{% if campo.name != "motivo" %}{% include "trazabilidad/recepciones/_campo.html" %}{% endif %}{% endfor %}
+            </div>
+        </section>
+        <section aria-labelledby="motivo-title" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 id="motivo-title" class="mb-6 text-lg font-semibold">Motivo de la corrección</h2>
+            {% with campo=form.motivo %}{% include "trazabilidad/recepciones/_campo.html" %}{% endwith %}
+        </section>
+        <div class="flex flex-col gap-3 sm:flex-row">
+            <button type="submit" class="inline-flex w-full cursor-pointer items-center justify-center rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white shadow-xs hover:bg-cyan-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 sm:w-auto">Guardar corrección</button>
+            <a href="{{ volver }}" class="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 sm:w-auto">Cancelar</a>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

@@ -5,7 +5,7 @@
 {% block content %}
 {% include "components/_enlace_integral.html" with tipo="lote" registro=lote %}{% language "es" %}
 <div class="w-full min-w-0 w-full space-y-6">
-    <header><h1 class="mt-4 text-2xl font-semibold md:text-3xl">Lote {{ lote.codigo_visible }}</h1><p class="mt-2 text-lg font-medium">{{ lote.especie.nombre }}</p><p class="mt-1 text-sm text-slate-600">{{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p></header>
+    <header><h1 class="mt-4 text-2xl font-semibold md:text-3xl">Lote {{ lote.codigo_visible }}</h1><p class="mt-2 text-lg font-medium">{{ lote.especie.nombre }}</p><p class="mt-1 text-sm text-slate-600">{{ lote.ruta_proceso.nombre|default:"Sin ruta documentada" }}</p><div class="mt-3">{% include "components/_boton_corregir.html" with tipo="lote" registro=lote texto="Corregir lote" %}</div></header>
     <section class="rounded-2xl border border-cyan-100 bg-cyan-50 p-5 sm:p-6">
         <dl class="grid gap-5 sm:grid-cols-2">
             <div><dt class="text-sm text-slate-600">Total asignado</dt><dd class="mt-1 text-2xl font-semibold text-cyan-800">{{ lote.total_asignado|num }} kg</dd></div>
@@ -44,5 +44,6 @@
             {% empty %}<li class="text-sm text-slate-600">Sin producto asignado registrado.</li>{% endfor %}
         </ul>
     </section>
+    {% historial_correcciones lote %}
 </div>
 {% endlanguage %}{% endblock %}

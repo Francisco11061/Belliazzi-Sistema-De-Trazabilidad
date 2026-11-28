@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_rutas, views_consulta
+from . import views_correcciones, views, views_rutas, views_consulta
 
 app_name = "trazabilidad"
 
@@ -29,6 +29,7 @@ urlpatterns = [
     path("partidas/<int:pk>/mantencion/", views.operar_partida, {"operacion": "mantencion"}, name="enviar_partida_mantencion"),
     path("partidas/<int:pk>/retirar/", views.operar_partida, {"operacion": "retirar"}, name="retirar_partida_mantencion"),
     path("partidas/<int:pk>/procesar/", views.operar_partida, {"operacion": "procesar"}, name="procesar_partida"),
+    path("correcciones/<str:tipo>/<int:pk>/", views_correcciones.corregir, name="corregir_registro"),
     path("recepciones/<int:pk>/corregir/", views.corregir_recepcion, name="corregir_recepcion"),
     path("recepciones/", views.lista_recepciones, name="lista_recepciones"),
     path("recepciones/nueva/", views.nueva_recepcion, name="nueva_recepcion"),

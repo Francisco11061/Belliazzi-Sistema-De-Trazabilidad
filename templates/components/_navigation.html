@@ -1,6 +1,7 @@
 {% with nombre=request.resolver_match.url_name modulo=request.resolver_match.namespace %}
 {% if modulo == 'trazabilidad' %}
-    {% if 'integral' in nombre %}{% url 'trazabilidad:consulta_integral' as destino %}{% include 'components/_breadcrumbs.html' with grupo='Trazabilidad' pagina='Consulta de trazabilidad' %}
+    {% if nombre == 'corregir_registro' and miga %}{% include 'components/_breadcrumbs.html' with grupo=miga.grupo pagina=miga.pagina destino=miga.destino registro_destino=volver actual='Corrección' %}
+    {% elif 'integral' in nombre %}{% url 'trazabilidad:consulta_integral' as destino %}{% include 'components/_breadcrumbs.html' with grupo='Trazabilidad' pagina='Consulta de trazabilidad' %}
     {% elif 'solicitud' in nombre %}{% url 'trazabilidad:solicitudes_ruta' as destino %}{% include 'components/_breadcrumbs.html' with grupo='Trazabilidad' pagina='Solicitudes de rutas' %}
     {% elif 'ruta' in nombre %}{% url 'trazabilidad:rutas' as destino %}{% include 'components/_breadcrumbs.html' with grupo='Trazabilidad' pagina='Rutas de procesamiento' %}
     {% elif nombre == 'operaciones' or nombre == 'editar_operacion' %}{% url 'trazabilidad:operaciones' as destino %}{% include 'components/_breadcrumbs.html' with grupo='Trazabilidad' pagina='Catálogo de operaciones' %}

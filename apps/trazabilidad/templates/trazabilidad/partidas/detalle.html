@@ -55,9 +55,10 @@
                 <p class="mt-2 text-slate-600">Ingreso: {{ estancia.fecha_hora_ingreso|date:"d/m/Y H:i" }} · {{ estancia.ingresado_por.get_full_name|default:estancia.ingresado_por.username }}</p>
                 <p class="mt-1 text-slate-600">{% if estancia.fecha_hora_salida %}Salida: {{ estancia.fecha_hora_salida|date:"d/m/Y H:i" }} · {% if estancia.retirado_por %}{{ estancia.retirado_por.get_full_name|default:estancia.retirado_por.username }}{% else %}Responsable no documentado{% endif %}{% else %}Sin salida registrada{% endif %}</p>
                 <p class="mt-1 font-medium">Permanencia: {{ estancia.fecha_hora_ingreso|permanencia:estancia.fecha_hora_salida }}</p>
+                {% if estancia.unidad_frio.tipo == "TUNEL_CONGELADO" %}{% include "components/_enlace_corregir.html" with tipo="frio" registro=estancia %}{% endif %}
             </article>
         {% endfor %}
-        {% for evento in eventos %}<article class="rounded-lg border border-cyan-100 bg-cyan-50 p-4"><h3 class="font-medium">{{ evento.tipo_proceso.nombre }}</h3><p class="mt-2 text-slate-600">Inicio: {{ evento.fecha_hora_inicio|date:"d/m/Y H:i" }} · {{ evento.iniciado_por.get_full_name|default:evento.iniciado_por.username }}</p>{% if evento.fecha_hora_termino %}<p class="mt-1 text-slate-600">Término: {{ evento.fecha_hora_termino|date:"d/m/Y H:i" }} · {% if evento.finalizado_por %}{{ evento.finalizado_por.get_full_name|default:evento.finalizado_por.username }}{% else %}Responsable no documentado{% endif %}</p>{% endif %}<p class="mt-1 font-medium">Duración: {{ evento.fecha_hora_inicio|permanencia:evento.fecha_hora_termino }}</p></article>{% endfor %}
+        {% for evento in eventos %}<article class="rounded-lg border border-cyan-100 bg-cyan-50 p-4"><h3 class="font-medium">{{ evento.tipo_proceso.nombre }}</h3><p class="mt-2 text-slate-600">Inicio: {{ evento.fecha_hora_inicio|date:"d/m/Y H:i" }} · {{ evento.iniciado_por.get_full_name|default:evento.iniciado_por.username }}</p>{% if evento.fecha_hora_termino %}<p class="mt-1 text-slate-600">Término: {{ evento.fecha_hora_termino|date:"d/m/Y H:i" }} · {% if evento.finalizado_por %}{{ evento.finalizado_por.get_full_name|default:evento.finalizado_por.username }}{% else %}Responsable no documentado{% endif %}</p>{% endif %}<p class="mt-1 font-medium">Duración: {{ evento.fecha_hora_inicio|permanencia:evento.fecha_hora_termino }}</p>{% if evento.etapa_ruta_id %}{% include "components/_enlace_corregir.html" with tipo="etapa" registro=evento %}{% endif %}</article>{% endfor %}
         </div>
     </details>
     {% endif %}
@@ -65,6 +66,7 @@
         <summary class="min-h-11 cursor-pointer font-semibold">Consultar pesajes y mermas registrados</summary>
         {% include "trazabilidad/partidas/_historial_mediciones.html" %}
     </details>
+    {% historial_correcciones eventos estancias pesajes mermas %}
 </div>
 {% endlanguage %}
 {% endblock %}

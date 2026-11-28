@@ -9,6 +9,7 @@ from django.utils import timezone
 from apps.usuarios.permisos import ROL_ENCARGADA, ROL_JEFE, ROL_OPERARIA, tiene_rol
 
 from .formato import formatear_kg
+from .permisos_correccion import puede_corregir
 from .models import Correccion, DetalleRecepcion, Especie, OrigenSernapesca, PartidaProceso, Recepcion
 from .models import EstanciaPartida, EventoProceso, TipoProceso, UnidadFrio, RutaProceso, Pesaje, MermaProceso
 from .selectors import recepcion_con_actividad, partidas_con_situacion, SITUACIONES_MERMA
@@ -159,9 +160,9 @@ def _valor_historial(valor):
 def corregir_recepcion(
     *, recepcion, usuario, fecha_hora_recepcion, observaciones, origen, detalles, motivo,
 ):
-    if not tiene_rol(usuario, ROL_JEFE):
-        raise PermissionDenied
     actual = Recepcion.objects.select_for_update().get(pk=recepcion.pk)
+    if not puede_corregir(usuario, actual.registrado_por_id, actual.creado_en):
+        raise PermissionDenied
     existentes = list(
         actual.detalles.select_for_update().select_related("especie").order_by("pk")
     )

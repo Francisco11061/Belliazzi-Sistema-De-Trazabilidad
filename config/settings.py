@@ -78,7 +78,7 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'libraries': {'formularios': 'apps.usuarios.templatetags.formularios'},
-            'builtins': ['apps.trazabilidad.templatetags.formato'],
+            'builtins': ['apps.trazabilidad.templatetags.formato', 'apps.trazabilidad.templatetags.correcciones_tags'],
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',

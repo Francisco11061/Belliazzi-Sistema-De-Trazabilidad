@@ -1,7 +1,7 @@
 from datetime import datetime, time
 
 from django.contrib import messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import HttpResponse
@@ -18,6 +18,7 @@ from .models import Correccion, EtapaRutaProceso, OrigenSernapesca, PartidaProce
 from .services import registrar_recepcion, corregir_recepcion as corregir_recepcion_service
 from .bodegas import bodega_de_detalle, bodega_por_defecto, prefetch_bodega
 from .constantes import ETIQUETAS_CAMPOS_RECEPCION
+from .permisos_correccion import puede_corregir
 from .formato import formatear_kg, formatear_valor_correccion
 from .forms import EspecieCorreccionFormSet, MotivoCorreccionForm, RecepcionCorreccionForm
 from .forms import CantidadPartidaForm, EnviarMantencionForm, PartidaFiltroForm
@@ -200,11 +201,13 @@ def detalle_recepcion(request, pk):
     )
 
 
-@jefe_requerido
+@jefe_o_encargada_requerido
 def corregir_recepcion(request, pk):
     recepcion = get_object_or_404(
         Recepcion.objects.prefetch_related("detalles__especie", "detalles__origen_sernapesca"), pk=pk,
     )
+    if not puede_corregir(request.user, recepcion.registrado_por_id, recepcion.creado_en):
+        raise PermissionDenied
     detalles = sorted(recepcion.detalles.all(), key=lambda detalle: detalle.pk)
     origenes = {detalle.origen_sernapesca_id for detalle in detalles}
     if len(origenes) != 1:

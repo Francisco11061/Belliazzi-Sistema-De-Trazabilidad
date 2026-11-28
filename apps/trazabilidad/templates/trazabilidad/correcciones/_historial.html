@@ -1,0 +1,15 @@
+{% if correcciones %}
+<section aria-labelledby="historial-correcciones-title" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <h2 id="historial-correcciones-title" class="text-lg font-semibold">{{ titulo }}</h2>
+    <ul class="mt-4 space-y-3 text-sm">
+    {% for c in correcciones %}
+        <li class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p class="text-xs text-slate-600">{{ c.fecha_hora|date:"d/m/Y H:i" }} · {{ c.usuario.get_full_name|default:c.usuario.username }}</p>
+            <p class="mt-1 font-medium">{{ c.registro_visible }} · {{ c.campo_visible }}</p>
+            <p class="mt-1">{{ c.anterior_visible|default:"Sin valor" }} → <span class="font-semibold">{{ c.nuevo_visible|default:"Sin valor" }}</span></p>
+            <p class="mt-1 text-slate-600">Motivo: {{ c.motivo }}</p>
+        </li>
+    {% endfor %}
+    </ul>
+</section>
+{% endif %}

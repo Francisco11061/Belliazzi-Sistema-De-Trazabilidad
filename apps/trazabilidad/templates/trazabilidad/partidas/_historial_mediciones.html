@@ -7,6 +7,7 @@
             <p class="mt-2 text-lg font-semibold">{{ pesaje.peso_kg|num }} kg</p>
             <p class="mt-2 text-slate-600">{{ pesaje.fecha_hora_evento|date:"d/m/Y H:i" }}</p>
             <p class="mt-1 text-slate-600">Registrado por: {{ pesaje.registrado_por.get_full_name|default:pesaje.registrado_por.username }}</p>
+            {% include "components/_enlace_corregir.html" with tipo="pesaje" registro=pesaje %}
         </article>
     {% empty %}<p class="text-slate-600">Sin pesajes registrados.</p>{% endfor %}
     </div>
@@ -23,6 +24,7 @@
             <p class="mt-1 text-slate-600">Etapa: {{ merma.evento_proceso.tipo_proceso.nombre|default:"—" }}</p>
             <p class="mt-1 text-slate-600">{{ merma.fecha_hora_evento|date:"d/m/Y H:i" }}</p>
             <p class="mt-1 text-slate-600">Registrado por: {{ merma.registrado_por.get_full_name|default:merma.registrado_por.username }}</p>
+            {% include "components/_enlace_corregir.html" with tipo="merma" registro=merma %}
         </article>
     {% empty %}<p class="text-slate-600">Sin pérdidas, descartes ni mermas registradas.</p>{% endfor %}
     </div>
